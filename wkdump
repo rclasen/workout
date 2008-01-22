@@ -1,0 +1,18 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Workout::SRM;
+
+# TODO: getopt
+
+open( F, "tst.srm" )
+	or die "failed to open input file";
+
+my $src = Workout::SRM->read( \*F );
+my @fields = $src->fields_seen;
+print join("\t", @fields), "\n";
+foreach my $r ( $src->chunks ){
+	print join("\t", map { $_ || 0 } @$r{@fields}), "\n";
+}
