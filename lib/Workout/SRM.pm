@@ -150,8 +150,8 @@ sub read {
 
 		$self->block_add;
 
-		my $etime = $stime + ($cnt +1) * $self->recint;
-		print "reading block data: ", $stime, " to ", $etime, " chunks: ", $blk->{ckcnt}, "\n";
+		#my $etime = $stime + ($cnt +1) * $self->recint;
+		#print "reading block data: ", $stime, " to ", $etime, " chunks: ", $blk->{ckcnt}, "\n";
 
 		# read block's chunks
 		while( $cnt-- > 0 ){

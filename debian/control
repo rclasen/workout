@@ -1,0 +1,19 @@
+Source: workout
+Section: perl
+Priority: optional
+Build-Depends: debhelper (>= 5.0.0)
+Build-Depends-Indep: perl (>= 5.8.8-7etch1)
+Maintainer: Rainer Clasen <bj@zuto.de>
+Standards-Version: 3.7.2
+
+Package: workout
+Architecture: all
+Depends: ${perl:Depends}, ${misc:Depends}, 
+Description:  Perl extension for blah blah blah
+ Stub documentation for Workout::SRM, created by h2xs. It looks like the
+ author of the extension was negligent enough to leave the stub
+ unedited.
+ .
+ Blah blah blah.
+ .
+ This description was automagically extracted from the module by dh-make-perl.

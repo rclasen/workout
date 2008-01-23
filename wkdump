@@ -4,15 +4,46 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Workout::SRM;
+use Getopt::Long;
 
-# TODO: getopt
+my $needhelp;
+my $wanthelp;
 
-open( F, "tst.srm" )
+if( ! GetOptions(
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <input file>
+dump workout file as tab seperated list
+
+--help       this help
+
+for now only .srm files are supported
+EOF
+	exit 0;
+}
+
+if( @ARGV != 1 ){
+	print STDERR "you need to specify a single input file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "use --help for usage info\n";
+	exit 1;
+}
+	
+open( F, $ARGV[0] )
 	or die "failed to open input file";
 
 my $src = Workout::SRM->read( \*F );
 my @fields = $src->fields_seen;
 print join("\t", @fields), "\n";
-foreach my $r ( $src->chunks ){
+my $it = $src->chunks_iter;
+while( my $r = $it->() ){
 	print join("\t", map { $_ || 0 } @$r{@fields}), "\n";
 }

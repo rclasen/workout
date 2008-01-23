@@ -1,3 +1,40 @@
+=head1 NAME
+
+Workout::Base - Cycling Workout data
+
+=head1 SYNOPSIS
+
+  # read SRM file with 1sec recint and multiple blocks
+  $src = Workout::SRM->read( "input.srm" ); 
+  # read Gpx file for elevation
+  $ele = Workout::Gpx->read( "iele.gpx );
+  # write to HRM file (one block) and different recint
+  $dst = Workout::HRM->new( recint = 5 );
+
+  $join = Workout::Join->src( $src );
+  $res = Workout::Resample->src( $join, 
+  	recint => $dst->recint ); # aggregate/split chunks
+  $merge = Workout::Merge->src( $res, $ele ); # add ele info
+  $conv = Workout::Recalc->src( $merge, 
+  	fields => [ $dst->required ]  ); # calculate missing fields
+
+  $dst->copy( $conv );
+
+  # write
+  open( F, "out.hrm" );
+  $dst->write( \*F );
+
+
+=head1 DESCRIPTION
+
+Stub documentation for Workout::Resample, created by h2xs. It looks like the
+author of the extension was negligent enough to leave the stub
+unedited.
+
+Blah blah blah.
+
+=cut
+
 package Workout::Base;
 
 use 5.008008;
@@ -55,6 +92,37 @@ span:
 
 
 =cut
+
+# Not a method
+sub _new_array_iterator {
+    my $arr = shift || [];    # array ref
+
+    unless ( defined( $arr ) ) {
+        return sub {
+            return;
+        };
+    }
+
+    my $max = scalar( @{$arr} );
+    my $pos = 0;
+    return sub {
+        return if $pos >= $max;
+        return $arr->[ $pos++ ];
+    };
+}
+
+# Not a method
+sub _new_iter_iterator {
+    my @its = @_;
+    return sub {
+        for ( ;; ) {
+            return undef unless @its;
+            my $next = $its[0]->();
+            return $next if defined( $next );
+            shift @its;
+        }
+      }
+}
 
 
 =head2 new( <arg> )
@@ -234,6 +302,18 @@ sub fields_required {
 	@{$self->{frequired}};
 }
 
+=head2 fields_span( $span )
+
+returns a list of field names for the specified span
+
+=cut
+
+sub fields_span {
+	my( $self, $span ) = @_;
+	return unless exists $self->{fspan}{$span};
+	@{$self->{fspan}{$span}};
+}
+
 =head2 fields_seen
 
 returns a list of field names that were supplied for some data chunks
@@ -277,6 +357,24 @@ sub recint {
 
 # TODO: marker / lap data
 
+=head2 copy( $src )
+
+copy data from other workout
+
+=cut
+
+sub copy { # TODO: extra iterator
+	my( $self, $src ) = @_;
+
+	my $ib = $src->blocks_iter;
+	while( defined( my $ic = $ib->() ) ){
+		$self->block_add;
+		while( defined( my $chunk = $ic->() ) ){
+			$self->chunk_add( $chunk );
+		}
+	}
+}
+
 =head2 block_add
 
 open new data block.
@@ -318,6 +416,13 @@ return list of nonempty blocks.
 sub blocks {
 	my( $self ) = @_;
 	return grep { @$_ } @{$self->{data}};
+}
+
+sub blocks_iter {
+	my( $self ) = @_;
+	_new_array_iterator( [ map {
+		_new_array_iterator( $_ );
+	} $self->blocks ] );
 }
 
 =head2 chunk_add( $chunk )
@@ -386,27 +491,36 @@ chunks with according duration (i.e. != recint !!!)
 
 =cut
 
-sub chunks { # TODO: iterator
+sub chunks {
 	my( $self ) = @_;
 
 	my @dat;
-	foreach my $blk ( $self->blocks ){
-		# skip empty blocks (the last one)
-		next unless @$blk;
-
-		# synthesize fake chunk to fill gap between blocks
-		if( @dat ){
-			my $t = $blk->[0];
-			my $l = $dat[-1];
-			push @dat, {
-				time	=> $t->{time},
-				dur	=> $t->{time} - $l->{time},
-			};
-		}
-
-		push @dat, @{$blk};
+	my $it = $self->chunks_iter;
+	while( my $chunk = $it->() ){
+		push @dat, $chunk;
 	}
 	return @dat;
+}
+
+sub chunks_iter {
+	my( $self ) = @_;
+
+	my @iter;
+	my $l;
+	foreach my $blk ( $self->blocks ){
+		# synthesize fake chunk to fill gap between blocks
+		if( $l ){
+			my $t = $blk->[0];
+			push @iter, _new_array_iterator( [{
+				time	=> $t->{time},
+				dur	=> $t->{time} - $l->{time},
+			}]);
+		}
+		$l = $blk->[-1];
+
+		push @iter, _new_array_iterator( $blk );
+	}
+	_new_iter_iterator( @iter );
 }
 
 

@@ -5,16 +5,57 @@ use warnings;
 use Data::Dumper;
 use Workout::SRM;
 use Workout::HRM;
+use Getopt::Long;
 
-# TODO: getopt
+my $itype;
+my $otype;
+
+my $needhelp;
+my $wanthelp;
+
+if( ! GetOptions(
+	"help|h!"	=> \$wanthelp,
+	"input|i=s"	=> \$itype,
+	"output|o=s"	=> \$otype,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <input file> <output file>
+convert workout files between formats
+
+--help              this help
+--input|-i=<type>   input file type
+--output|-o=<type>  input file type
+
+for now only conversion from .srm to .hrm is supported
+EOF
+	exit 0;
+}
+
+if( @ARGV != 2 ){
+	print STDERR "in- and output filename required\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "use --help for usage info\n";
+	exit 1;
+}
+	
+my( $ifile, $ofile ) = @ARGV;
+
 # TODO: move calculation to modules
 # TODO: move field definition to Workout::Base
 
-open( I, "tst.srm" )
+open( I, $ifile )
 	or die "failed to open input file";
-open( O, ">out.hrm" )
+open( O, ">$ofile" )
 	or die "failed to open output file";
 
+# TODO: use i-/otype
 my $src = Workout::SRM->read( \*I );
 my $dst = Workout::HRM->new( recint => 5 );
 my $orecint = $dst->recint;
