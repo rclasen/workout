@@ -78,7 +78,7 @@ while( @data ){
 	# TODO: fill in data gaps
 
 	# aggregate data
-	while( ! $a || ! exists $a->{dur} || $a->{dur} < $orecint ){
+	while( @data && (! $a || ! exists $a->{dur} || $a->{dur} < $orecint )){
 		my $r = shift @data; # read entry
 		$a->{dur} ||= 0;
 
