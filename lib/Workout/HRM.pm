@@ -84,7 +84,7 @@ sub write {
 	my $sdate = DateTime->from_epoch( epoch => $stime ); 
 
 	my $dur = $last->{time} - $stime;
-	my $spdav = $self->{dist} / $self->{moving};
+	my $spdav = $self->{moving} ? $self->{dist} / $self->{moving} : 0;
 	my $eleav = $self->{elesum} * $self->{recint} / $dur;
 
 	print $fh 
