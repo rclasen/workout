@@ -1,17 +1,17 @@
-package Workout::HRM;
+package Workout::Store::HRM;
 
 =head1 NAME
 
-Workout::HRM - read/write polar HRM files
+Workout::Store::HRM - read/write polar HRM files
 
 =head1 SYNOPSIS
 
-  use Workout::HRM;
+  use Workout::Store::HRM;
   blah blah blah # TODO
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::HRM, created by h2xs. It looks like the
+Stub documentation for Workout::Store::HRM, created by h2xs. It looks like the
 author of the extension was negligent enough to leave the stub
 unedited.
 
@@ -22,35 +22,84 @@ Blah blah blah.
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Base';
+use base 'Workout::Store::File';
 use Carp;
 use DateTime;
-use Geo::Distance;
+
 
 our $VERSION = '0.01';
 
-=head2 init( $a )
+our @fsupported = qw( hr spd cad ele pwr );
 
-initialize HRM specific stuff.
+=head2 new( $file, $args )
+
+constructor
 
 =cut
 
-sub init {
-	my( $self, $a ) = @_;
+sub new {
+	my( $class, $fname, $a ) = @_;
 
-	foreach my $f ( qw( hr spd cad ele pwr )){
-		$self->{fields}{$f}{supported} = 1;
-	}
+	my $self = $class->SUPER::new( $fname, $a );
 
-	$self->SUPER::init( $a );
+	push @{$self->{fsupported}}, @fsupported;
+	$self->{data} = [];
+	$self->{recint} ||= 5; # different default
+
+	# overall data (calc'd from chunks)
+	$self->{dist} = 0; # trip odo
+	$self->{climb} = 0, # sum of climb
+	$self->{moving} = 0; # moving time
+	$self->{elesum} = 0; # sum of ele
+	$self->{elemax} = 0; # max of ele
+	$self->{spdmax} = 0; # max of spd
+	$self;
 }
+
+=head2 block_add
+
+=cut
 
 sub block_add {
 	my( $self ) = @_;
-	croak "HRM doesn't support data blocks";
+	
+	if( @{$self->{data}} ){
+		croak "not supported";
+	}
+	# else: first block, no data -> do nothing;
 }
 
-# TODO: read
+=head2 chunk_add( $chunk )
+
+=cut
+
+sub chunk_add {
+	my( $self, $c ) = @_;
+
+	my $l = $self->{data}[-1] if @{$self->{data}};;
+
+	$self->chunk_check( $c, $l );
+
+	if( defined $c->{spd} ){
+		my $dist = $self->calc->dist( $c, $l );
+
+		$self->{spdmax} = $c->{spd} if $c->{spd} > $self->{spdmax};
+		$self->{moving} += $c->{dur} if $c->{spd};
+		$self->{dist} += $dist;
+	}
+
+	if( defined $c->{ele} ){
+		my $climb = $self->calc->climb( $c, $l );
+
+		$self->{climb} += $climb if defined $climb && $climb > 0;
+		$self->{elesum} += $c->{ele};
+		$self->{elemax} = $c->{ele} if $c->{ele} > $self->{elemax};
+	}
+
+	push @{$self->{data}}, $c;
+}
+
+# TODO: read / iterate
 
 =head2 fmtdur( $sec )
 
@@ -66,19 +115,20 @@ sub fmtdur {
 	sprintf( '%02i:%02i:%02.1f', $hrs, $min, $sec );
 }
 
-=head2 write( $fh )
+=head2 flush
 
-generate HRM file and write it to filehandle
+flush data to disk.
 
 =cut
 
-sub write {
-	my( $self, $fh ) = @_;
+sub flush {
+	my( $self ) = @_;
+	my $fh = $self->fh;
 
-	my $last = $self->chunk_last
+	@{$self->{data}} 
 		or croak "no data";
-
-	my $first = $self->chunk_first;
+	my $last = $self->{data}[-1];
+	my $first = $self->{data}[0];
 
 	my $stime = $first->{time} - $self->recint;
 	my $sdate = DateTime->from_epoch( epoch => $stime ); 
@@ -172,7 +222,7 @@ $self->{maxhr}	0	0	$self->{resthr}
 [HRData]
 ";
 
-	foreach my $row ( $self->chunks ){
+	foreach my $row ( @{$self->{data}} ){
 		print $fh join( "\t", (
 			int($row->{hr} || 0),
 			int(($row->{spd} || 0) * 36),
@@ -181,6 +231,8 @@ $self->{maxhr}	0	0	$self->{resthr}
 			int($row->{pwr} ||0),
 		) ), "\n";
 	};
+
+	$self->SUPER::flush;
 }
 
 
@@ -189,7 +241,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Base
+Workout::Store
 
 =head1 AUTHOR
 

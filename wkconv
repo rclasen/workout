@@ -3,12 +3,16 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Workout::SRM;
-use Workout::HRM;
+use Workout::Calc;
+use Workout::Store::SRM;
+use Workout::Store::HRM;
+use Workout::Join;
+use Workout::Resample;
 use Getopt::Long;
 
 my $itype;
 my $otype;
+my $recint = 5;
 
 my $needhelp;
 my $wanthelp;
@@ -17,6 +21,7 @@ if( ! GetOptions(
 	"help|h!"	=> \$wanthelp,
 	"input|i=s"	=> \$itype,
 	"output|o=s"	=> \$otype,
+	"recint|r=i"	=> \$recint,
 )){
 	$needhelp++;
 }
@@ -29,6 +34,7 @@ convert workout files between formats
 --help              this help
 --input|-i=<type>   input file type
 --output|-o=<type>  input file type
+--recint|-r=<int>   sampling interval (default=5)
 
 for now only conversion from .srm to .hrm is supported
 EOF
@@ -46,6 +52,27 @@ if( $needhelp ){
 }
 	
 my( $ifile, $ofile ) = @ARGV;
+
+my $calc = Workout::Calc->new;
+my $src = Workout::Store::SRM->new( $ifile, { 
+	calc => $calc,
+} );
+my $join = Workout::Join->new( $src, { 
+	calc => $calc,
+} );
+my $res = Workout::Resample->new( $join, { 
+	calc => $calc, 
+	recint => $recint,
+} );
+my $dst = Workout::Store::HRM->new( $ofile, { 
+	calc => $calc, 
+	recint => $recint, 
+	write => 1,
+} );
+$dst->from( $res );
+$dst->flush;
+
+__END__
 
 # TODO: move calculation to modules
 # TODO: move field definition to Workout::Base

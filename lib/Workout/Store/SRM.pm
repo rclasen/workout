@@ -1,17 +1,16 @@
-package Workout::SRM;
 
 =head1 NAME
 
-Workout::SRM - Perl extension for blah blah blah
+Workout::Store::SRM - Perl extension for blah blah blah
 
 =head1 SYNOPSIS
 
-  use Workout::SRM;
+  use Workout::Store::SRM;
   blah blah blah
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::SRM, created by h2xs. It looks like the
+Stub documentation for Workout::Store::SRM, created by h2xs. It looks like the
 author of the extension was negligent enough to leave the stub
 unedited.
 
@@ -19,10 +18,12 @@ Blah blah blah.
 
 =cut
 
+
+package Workout::Store::SRM;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Base';
+use base 'Workout::Store::File';
 use Carp;
 use DateTime;
 
@@ -39,31 +40,42 @@ my %magic_tag = (
 	SRM6	=> 6,
 );
 
-=head2 init( $a )
+our @fsupported = qw( hr spd cad pwr );
+
+=head2 new( $file, $args )
+
+constructor
 
 =cut
 
-sub init {
-	my( $self, $a ) = @_;
+sub new {
+	my( $class, $fname, $a ) = @_;
 
-	foreach my $f ( qw( hr spd cad pwr )){
-		$self->{fields}{$f}{supported} = 1;
-	}
+	my $self = $class->SUPER::new( $fname, $a );
 
-	$self->SUPER::init( $a );
+	push @{$self->{fsupported}}, @fsupported;
+	$self->{blocks} = undef; # list with data block offsets
+	$self->{chunk} = 0; # chunks read in current block
+	$self;
 }
 
+# TODO: block_add
+# TODO: chunk_add
+# TODO: flush
 
-=head2 read( $fh )
+=head2 read_head
 
-initialize data object from file
+read header (ie. non-chunk data) from file
 
 =cut
 
-sub read {
-	my( $class, $fh ) = @_;
+sub read_head {
+	my( $self ) = @_;
 
-	my $self = $class->new;
+	return if defined $self->{blocks};
+	$self->{blocks} = [];
+
+	my $fh = $self->fh;
 	my $buf;
 
 	############################################################
@@ -92,7 +104,7 @@ sub read {
 	$self->{note} = $_[7];
 
 	############################################################
-	# TODO: marker
+	# TODO: read marker
 #	my @marker;
 	while( $markcnt-- >= 0 ){
 		CORE::read( $fh, $buf, $clen + 15 ) == $clen + 15
@@ -115,14 +127,13 @@ sub read {
 	# data blocks
 
 	my $blockcks = 0;
-	my @blocks;
 	while( $blockcnt-- > 0 ){
 		CORE::read( $fh, $buf, 6 ) == 6
 			or croak "failed to read data block";
 
 		@_ = unpack( "Vv", $buf );
-		push @blocks, {
-			tstamp	=> $_[0] / 100, # sec since 0:00
+		push @{$self->{blocks}}, {
+			stime	=> $day + $_[0] / 100,
 			ckcnt	=> $_[1],
 			ckstart => $blockcks +1, # 1..
 		};
@@ -143,41 +154,45 @@ sub read {
 		or warn "inconsistent file: data block chunk count too large";
 
 	############################################################
-	# data chunks
-	foreach my $blk ( @blocks ){
-		my $cnt = $blk->{ckcnt};
-		my $stime = $day + $blk->{tstamp};
-
-		$self->block_add;
-
-		#my $etime = $stime + ($cnt +1) * $self->recint;
-		#print "reading block data: ", $stime, " to ", $etime, " chunks: ", $blk->{ckcnt}, "\n";
-
-		# read block's chunks
-		while( $cnt-- > 0 ){
-			CORE::read( $fh, $buf, 5 ) == 5
-				or croak "failed to read data chunk";
-			@_ = unpack( "CCCCC", $buf );
-			my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
-				* 3.0 / 26;
-			$self->chunk_add( {
-				time	=> $stime += $self->recint,
-				dur	=> $self->recint,
-				pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
-				spd	=> $kph / 3.6,
-				cad	=> $_[3],
-				hr	=> $_[4],
-			});
-		}
-	}
-
-	CORE::read( $fh, $buf, 1 )
-		and warn "found unrecognized data at file end";
-		
-	return $self;
+	# data chunks are read by next()
 }
 
-# TODO write
+
+=head2 next
+
+=cut
+
+sub next {
+	my( $self ) = @_;
+
+	$self->read_head;
+	return unless @{$self->{blocks}};
+
+	my $blk = $self->{blocks}[0];
+
+	# last chunk in block?
+	my $cck = ++$self->{chunk};
+	if( $cck >= $blk->{ckcnt} ){
+		$self->{chunk} = 0;
+		shift @{$self->{blocks}};
+	}
+
+	my $buf;
+	CORE::read( $self->fh, $buf, 5 ) == 5
+		or croak "failed to read data chunk";
+	@_ = unpack( "CCCCC", $buf );
+	my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
+		* 3.0 / 26;
+	return {
+		time	=> $blk->{stime} + $cck * $self->recint,
+		dur	=> $self->recint,
+		pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
+		spd	=> $kph / 3.6,
+		cad	=> $_[3],
+		hr	=> $_[4],
+	};
+}
+
 
 
 1;
