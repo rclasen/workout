@@ -6,16 +6,16 @@ Workout::Store::HRM - read/write polar HRM files
 
 =head1 SYNOPSIS
 
+  $src = Workout::Store::Gpx->new( "foo.gpx" );
+  while( $chunk = $src->next ){
+  	...
+  }
+
   use Workout::Store::HRM;
-  blah blah blah # TODO
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::Store::HRM, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Interface to read/write Polar HRM files.
 
 =cut
 
@@ -156,11 +156,11 @@ Timer1=00:00
 Timer2=00:00
 Timer3=00:00
 ActiveLimit=0
-MaxHr=", int($self->{maxhr}), "
-RestHR=", int($self->{resthr}), "
+MaxHr=", int($self->athlete->hrmax), "
+RestHR=", int($self->athlete->hrrest), "
 StartDelay=0
-VO2max=", int($self->{vo2max}), "
-Weight=", int($self->{weight}), "
+VO2max=", int($self->athlete->vo2max), "
+Weight=", int($self->athlete->weight), "
 
 [Note]
 $self->{note}
@@ -181,11 +181,11 @@ $self->{note}
 
 [Summary-123]
 0	0	0	0	0	0
-$self->{maxhr}	0	0	$self->{resthr}
+",$self->athlete->hrmax,"	0	0	",$self->athlete->hrrest,"
 0	0	0	0	0	0
-$self->{maxhr}	0	0	$self->{resthr}
+",$self->athlete->hrmax,"	0	0	",$self->athlete->hrrest,"
 0	0	0	0	0	0
-$self->{maxhr}	0	0	$self->{resthr}
+",$self->athlete->hrmax,"	0	0	",$self->athlete->hrrest,"
 0	-1
 
 [Summary-TH]
@@ -241,7 +241,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Workout::Store::File
 
 =head1 AUTHOR
 

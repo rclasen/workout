@@ -5,16 +5,14 @@ Workout::Store::SRM - Perl extension for blah blah blah
 
 =head1 SYNOPSIS
 
-  use Workout::Store::SRM;
-  blah blah blah
+  $src = Workout::Store::Gpx->new( "foo.gpx" );
+  while( $chunk = $src->next ){
+  	...
+  }
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::Store::SRM, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Interface to read/write SRM power meter files
 
 =cut
 
@@ -201,7 +199,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Base
+Workout::Store::File
 
 =head1 AUTHOR
 

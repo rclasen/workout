@@ -4,15 +4,14 @@ Workout::Calc - helper functions for calculating workout data fields
 
 =head1 SYNOPSIS
 
-# TODO synopsis
+  $calc = Workout::Calc->new;
+  $src = Workout::Store::SRM->new( "foo.srm", { calc => $calc } );
+  ...
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::Calc, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Common algorithms to calculate Chunk data from other fields, the
+difference to the previous Chunk or some global parameters.
 
 =cut
 
@@ -23,17 +22,60 @@ use strict;
 use warnings;
 use Carp;
 use Geo::Distance;
+use Workout::Athlete;
 
 our $VERSION = '0.01';
+
+=head2 new( $arg )
+
+new Workout data calculator
+
+=cut
 
 sub new {
 	my( $class, $a ) = @_;
 
 	my $self = bless {
+		athlete	=> $a->{athlete} || Workout::Athlete->new,
 	}, $class;
 
 	$self;
 }
+
+=head2 athlete
+
+set/get the athlete handle to retrieve data for calculations from.
+
+=cut
+
+sub athlete {
+	my $self = shift;
+	
+	if( @_ ){
+		$self->{athlete} = $_[0];
+		return $self;
+	}
+	return $self->{athlete};
+}
+
+=head2 data access
+
+calculate the Chunk field named by the method.
+
+=item dur( $this, $last )
+=item time( $this, $last )
+=item climb( $this, $last )
+=item inline( $this, $last )
+=item xdist( $this, $last )
+=item dist( $this, $last )
+=item odo( $this, $last )
+=item grad( $this, $last )
+=item angle( $this, $last )
+=item spd( $this, $last )
+=item work( $this, $last )
+=item pwr( $this, $last )
+
+=cut
 
 sub dur {
 	my( $self, $this, $last ) = @_;
@@ -252,3 +294,23 @@ sub pwr {
 #}
 
 1;
+__END__
+
+=head1 SEE ALSO
+
+Workout::Store
+
+=head1 AUTHOR
+
+Rainer Clasen
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2008 by Rainer Clasen
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.8 or,
+at your option, any later version of Perl 5 you may have available.
+
+
+=cut

@@ -44,6 +44,9 @@ use Carp;
 
 our $VERSION = '0.01';
 
+# TODO: optionally allow multiple concurrent iterators per store
+# TODO: move field definition to Workout::Chunk
+
 =pod
 
 sampling interval data fields:

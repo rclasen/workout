@@ -6,16 +6,19 @@ Workout::Store::File - Base Class to read/write Workout files
 
 =head1 SYNOPSIS
 
-  use Workout::Store::HRM;
-  blah blah blah # TODO
+  $src = Workout::Store::HRM->new( "foo.hrm" );
+  while( $chunk = $src->next ){
+  	...
+  }
+
+
+  $dst = Workout::Store::SRM->new( "foo.srm", { write => 1 } );
+  $dst->chunk_add( $chunk );
+  $dst->flush;
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::Store::File, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Base class to add basic file handling for use in specific Store Classes:
 
 =cut
 
@@ -45,6 +48,12 @@ sub new {
 
 }
 
+=head2 fh
+
+return an opened filehandle for the specified file and access
+
+=cut
+
 sub fh {
 	my( $self ) = @_;
 	
@@ -55,6 +64,12 @@ sub fh {
 		or croak "cannot open ". $self->{fname};
 	$self->{fh} = $fh;
 }
+
+=head2
+
+ensure data is written to disk, close filehandle.
+
+=cut
 
 sub flush {
 	my( $self ) = @_;

@@ -6,15 +6,17 @@ Workout::Resample - Resample Workout data
 
 =head1 SYNOPSIS
 
-# TODO
+  $src = Workout::Store::SRM->new( "foo.srm" );
+  $new = Workout::Resample->new( $src, { recint => 10 } );
+  while( $chunk = $new->next ){
+  	# do smething
+  }
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::Resample, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Resample Workout data chunks to match a differnet, fixed recording
+interval or shift data to a different offset. Multiple (shorter) Chunks
+are merged, longer Chunks are split into multiple parts.
 
 =cut
 
@@ -26,8 +28,14 @@ use Carp;
 
 our $VERSION = '0.01';
 
-# aggregates
-# splits
+
+# TODO: allow to supply start time
+
+=head2 new( $src, $arg )
+
+new Iterator
+
+=cut
 
 sub new {
 	my( $class, $src, $a ) = @_;
@@ -38,12 +46,23 @@ sub new {
 	$self;
 }
 
+=head2 recint
+
+return recording/sampling interval in use
+
+=cut
+
 sub recint {
 	my( $self ) = @_;
 	$self->{recint};
 }
 
-# TODO
+=head2 next
+
+return next (resampled) data chunk
+
+=cut
+
 sub next {
 	my( $self ) = @_;
 

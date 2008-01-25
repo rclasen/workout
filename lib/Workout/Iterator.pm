@@ -45,7 +45,7 @@ sub new {
 	return $self;
 }
 
-=head3 calc
+=head2 calc
 
 returns the Workout::Calc object in use
 
@@ -55,6 +55,17 @@ sub calc {
 	my( $self ) = @_;
 
 	$self->{calc} ||= Workout::Calc->new;
+}
+
+=head2 athlete
+
+returns the Workout::Athlete in use ( ... by Workout::Calc)
+
+=cut
+
+sub athlete {
+	my $self = shift;
+	$self->calc->athlete( @_ );
 }
 
 =head2 next

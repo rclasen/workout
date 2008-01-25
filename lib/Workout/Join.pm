@@ -6,15 +6,16 @@ Workout::Join - Join blocks within Workout data
 
 =head1 SYNOPSIS
 
-# TODO
+  $src = Workout::Store::SRM->new( "foo.srm" );
+  $join = Workout::Join->new( $src );
+  while( my $chunk = $join->next ){
+  	# do something
+  }
 
 =head1 DESCRIPTION
 
-Stub documentation for Workout::Join, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Iterator that automagically fills the gaps between individual data blocks
+with fake chunks.
 
 =cut
 
@@ -26,6 +27,12 @@ use Carp;
 
 our $VERSION = '0.01';
 
+=head2 new( $src, $arg )
+
+new iterator
+
+=cut
+
 sub new {
 	my $class = shift;
 	my $self = $class->SUPER::new( @_ );
@@ -33,6 +40,12 @@ sub new {
 	$self->{last} = undef;
 	$self;
 }
+
+=head2 next
+
+get next data chunk
+
+=cut
 
 sub next {
 	my( $self ) = @_;
