@@ -39,12 +39,11 @@ package Workout::Store;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Iterator';
+use base 'Workout::Base';
 use Carp;
 
 our $VERSION = '0.01';
 
-# TODO: optionally allow multiple concurrent iterators per store
 # TODO: move field definition to Workout::Chunk
 
 =pod
@@ -126,7 +125,8 @@ create empty Workout.
 sub new {
 	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( undef, $a );
+	my $self = $class->SUPER::new( $a );
+
 	$self->{fields} = \%fields;
 	$self->{fspan} = \%fspan;
 	$self->{fsupported} = [qw( time dur )];
@@ -146,28 +146,23 @@ sub new {
 	return $self;
 }
 
-=head2 store
-
-$self
-
-=cut
-
-sub store { $_[0]; }
-
-=head2 from( $src )
+=head2 from( $iter )
 
 copy workout data from specified source (other Workout::Store or
 Workout::Iterator).
 
 =cut
 
-sub from {
-	my( $self, $src ) = @_;
+sub from { # TODO: make this a constructor
+	my( $self, $iter ) = @_;
 
 	# TODO: copy marker/laps/athlete/workout-/trip data
 
+	$iter->isa( 'Workout::Iterator' )
+		or $iter = $iter->iterate;
+
 	my $last;
-	while( defined( my $chunk = $src->next )){
+	while( defined( my $chunk = $iter->next )){
 		if( $last && $chunk->{time} - $chunk->{dur} - $last->{time} > 0.01 ){
 			$self->block_add;
 		}
@@ -175,6 +170,14 @@ sub from {
 		$last = $chunk;
 	}
 }
+
+=head2 iterate
+
+return iterator to retrieve all chunks.
+
+=cut
+
+sub iterate { croak "not implemented"; }; 
 
 
 =head2 fields

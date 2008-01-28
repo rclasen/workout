@@ -1,6 +1,6 @@
 =head1 NAME
 
-Workout::Iterator - Base Class to iterate through Workout Stores
+Workout::Iterator::Chained - Base Class to iterate through Workout Stores
 
 =head1 SYNOPSIS
 
@@ -17,70 +17,47 @@ Base Class to iterate through Workout Stores.
 
 =cut
 
-package Workout::Iterator;
+package Workout::Iterator::Chained;
 
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Base';
+use base 'Workout::Iterator';
 use Carp;
 use Workout::Calc;
 
 our $VERSION = '0.01';
 
 
-=head2 new( $store, $arg )
+=head2 new( $iter, $arg )
 
 create empty Iterator.
 
 =cut
 
 sub new {
-	my( $class, $store, $a ) = @_;
+	my( $class, $iter, $a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
-	$self->{store} = $store;
+	$iter->isa( 'Workout::Iterator' )
+		or $iter = $iter->iterate;
+
+	my $self = $class->SUPER::new( $iter->store, $a );
+	$self->{src} = $iter;
 
 	return $self;
 }
 
-=head2 next
+=head2 src
 
-return next chunk
-
-=cut
-
-sub next {
-	croak "not implemented";
-}
-
-=head2 all
-
-return list with all chunks
+return the source of which this iterator pulls it's values. This is either
+another iterator oder a store.
 
 =cut
 
-sub all {
+sub src {
 	my( $self ) = @_;
 
-	my @all;
-	while( defined(my $c = $self->next)){
-		push @all, $c;
-	}
-
-	@all;
-}
-
-=head2 store
-
-return store that's the source for this iterator (-chain).
-
-=cut
-
-sub store {
-	my( $self ) = @_;
-
-	$self->{store};
+	$self->{src};
 }
 
 
@@ -105,3 +82,4 @@ at your option, any later version of Perl 5 you may have available.
 
 
 =cut
+

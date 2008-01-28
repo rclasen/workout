@@ -17,6 +17,53 @@ Interface to read/write SRM power meter files
 =cut
 
 
+package Workout::Store::SRM::Iterator;
+use 5.008008;
+use strict;
+use warnings;
+use base 'Workout::Iterator';
+use Carp;
+use DateTime;
+
+
+=head2 next
+
+=cut
+
+sub next {
+	my( $self ) = @_;
+
+	my $store = $self->store;
+	return unless @{$store->{blocks}};
+
+	my $blk = $store->{blocks}[0];
+
+	# last chunk in block?
+	my $cck = ++$self->{chunk};
+	if( $cck >= $blk->{ckcnt} ){
+		$store->{chunk} = 0;
+		shift @{$store->{blocks}};
+	}
+
+	my $buf;
+	CORE::read( $store->fh, $buf, 5 ) == 5
+		or croak "failed to read data chunk";
+	@_ = unpack( "CCCCC", $buf );
+	my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
+		* 3.0 / 26;
+	return {
+		time	=> $blk->{stime} + $cck * $store->recint,
+		dur	=> $store->recint,
+		pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
+		spd	=> $kph / 3.6,
+		cad	=> $_[3],
+		hr	=> $_[4],
+	};
+}
+
+
+
+
 package Workout::Store::SRM;
 use 5.008008;
 use strict;
@@ -61,16 +108,18 @@ sub new {
 # TODO: chunk_add
 # TODO: flush
 
-=head2 read_head
+=head2 iterate
 
-read header (ie. non-chunk data) from file
+read header (ie. non-chunk data) from file and return iterator
 
 =cut
 
-sub read_head {
+sub iterate {
 	my( $self ) = @_;
 
-	return if defined $self->{blocks};
+	defined $self->{blocks}
+		and croak "file already open";
+
 	$self->{blocks} = [];
 
 	my $fh = $self->fh;
@@ -153,44 +202,9 @@ sub read_head {
 
 	############################################################
 	# data chunks are read by next()
+
+	Workout::Store::SRM::Iterator->new( $self );
 }
-
-
-=head2 next
-
-=cut
-
-sub next {
-	my( $self ) = @_;
-
-	$self->read_head;
-	return unless @{$self->{blocks}};
-
-	my $blk = $self->{blocks}[0];
-
-	# last chunk in block?
-	my $cck = ++$self->{chunk};
-	if( $cck >= $blk->{ckcnt} ){
-		$self->{chunk} = 0;
-		shift @{$self->{blocks}};
-	}
-
-	my $buf;
-	CORE::read( $self->fh, $buf, 5 ) == 5
-		or croak "failed to read data chunk";
-	@_ = unpack( "CCCCC", $buf );
-	my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
-		* 3.0 / 26;
-	return {
-		time	=> $blk->{stime} + $cck * $self->recint,
-		dur	=> $self->recint,
-		pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
-		spd	=> $kph / 3.6,
-		cad	=> $_[3],
-		hr	=> $_[4],
-	};
-}
-
 
 
 1;

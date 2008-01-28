@@ -15,8 +15,38 @@ Interface to store Workout data in memory
 
 =cut
 
-package Workout::Store::Memory;
+package Workout::Store::Memory::Iterator;
+use strict;
+use warnings;
+use Carp;
+use base 'Workout::Iterator';
 
+sub new {
+	my( $class, $store, $a ) = @_;
+
+	my $self = $class->SUPER::new( $store, $a );
+	$self->{cblk} = 0;
+	$self->{cchk} = 0;
+	$self;
+}
+
+sub next {
+	my( $self ) = @_;
+
+	my $dat = $self->store->{data};
+	while( $self->{cblk} < @$dat ){
+		my $blk = $dat->[$self->{cblk}];
+		if( $self->{cchk} < @$blk ){
+			return $blk->[$self->{cchk}++];
+		}
+		$self->{cblk}++;
+		$self->{cchk} = 0;
+	};
+	return;
+}
+
+
+package Workout::Store::Memory;
 use 5.008008;
 use strict;
 use warnings;
@@ -46,7 +76,11 @@ sub new {
 	$self->{work} = 0;
 
 	$self;
+}
 
+sub iterate {
+	my( $self ) = @_;
+	Workout::Store::Memory::Iterator->new( $self );
 }
 
 sub chunk_count {
@@ -264,8 +298,6 @@ sub pwr_avg {
 
 	$self->work / $self->dur_mov;
 }
-
-# TODO: next
 
 # TODO: move calculations to something else
 

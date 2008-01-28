@@ -7,6 +7,8 @@ use Workout::Calc;
 use Workout::Store::SRM;
 use Getopt::Long;
 
+# TODO: allow user to specify fields he wants to be dumped
+
 my $needhelp;
 my $wanthelp;
 
@@ -43,7 +45,9 @@ my $ifile = shift;
 my $calc = Workout::Calc->new;
 my $src = Workout::Store::SRM->new( $ifile, { calc => $calc } );
 my @fields = $src->fields_supported;
+my $iter = $src->iterate;
+
 print join("\t", @fields), "\n";
-while( my $r = $src->next ){
+while( my $r = $iter->next ){
 	print join("\t", map { $_ || 0 } @$r{@fields}), "\n";
 }

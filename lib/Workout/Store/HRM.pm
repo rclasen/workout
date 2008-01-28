@@ -1,5 +1,3 @@
-package Workout::Store::HRM;
-
 =head1 NAME
 
 Workout::Store::HRM - read/write polar HRM files
@@ -19,6 +17,7 @@ Interface to read/write Polar HRM files.
 
 =cut
 
+package Workout::Store::HRM;
 use 5.008008;
 use strict;
 use warnings;

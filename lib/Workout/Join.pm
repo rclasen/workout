@@ -22,7 +22,7 @@ with fake chunks.
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Iterator';
+use base 'Workout::Iterator::Chained';
 use Carp;
 
 our $VERSION = '0.01';

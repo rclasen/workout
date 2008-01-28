@@ -70,12 +70,13 @@ sub dump_csv {
 	my $src = shift;
 
 	my $calc = $src->calc;
+	my $iter = $src->iterate;
 	#my @keys = qw( time dur xdist dist ele climb angle spd work);
 	#my @keys = qw( time dur ele work );
         my @keys = qw( time dist ele climb angle dur spd work);
 	print join("\t", @keys),"\n";
 	my $lpt;
-	while( my $pt = $src->next ){
+	while( my $pt = $iter->next ){
 		$calc->set( $pt, $lpt, @keys );
 		print join("\t", @{$pt}{@keys} ),"\n";
 		$lpt = $pt;

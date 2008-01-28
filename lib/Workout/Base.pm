@@ -1,6 +1,6 @@
 =head1 NAME
 
-Workout::Iterator - Base Class to iterate through Workout Stores
+Workout::Base - Base Class for Workout framework
 
 =head1 SYNOPSIS
 
@@ -17,72 +17,55 @@ Base Class to iterate through Workout Stores.
 
 =cut
 
-package Workout::Iterator;
+package Workout::Base;
 
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Base';
 use Carp;
 use Workout::Calc;
 
 our $VERSION = '0.01';
 
 
-=head2 new( $store, $arg )
+=head2 new( $arg )
 
-create empty Iterator.
+create empty class.
 
 =cut
 
 sub new {
-	my( $class, $store, $a ) = @_;
+	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
-	$self->{store} = $store;
+	my $self = bless {
+		calc	=> $a->{calc},
+	}, $class;
 
 	return $self;
 }
 
-=head2 next
+=head2 calc
 
-return next chunk
-
-=cut
-
-sub next {
-	croak "not implemented";
-}
-
-=head2 all
-
-return list with all chunks
+returns the Workout::Calc object in use
 
 =cut
 
-sub all {
+sub calc {
 	my( $self ) = @_;
 
-	my @all;
-	while( defined(my $c = $self->next)){
-		push @all, $c;
-	}
-
-	@all;
+	$self->{calc} ||= Workout::Calc->new;
 }
 
-=head2 store
+=head2 athlete
 
-return store that's the source for this iterator (-chain).
+returns the Workout::Athlete in use ( ... by Workout::Calc)
 
 =cut
 
-sub store {
-	my( $self ) = @_;
-
-	$self->{store};
+sub athlete {
+	my $self = shift;
+	$self->calc->athlete( @_ );
 }
-
 
 1;
 __END__
