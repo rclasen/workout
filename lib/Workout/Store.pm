@@ -102,12 +102,10 @@ our %fields = (
 	cad	=> 'chunkv',
 	ele 	=> 'geo',
 	climb	=> 'chunk',
-	incline	=> 'trip',
 	lon	=> 'geo',
 	lat	=> 'geo',
 	xdist	=> 'chunk',
 	dist	=> 'chunk',
-	odo	=> 'trip',
 	grad	=> 'chunk',
 	spd 	=> 'chunkv',
 	work	=> 'chunk',
@@ -284,7 +282,7 @@ sub chunk_check {
 		or croak "missing duration";
 	$c->{time}
 		or croak "missing time";
-	unless( $self->recint && abs($self->recint - $c->{dur}) < 0.1 ){
+	if( $self->recint && abs($self->recint - $c->{dur}) > 0.1 ){
 		croak "duration doesn't match recint";
 	}
 	if( $l && ( $l->{time} >= $c->{time} )){
