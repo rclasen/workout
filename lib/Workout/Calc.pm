@@ -20,11 +20,41 @@ package Workout::Calc;
 use 5.008008;
 use strict;
 use warnings;
+use base 'Class::Accessor::Fast';
 use Carp;
 use Geo::Distance;
 use Workout::Athlete;
 
 our $VERSION = '0.01';
+
+my $e = 2.718281;	# ()		Eulersche Zahl
+my $rho_0 = 1.293;	# (kg/m³)	Luftdichte auf Meereshöhe bei 0° Celsius
+my $P_0 = 101325;	# (Pa = kg/(ms²)) Luftdruck auf Meereshöhe bei 0° Celsius
+my $g = 9.81; 		# (m/s²)	Erdbeschleunigung
+my $kelvin = 273.15;
+
+# TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, creep=moving
+# TODO: calc vspd
+
+# TODO: seperate equipment + athlete weight
+
+my %defaults = (
+#	vertmax	=> 4,		# (m/s)		maximum vertical speed
+#	accelmax => 8,		# (m/s²)	maximum acceleration
+#	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
+	creep	=> 1,		# (m/s)		minimum speed
+	#A 	 		# (m²)		Gesamt-Stirnfläche (Rad + Fahrer)
+	#Cw 	 		# ()		Luftwiderstandsbeiwert
+	#CwA	=> 0.3207;	# (m²)		$Cw * $A für unterlenker
+	CwA	=> 0.4764,	# (m²)		$Cw * $A für oberlenker
+	Cr	=> 0.006,	# ()		.005 - .009 Rollwiderstandsbeiwert
+	Cm	=> 1.06, 	# ()		1.03 - 1.09 Mechanische Verluste
+	weight	=> 91, 		# (kg)		gesamtmasse 
+	atemp	=> $kelvin +19,	# (°C)		Temperatur
+	wind	=> 0,		# (m/s)		Windgeschwindigkeit
+);
+
+__PACKAGE__->mk_accessors( keys %defaults );
 
 =head2 new( $arg )
 
@@ -36,8 +66,13 @@ sub new {
 	my( $class, $a ) = @_;
 
 	my $self = bless {
+		%defaults,
 		athlete	=> $a->{athlete} || Workout::Athlete->new,
 	}, $class;
+
+        foreach my $f ( keys %$a ){
+		$self->$f( $a->{$f} ) if $self->can($f);
+	}
 
 	$self;
 }
@@ -65,10 +100,8 @@ calculate the Chunk field named by the method.
 =item dur( $this, $last )
 =item time( $this, $last )
 =item climb( $this, $last )
-=item inline( $this, $last )
 =item xdist( $this, $last )
 =item dist( $this, $last )
-=item odo( $this, $last )
 =item grad( $this, $last )
 =item angle( $this, $last )
 =item spd( $this, $last )
@@ -122,22 +155,6 @@ sub climb {
 	return;
 }
 
-sub inline {
-	my( $self, $this, $last ) = @_;
-
-	if( defined $this->{incline} ){
-		return $this->{incline};
-
-	} elsif( defined $this->{climb} 
-		&& defined $last 
-		&& defined $last->{incline} ){
-
-		$this->{incline} = $last->{incline};
-		$this->{incline} += $this->{climb} if $this->{climb} > 0;
-	}
-	return;
-}
-
 sub _geocalc {
 	my( $self ) = @_;
 
@@ -187,26 +204,6 @@ sub dist {
 
 		return $this->{spd} * $this->{dur};
 
-	} elsif( defined $this->{odo} 
-		&& defined $last 
-		&& defined $last->{odo} ){
-
-		return $this->{odo} - $last->{odo};
-	}
-	return;
-}
-
-sub odo {
-	my( $self, $this, $last ) = @_;
-
-	if( defined $this->{odo} ){
-		return $this->{odo};
-
-	} elsif( defined $this->{dist} 
-		&& defined $last 
-		&& defined $last->{odo} ){
-
-		return $last->{odo} + $this->{dist};
 	}
 	return;
 }
@@ -267,9 +264,20 @@ sub work {
 		return $this->{pwr} * $this->{dur};
 
 	} elsif( defined $this->{angle} 
-		&& defined $this->{spd} ){
+		&& defined $this->{spd} 
+		&& defined $this->{dist} ){
 
-		return; # TODO calc work
+		my $ele = $this->{ele} ||0;
+
+		# intermediate results for power
+		my $rho = ($kelvin / $self->atemp) * $rho_0 * 
+			$e^(($ele * $rho_0 * $g) / $P_0);
+		my $Fstg = $self->weight * $g * ( 
+			$self->Cr * cos($this->{angle}) + sin($this->{angle}));
+		my $op1 = $self->CwA * $rho * ($this->{spd} + $self->wind)^2 / 2;
+
+		# final result
+		return $self->Cm * $this->{dist} * ($op1 + $Fstg);
 	}
 	return;
 }
@@ -289,9 +297,31 @@ sub pwr {
 	return;
 }
 
-# sub set { # TODO
-#	my( $self, $this, $last, @cols ) = @_;
-#}
+=head2 set( $this, $last, @fields )
+
+calculate specified fields and set their value in $this
+
+=cut
+
+my @fields = qw( 
+	climb
+	xdist
+	dist
+	grad
+	angle
+	spd
+	work
+	pwr
+);
+sub set {
+	my( $self, $this, $last, @want ) = @_;
+
+	foreach my $f ( @fields ){
+		#next unless @want # TODO
+		next unless $self->can( $f );
+		$this->{$f} = $self->$f( $this, $last );
+	}
+}
 
 1;
 __END__
