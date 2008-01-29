@@ -41,7 +41,9 @@ sub new {
 	my( $class, $src, $a ) = @_;
 	my $self = $class->SUPER::new( $src, $a );
 	$self->{recint} = $a->{recint} || 5;
-	$self->{agg} = {};
+	$self->{agg} = {
+		dur	=> 0,
+	};
 	$self->{last} = undef;
 	$self;
 }
@@ -71,7 +73,6 @@ sub next {
 	# aggregate data
 	while( ! $a || ! exists $a->{dur} || $a->{dur} < $self->recint ){
 		my $r = $self->src->next or return;
-		$a->{dur} ||= 0;
 
 		#my $s = { %$a };
 		#print "reading chunk ", ++$icnt, "\n";
