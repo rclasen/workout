@@ -187,7 +187,7 @@ sub chunk_add {
 
 	$self->{work} += $d->{work} ||0;
 
-	if( ($d->{spd} || 0) > $self->calc->creep ){
+	if( $d->{pwr} ||($d->{spd} || 0) > $self->calc->creep ){
 		$self->{dur_mov} += $d->{dur};
 	}
 
@@ -296,7 +296,10 @@ sub work {
 sub pwr_avg {
 	my( $self ) = @_;
 
-	$self->work / $self->dur_mov;
+	my $dur = $self->dur
+		or return;
+
+	$self->work / $dur;
 }
 
 # TODO: move calculations to something else

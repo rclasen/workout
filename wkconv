@@ -3,9 +3,8 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use Workout;
 use Workout::Calc;
-use Workout::Store::SRM;
-use Workout::Store::HRM;
 use Workout::Join;
 use Workout::Resample;
 use Getopt::Long;
@@ -54,8 +53,9 @@ if( $needhelp ){
 my( $ifile, $ofile ) = @ARGV;
 
 my $calc = Workout::Calc->new;
-my $src = Workout::Store::SRM->new( $ifile, { 
-	calc => $calc,
+my $src = Workout::file( $ifile, { 
+	ftype	=> $itype,
+	calc	=> $calc,
 } );
 my $join = Workout::Join->new( $src, { 
 	calc => $calc,
@@ -64,10 +64,11 @@ my $res = Workout::Resample->new( $join, {
 	calc => $calc, 
 	recint => $recint,
 } );
-my $dst = Workout::Store::HRM->new( $ofile, { 
-	calc => $calc, 
-	recint => $recint, 
-	write => 1,
+my $dst = Workout::file( $ofile, { 
+	ftype	=> $otype,
+	calc	=> $calc, 
+	recint	=> $recint, 
+	write	=> 1,
 } );
 $dst->from( $res );
 $dst->flush;

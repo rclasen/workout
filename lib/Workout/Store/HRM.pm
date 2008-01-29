@@ -30,6 +30,10 @@ our $VERSION = '0.01';
 
 our @fsupported = qw( hr spd cad ele pwr );
 
+sub filetypes {
+	return "hrm";
+}
+
 =head2 new( $file, $args )
 
 constructor

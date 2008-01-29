@@ -116,6 +116,11 @@ while( my($f, $span) = each %fields ){
 }
 
 
+sub filetypes {
+	my( $class ) = @_;
+	return;
+}
+
 =head2 new( $arg )
 
 create empty Workout.

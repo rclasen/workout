@@ -87,6 +87,10 @@ my %magic_tag = (
 
 our @fsupported = qw( hr spd cad pwr );
 
+sub filetypes {
+	return "srm";
+}
+
 =head2 new( $file, $args )
 
 constructor

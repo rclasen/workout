@@ -84,8 +84,12 @@ use Geo::Gpx;
 
 our $VERSION = '0.01';
 
-our @fsupported = qw( lon lat ); # TODO
+our @fsupported = qw( ele lon lat ); # TODO
 our @frequired = qw( lon lat );
+
+sub filetypes {
+	return "gpx";
+}
 
 sub new {
 	my( $class, $fname, $a ) = @_;

@@ -3,16 +3,19 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use Workout;
 use Workout::Calc;
-use Workout::Store::SRM;
 use Getopt::Long;
 
 # TODO: allow user to specify fields he wants to be dumped
+# TODO: optionally calculate fields
 
+my $itype;
 my $needhelp;
 my $wanthelp;
 
 if( ! GetOptions(
+	"input|i=s"	=> \$itype,
 	"help|h!"	=> \$wanthelp,
 )){
 	$needhelp++;
@@ -23,7 +26,8 @@ if( $wanthelp ){
 $0 [opt] <input file>
 dump workout file as tab seperated list
 
---help       this help
+--help              this help
+--input|-i=<type>   input file type
 
 for now only .srm files are supported
 EOF
@@ -43,9 +47,12 @@ if( $needhelp ){
 my $ifile = shift;
 
 my $calc = Workout::Calc->new;
-my $src = Workout::Store::SRM->new( $ifile, { calc => $calc } );
-my @fields = $src->fields_supported;
-my $iter = $src->iterate;
+my $src = Workout::file( $ifile, { ftype => $itype, calc => $calc } );
+my $mem = Workout::Store::Memory->new;
+$mem->from( $src );
+
+my @fields = $mem->fields_seen;
+my $iter = $mem->iterate;
 
 print join("\t", @fields), "\n";
 while( my $r = $iter->next ){

@@ -13,19 +13,19 @@
 use strict;
 use DateTime;
 use Getopt::Long;
+use Workout;
 use Workout::Athlete;
 use Workout::Calc;
-use Workout::Store::Gpx;
 use Workout::Store::Memory;
 use Data::Dumper;
 
-my $opt_csv;
+my $itype;
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
 	"help|h!"	=> \$wanthelp,
-	"csv|c!"	=> \$opt_csv,
+	"input|i=s"	=> \$itype,
 )){
 	$needhelp++;
 }
@@ -33,10 +33,10 @@ if( ! GetOptions(
 if( $wanthelp ){
 	print <<EOF;
 $0 [opt] <fname>
-calculate some fancy data from GPS tracklogs
+calculate some fancy data from Workout data
 Options:
- --csv       dump trackpoints as CSV file
- --help      this cruft
+--input|-i=<type>   input file type
+--help              this cruft
 EOF
 	exit 0;
 }
@@ -55,59 +55,32 @@ if( $needhelp ){
 
 my $ath = Workout::Athlete->new;
 my $calc = Workout::Calc->new( { athlete => $ath });
-my $src = Workout::Store::Gpx->new( $fname, { calc => $calc } );
+my $src = Workout::file( $fname, { ftype => $itype, calc => $calc } );
+my $mem = Workout::Store::Memory->new;
+$mem->from( $src );
 # TODO: smooth data
 
-if( $opt_csv ){
-	&dump_csv( $src );
-} else { 
-	my $dst = Workout::Store::Memory->new( {calc => $calc });
-	$dst->from( $src );
-	&dump_global(  $dst );
-}
-
-sub dump_csv {
-	my $src = shift;
-
-	my $calc = $src->calc;
-	my $iter = $src->iterate;
-	#my @keys = qw( time dur xdist dist ele climb angle spd work);
-	#my @keys = qw( time dur ele work );
-        my @keys = qw( time dist ele climb angle dur spd work);
-	print join("\t", @keys),"\n";
-	my $lpt;
-	while( my $pt = $iter->next ){
-		$calc->set( $pt, $lpt, @keys );
-		print join("\t", @{$pt}{@keys} ),"\n";
-		$lpt = $pt;
-	}
-}
-
-sub dump_global {
-	my $calc = shift;
-
-my $sdate = DateTime->from_epoch( epoch => $calc->time_start)
+my $sdate = DateTime->from_epoch( epoch => $mem->time_start)
 	->set_time_zone('Europe/Berlin');
-my $edate = DateTime->from_epoch( epoch => $calc->time_end)
+my $edate = DateTime->from_epoch( epoch => $mem->time_end)
 	->set_time_zone('Europe/Berlin');
 
 print 
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
-"duration:        ", DateTime->from_epoch( epoch => $calc->dur )->hms, " h\n",
-"creeping:        ", DateTime->from_epoch( epoch => $calc->dur_creep )->hms, " h\n",
-"moving:          ", DateTime->from_epoch( epoch => $calc->dur_mov )->hms, " h\n",
-"start elevation: ", $calc->ele_start, " m\n",
-"min elevation:   ", $calc->ele_min, " m\n",
-"max elevation:   ", $calc->ele_max, " m\n",
-"total incline:   ", $calc->incline, " m\n",
-"total distance:  ", sprintf( "%.2f", $calc->dist / 1000), " km\n",
-"max speed:       ", sprintf( "%.2f", $calc->spd_max * 3.6 ), " km/h\n",
-"avg speed:       ", sprintf( "%.2f", $calc->spd_avg * 3.6 ), " km/h\n",
-"total work:      ", sprintf( "%.2f", $calc->work / 1000 ), " kJ\n",
-"avg Power:       ", sprintf( "%.2f", $calc->pwr_avg ), " W\n",
+"duration:        ", DateTime->from_epoch( epoch => $mem->dur )->hms, " h\n",
+"creeping:        ", DateTime->from_epoch( epoch => $mem->dur_creep )->hms, " h\n",
+"moving:          ", DateTime->from_epoch( epoch => $mem->dur_mov )->hms, " h\n",
+"start elevation: ", ($mem->ele_start ||"?"), " m\n",
+"min elevation:   ", ($mem->ele_min ||"?"), " m\n",
+"max elevation:   ", ($mem->ele_max ||"?"), " m\n",
+"total incline:   ", ($mem->incline ||"?"), " m\n",
+"total distance:  ", sprintf( "%.2f", ($mem->dist||0) / 1000), " km\n",
+"max speed:       ", sprintf( "%.2f", ($mem->spd_max||0) * 3.6 ), " km/h\n",
+"avg speed:       ", sprintf( "%.2f", ($mem->spd_avg||0) * 3.6 ), " km/h\n",
+"total work:      ", sprintf( "%.2f", ($mem->work||0) / 1000 ), " kJ\n",
+"avg Power:       ", sprintf( "%.2f", ($mem->pwr_avg||"?") ), " W\n",
 "\n";
-}
 
 1;
 
