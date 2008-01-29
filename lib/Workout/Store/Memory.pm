@@ -168,7 +168,7 @@ add data chunk to last data block.
 sub chunk_add {
 	my( $self, $d ) = @_;
 
-	my $last = $self->chunk_last;
+	my $last = $self->{data}[-1][-1];
 	$self->chunk_check( $d, $last );
 
 	# identify fields that were supplied for all chunks
