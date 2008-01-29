@@ -48,6 +48,7 @@ sub new {
 	push @{$self->{fsupported}}, @fsupported;
 	$self->{data} = [];
 	$self->{recint} ||= 5; # different default
+	$self->{tz} = $a->{tz} || 'local';
 
 	# overall data (calc'd from chunks)
 	$self->{dist} = 0; # trip odo
@@ -134,7 +135,10 @@ sub flush {
 	my $first = $self->{data}[0];
 
 	my $stime = $first->{time} - $self->recint;
-	my $sdate = DateTime->from_epoch( epoch => $stime ); 
+	my $sdate = DateTime->from_epoch( 
+		epoch		=> $stime,
+		time_zone	=> $self->{tz},
+	); 
 
 	my $dur = $last->{time} - $stime;
 	my $spdav = $self->{moving} ? $self->{dist} / $self->{moving} : 0;

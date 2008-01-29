@@ -60,10 +60,14 @@ my $mem = Workout::Store::Memory->new;
 $mem->from( $src );
 # TODO: smooth data
 
-my $sdate = DateTime->from_epoch( epoch => $mem->time_start)
-	->set_time_zone('Europe/Berlin');
-my $edate = DateTime->from_epoch( epoch => $mem->time_end)
-	->set_time_zone('Europe/Berlin');
+my $sdate = DateTime->from_epoch( 
+	epoch		=> $mem->time_start,
+	time_zone	=> 'local',
+);
+my $edate = DateTime->from_epoch(
+	epoch		=> $mem->time_end,
+	time_zone	=> 'local',
+);
 
 print 
 "start time:      ", $sdate->datetime, "\n",

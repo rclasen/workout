@@ -23,7 +23,6 @@ use strict;
 use warnings;
 use base 'Workout::Iterator';
 use Carp;
-use DateTime;
 
 
 =head2 next
@@ -105,6 +104,7 @@ sub new {
 	push @{$self->{fsupported}}, @fsupported;
 	$self->{blocks} = undef; # list with data block offsets
 	$self->{chunk} = 0; # chunks read in current block
+	$self->{tz} = $a->{tz} || 'local';
 	$self;
 }
 
@@ -144,9 +144,10 @@ sub iterate {
 	}
 	
 	my $day = DateTime->new( 
-		year => 1880, 
-		month => 1, 
-		day => 1
+		year		=> 1880, 
+		month		=> 1, 
+		day		=> 1,
+		time_zone	=> $self->{tz},
 	)->add( days => $_[1] )->epoch;
 	#$circum = $_[2];
 	$self->{recint} = $_[3] / $_[4];
