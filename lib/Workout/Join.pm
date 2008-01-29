@@ -50,16 +50,22 @@ get next data chunk
 sub next {
 	my( $self ) = @_;
 
-	my $t = $self->{queued} || $self->src->next
+	if( $self->{queued} ){
+		$self->{last}= $self->{queued};
+		$self->{queued} = undef;
+		return $self->{last};
+	}
+
+	my $t = $self->src->next
 		or return;
-	$self->{queued} = undef;
 
 	my $l = $self->{last};
-	if( $l && abs($t->{time} - $t->{dur} - $l->{time}) > 0.1){
-		my $o = $self->{queued} = $t;
+	my $ltime = $t->{time} - $t->{dur};
+	if( $l && abs($ltime - $l->{time}) > 0.1){
+		$self->{queued} = $t;
 		$t = {
-			time    => $o->{time},
-			dur     => $o->{time} - $l->{time},
+			time    => $ltime,
+			dur     => $ltime - $l->{time},
 		}
 	}
 

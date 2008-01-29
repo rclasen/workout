@@ -290,13 +290,16 @@ sub chunk_check {
 		or croak "missing duration";
 	$c->{time}
 		or croak "missing time";
+
 	if( $self->recint && abs($self->recint - $c->{dur}) > 0.1 ){
 		croak "duration doesn't match recint";
 	}
-	if( $l && ( $l->{time} >= $c->{time} )){
+
+	my $ltime = $c->{time} - $c->{dur};
+	if( $l && ( $l->{time} > $ltime )){
 		croak "no/negativ time step";
 	}
-	if( $l && abs($c->{time} - $c->{dur} - $l->{time}) > 0.1){
+	if( $l && abs($ltime - $l->{time}) > 0.1){
 		croak "found time gap since last chunk";
 	}
 
