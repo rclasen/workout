@@ -319,7 +319,9 @@ sub set {
 	foreach my $f ( @fields ){
 		#next unless @want # TODO
 		next unless $self->can( $f );
-		$this->{$f} = $self->$f( $this, $last );
+		my $v = $self->$f( $this, $last );
+		next unless defined $v;
+		$this->{$f} = $v;
 	}
 }
 
