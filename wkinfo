@@ -69,23 +69,42 @@ my $edate = DateTime->from_epoch(
 	time_zone	=> 'local',
 );
 
+# TODO: zones/inzone, temperature
 print 
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
-"duration:        ", DateTime->from_epoch( epoch => $mem->dur )->hms, " h\n",
-"creeping:        ", DateTime->from_epoch( epoch => $mem->dur_creep )->hms, " h\n",
-"moving:          ", DateTime->from_epoch( epoch => $mem->dur_mov )->hms, " h\n",
+
+"duration:        ", fmtdur( $mem->dur ), " h (", int($mem->dur/60), "m)\n",
+"creeping:        ", fmtdur( $mem->dur_creep ), " h (", int($mem->dur_creep/60), "m)\n",
+"moving:          ", fmtdur( $mem->dur_mov ), " h (", int($mem->dur_mov/60), "m)\n",
+
+"Heartrate avg:   ", ($mem->hr_avg || "?"), " 1/min\n",
+"Heartrate max:   ", ($mem->hr_max || "?"), " 1/min\n",
+
+"Cadence avg:     ", ($mem->cad_avg || "?"), " 1/s\n",
+"Cadence max:     ", ($mem->cad_max || "?"), " 1/s\n",
+
 "start elevation: ", ($mem->ele_start ||"?"), " m\n",
 "min elevation:   ", ($mem->ele_min ||"?"), " m\n",
 "max elevation:   ", ($mem->ele_max ||"?"), " m\n",
 "total incline:   ", ($mem->incline ||"?"), " m\n",
+
 "total distance:  ", sprintf( "%.2f", ($mem->dist||0) / 1000), " km\n",
+
 "max speed:       ", sprintf( "%.2f", ($mem->spd_max||0) * 3.6 ), " km/h\n",
 "avg speed:       ", sprintf( "%.2f", ($mem->spd_avg||0) * 3.6 ), " km/h\n",
+
 "total work:      ", sprintf( "%.2f", ($mem->work||0) / 1000 ), " kJ\n",
 "avg Power:       ", sprintf( "%.2f", ($mem->pwr_avg||"?") ), " W\n",
 "\n";
 
 1;
+
+sub fmtdur {
+	my $s = shift;
+	my $m = int($s / 60); $s %= 60;
+	my $h = int($m / 60); $m %= 60;
+	sprintf('%d:%02d:%02d', $h, $m, $s);
+}
 
 
