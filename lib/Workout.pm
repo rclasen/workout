@@ -64,6 +64,22 @@ sub file {
 	$ftype{$ftype}->new( $fname, $a );	
 }
 
+=head2 filter( $type, <args> )
+
+create new filter object, passing <args> to it's constructor
+
+=cut
+
+sub filter {
+	my $type = shift;
+	eval "require Workout::Filter::$type";
+	if( my $err = $@ ){
+		croak $err;
+	}
+	"Workout::Filter::$type"->new( @_ );
+}
+
+
 1;
 __END__
 

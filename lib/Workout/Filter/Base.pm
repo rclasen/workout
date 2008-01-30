@@ -1,23 +1,23 @@
 =head1 NAME
 
-Workout::Iterator::Chained - Base Class to iterate through Workout Stores
+Workout::Filter::Base - Base Class to filter Workout chunks
 
 =head1 SYNOPSIS
 
   # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->new( "input.srm" ); 
-  $it = $src->iterate;
+  $it = Workout::Filter::Join->new( $src->iterate );
   while( defined(my $chunk = $it->next)){
   	print join(",",@$chunk{qw(time dur pwr)}),"\n";
   }
 
 =head1 DESCRIPTION
 
-Base Class to iterate through Workout Stores.
+Base Class for modifying and filtering the Chunks of a Workout.
 
 =cut
 
-package Workout::Iterator::Chained;
+package Workout::Filter::Base;
 
 use 5.008008;
 use strict;
@@ -66,7 +66,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Workout::Iterator
 
 =head1 AUTHOR
 

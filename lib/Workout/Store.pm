@@ -10,17 +10,17 @@ Workout::Store - Base Class for Sport Workout data Stores
   $ele = Workout::Store::Gpx->new( "iele.gpx );
 
   # join, resample and merge input files into a memory copy
-  $join = Workout::Join->new( $src );
+  $join = Workout::Filter::Join->new( $src );
   # aggregate/split chunks
-  $res = Workout::Resample->new( $join, { recint => 5 } ); 
+  $res = Workout::Filter::Resample->new( $join, { recint => 5 } ); 
   # add ele info
-  $merge = Workout::Merge->new( $res, $ele ); 
+  $merge = Workout::Filter::Merge->new( $res, $ele ); 
   # tmp copy for demonstration purpose
   $mem = Workout::Store::Memory->new;
   $mem->from( $merge );
 
   # write to file, calculating missing fields where necessary
-  $conv = Workout::Chunks->new( $mem );
+  $conv = Workout::Filter::CalcMissing->new( $mem );
   # write to HRM file (one block) and different recint
   $dst = Workout::Store::HRM->new( "out.hrm", { write => 1, recint => 5 } );
   $dst->from( $conv );

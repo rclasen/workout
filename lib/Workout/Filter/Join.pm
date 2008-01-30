@@ -1,13 +1,13 @@
-package Workout::Join;
+package Workout::Filter::Join;
 
 =head1 NAME
 
-Workout::Join - Join blocks within Workout data
+Workout::Filter::Join - Join blocks within Workout data
 
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->new( "foo.srm" );
-  $join = Workout::Join->new( $src );
+  $join = Workout::Filter::Join->new( $src );
   while( my $chunk = $join->next ){
   	# do something
   }
@@ -22,7 +22,7 @@ with fake chunks.
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Iterator::Chained';
+use base 'Workout::Filter::Base';
 use Carp;
 
 our $VERSION = '0.01';
@@ -79,7 +79,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Iterator
+Workout::Filter::Base
 
 =head1 AUTHOR
 
