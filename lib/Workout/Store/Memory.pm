@@ -74,6 +74,10 @@ sub new {
 	$self->{ele_max} = 0;
 	$self->{incline} = 0;
 	$self->{work} = 0;
+	$self->{hr_sum} = 0;
+	$self->{hr_max} = 0;
+	$self->{cad_sum} = 0;
+	$self->{cad_max} = 0;
 
 	$self;
 }
@@ -187,8 +191,18 @@ sub chunk_add {
 
 	$self->{work} += $d->{work} ||0;
 
-	if( $d->{pwr} ||($d->{spd} || 0) > $self->calc->creep ){
+	if( $d->{pwr} ||($d->{spd} || 0) > $self->calc->spdmin ){
 		$self->{dur_mov} += $d->{dur};
+		$self->{hr_sum} += ($d->{hr}||0) * $d->{dur};
+		$self->{cad_sum} += ($d->{cad}||0) * $d->{dur};
+	}
+
+	if( ($d->{hr} || 0) > $self->{hr_max} ){
+		$self->{hr_max} = $d->{hr};
+	}
+
+	if( ($d->{cad} || 0) > $self->{cad_max} ){
+		$self->{cad_max} = $d->{cad};
 	}
 
 	if( ($d->{spd} || 0) > $self->{spd_max} ){
@@ -248,27 +262,51 @@ sub dur_creep {
 	$t - $self->dur_mov;
 }
 
+sub hr_avg {
+	my( $self ) = @_;
+	my $d = $self->dur_mov ||$self->dur
+		or return;
+	int($self->{hr_sum} / $d + 0.5);
+}
+
+sub hr_max {
+	my( $self ) = @_;
+	int($self->{hr_max}+0.5);
+}
+
+sub cad_avg {
+	my( $self ) = @_;
+	my $d = $self->dur_mov ||$self->dur
+		or return;
+	int($self->{cad_sum} / $d + 0.5);
+}
+
+sub cad_max {
+	my( $self ) = @_;
+	int($self->{cad_max}+0.5);
+}
+
 sub ele_start {
 	my( $self ) = @_;
 
 	my $s = $self->chunk_first
 		or return;
-	$s->{ele};
+	int($s->{ele}+0.5);
 }
 
 sub ele_min {
 	my( $self ) = @_;
-	$self->{ele_min};
+	int($self->{ele_min}+0.5);
 }
 
 sub ele_max {
 	my( $self ) = @_;
-	$self->{ele_max};
+	int($self->{ele_max}+0.5);
 }
 
 sub incline {
 	my( $self ) = @_;
-	$self->{incline};
+	int($self->{incline}+0.5);
 }
 
 sub dist {
@@ -296,10 +334,10 @@ sub work {
 sub pwr_avg {
 	my( $self ) = @_;
 
-	my $dur = $self->dur
+	my $dur = $self->dur_mov || $self->dur
 		or return;
 
-	$self->work / $dur;
+	int( $self->work / $dur +0.5);
 }
 
 # TODO: move calculations to something else
