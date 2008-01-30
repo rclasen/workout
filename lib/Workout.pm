@@ -44,6 +44,8 @@ foreach my $store ( __PACKAGE__->stores ){
 	}
 }
 
+# TODO: automagically pass $calc, $athlete, and other options to new instances
+
 =head2 file( $fname, $a )
 
 instanciate object according to specified ftype (or guess one).

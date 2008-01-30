@@ -291,12 +291,12 @@ sub ele_start {
 
 	my $s = $self->chunk_first
 		or return;
-	int($s->{ele}+0.5);
+	int($s->{ele}||0 +0.5);
 }
 
 sub ele_min {
 	my( $self ) = @_;
-	int($self->{ele_min}+0.5);
+	int($self->{ele_min}||0 +0.5);
 }
 
 sub ele_max {

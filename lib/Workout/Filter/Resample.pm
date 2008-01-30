@@ -136,7 +136,7 @@ sub next {
 		$o->{$f} = $l->{$f} + $opart * $d;
 	}
 
-	# TODO: @f_geo
+	# TODO: @f_geo Geo::Spline, Geo::Forward 
 
 	#print "split: ", Data::Dumper->Dump( [$l, $s, $o, $a], [qw(l s o a)] );
 	$self->{last} = $o;

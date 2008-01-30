@@ -29,6 +29,8 @@ use base 'Workout::Store';
 use Carp;
 use DateTime;
 
+# TODO: open/read file in new()
+
 our $VERSION = '0.01';
 
 =head2 new( $fname, $args )

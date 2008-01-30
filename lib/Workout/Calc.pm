@@ -36,8 +36,6 @@ my $kelvin = 273.15;
 # TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, spdmin=moving
 # TODO: calc vspd
 
-# TODO: seperate equipment + athlete weight
-
 my %defaults = (
 #	vertmax	=> 4,		# (m/s)		maximum vertical speed
 #	accelmax => 8,		# (m/s²)	maximum acceleration
@@ -49,8 +47,8 @@ my %defaults = (
 	CwA	=> 0.4764,	# (m²)		$Cw * $A für oberlenker
 	Cr	=> 0.006,	# ()		.005 - .009 Rollwiderstandsbeiwert
 	Cm	=> 1.06, 	# ()		1.03 - 1.09 Mechanische Verluste
-	weight	=> 91, 		# (kg)		gesamtmasse 
-	atemp	=> $kelvin +19,	# (°C)		Temperatur
+	weight	=> 11, 		# (kg)		Equipment weight 
+	atemp	=> 19,		# (°C)		Temperatur
 	wind	=> 0,		# (m/s)		Windgeschwindigkeit
 );
 
@@ -270,9 +268,9 @@ sub work {
 		my $ele = $this->{ele} ||0;
 
 		# intermediate results for power
-		my $rho = ($kelvin / $self->atemp) * $rho_0 * 
+		my $rho = ($kelvin / ($kelvin +$self->atemp)) * $rho_0 * 
 			$e^(($ele * $rho_0 * $g) / $P_0);
-		my $Fstg = $self->weight * $g * ( 
+		my $Fstg = ($self->weight + $self->athlete->weight) * $g * ( 
 			$self->Cr * cos($this->{angle}) + sin($this->{angle}));
 		my $op1 = $self->CwA * $rho * ($this->{spd} + $self->wind)^2 / 2;
 
@@ -316,6 +314,7 @@ my @fields = qw(
 sub set {
 	my( $self, $this, $last, @want ) = @_;
 
+	# TODO: respect calc. dependencies when differnet fields are available
 	foreach my $f ( @fields ){
 		#next unless @want # TODO
 		next unless $self->can( $f );
