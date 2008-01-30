@@ -39,6 +39,7 @@ sub new {
 
 	my $self = bless {
 		calc	=> $a->{calc},
+		debug	=> $a->{debug} || 0,
 	}, $class;
 
 	return $self;
@@ -65,6 +66,18 @@ returns the Workout::Athlete in use ( ... by Workout::Calc)
 sub athlete {
 	my $self = shift;
 	$self->calc->athlete( @_ );
+}
+
+=head2 debug
+
+log debug message when initialized with debug=>1
+
+=cut
+
+sub debug {
+	my $self = shift;
+	return unless $self->{debug};
+	print STDERR @_, "\n";
 }
 
 1;
