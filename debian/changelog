@@ -1,3 +1,10 @@
+workout (0.03) unstable; urgency=low
+
+  * rearranged modules
+  * added GPX
+
+ -- Rainer Clasen <bj@zuto.de>  Tue, 29 Jan 2008 13:14:51 +0100
+
 workout (0.02) unstable; urgency=low
 
   * new lib structure

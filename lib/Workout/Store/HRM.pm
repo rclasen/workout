@@ -179,6 +179,7 @@ $self->{note}
 0	", int($self->{dist}), "	0	0	0	0
 0	0	0	0	0	0
 ";
+	# TODO: temperature
 	# TODO: individual laps
 
 	print $fh "
