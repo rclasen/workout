@@ -33,31 +33,40 @@ sub next {
 	my( $self ) = @_;
 
 	my $store = $self->store;
-	return unless @{$store->{blocks}};
 
-	my $blk = $store->{blocks}[0];
+	while( @{$store->{blocks}} ){
+		my $blk = $store->{blocks}[0];
 
-	# last chunk in block?
-	my $cck = ++$self->{chunk};
-	if( $cck >= $blk->{ckcnt} ){
-		$store->{chunk} = 0;
-		shift @{$store->{blocks}};
+		$self->debug( "enter block $blk->{stime}")
+			unless $store->{chunk};
+
+		# last chunk in block?
+		my $cck = ++$store->{chunk};
+		if( $cck > $blk->{ckcnt} ){
+			$store->{chunk} = 0;
+			shift @{$store->{blocks}};
+			next;
+		}
+
+		my $buf;
+		CORE::read( $store->fh, $buf, 5 ) == 5
+			or croak "failed to read data chunk";
+		next if $blk->{skip};
+
+		@_ = unpack( "CCCCC", $buf );
+		my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
+			* 3.0 / 26;
+		return {
+			time	=> $blk->{stime} + $cck * $store->recint,
+			dur	=> $store->recint,
+			pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
+			spd	=> $kph / 3.6,
+			cad	=> $_[3],
+			hr	=> $_[4],
+		};
 	}
-
-	my $buf;
-	CORE::read( $store->fh, $buf, 5 ) == 5
-		or croak "failed to read data chunk";
-	@_ = unpack( "CCCCC", $buf );
-	my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
-		* 3.0 / 26;
-	return {
-		time	=> $blk->{stime} + $cck * $store->recint,
-		dur	=> $store->recint,
-		pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
-		spd	=> $kph / 3.6,
-		cad	=> $_[3],
-		hr	=> $_[4],
-	};
+	return;
+	# TODO: check we've really reached EOF after reading all blocks
 }
 
 
@@ -102,11 +111,14 @@ sub new {
 	my $self = $class->SUPER::new( $fname, $a );
 
 	push @{$self->{fsupported}}, @fsupported;
+	$self->{blkmin} = $a->{blkmin} || 120; # min. block length/seconds
 	$self->{blocks} = undef; # list with data block offsets
 	$self->{chunk} = 0; # chunks read in current block
 	$self->{tz} = $a->{tz} || 'local';
 	$self;
 }
+
+# TODO: temperature
 
 # TODO: block_add
 # TODO: chunk_add
@@ -154,6 +166,7 @@ sub iterate {
 	my $blockcnt = $_[5];
 	my $markcnt = $_[6];
 	$self->{note} = $_[7];
+	$self->debug( "blocks: $blockcnt, marker: $markcnt");
 
 	############################################################
 	# TODO: read marker
@@ -184,12 +197,27 @@ sub iterate {
 			or croak "failed to read data block";
 
 		@_ = unpack( "Vv", $buf );
-		push @{$self->{blocks}}, {
+		my $blk = {
 			stime	=> $day + $_[0] / 100,
 			ckcnt	=> $_[1],
 			ckstart => $blockcks +1, # 1..
+			skip	=> 0,
 		};
+		push @{$self->{blocks}}, $blk;
+		$self->debug( "block $blk->{stime}, cnt: $blk->{ckcnt}");
 		$blockcks += $_[1];
+	}
+	# mark leading blocks to be skipped
+	foreach my $blk ( @{$self->{blocks}} ){
+		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
+		$self->debug( "skipping block $blk->{stime}" );
+		$blk->{skip}++;
+	}
+	# mark leading blocks to be skipped
+	foreach my $blk ( reverse @{$self->{blocks}} ){
+		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
+		$self->debug( "skipping block $blk->{stime}" );
+		$blk->{skip}++;
 	}
 
 	############################################################
@@ -201,6 +229,8 @@ sub iterate {
 	#$self->{zeropos} = $_[0];
 	#$self->{gradient} = $_[1];
 	my $ckcnt = $_[2];
+
+	$self->debug( "chunks: $ckcnt, blockchunks: $blockcks" );
 
 	$blockcks == $ckcnt
 		or warn "inconsistent file: data block chunk count too large";
