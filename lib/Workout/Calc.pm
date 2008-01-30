@@ -33,7 +33,7 @@ my $P_0 = 101325;	# (Pa = kg/(ms²)) Luftdruck auf Meereshöhe bei 0° Celsius
 my $g = 9.81; 		# (m/s²)	Erdbeschleunigung
 my $kelvin = 273.15;
 
-# TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, creep=moving
+# TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, spdmin=moving
 # TODO: calc vspd
 
 # TODO: seperate equipment + athlete weight
@@ -42,7 +42,7 @@ my %defaults = (
 #	vertmax	=> 4,		# (m/s)		maximum vertical speed
 #	accelmax => 8,		# (m/s²)	maximum acceleration
 #	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
-	creep	=> 1,		# (m/s)		minimum speed
+	spdmin	=> 1,		# (m/s)		minimum speed
 	#A 	 		# (m²)		Gesamt-Stirnfläche (Rad + Fahrer)
 	#Cw 	 		# ()		Luftwiderstandsbeiwert
 	#CwA	=> 0.3207;	# (m²)		$Cw * $A für unterlenker
