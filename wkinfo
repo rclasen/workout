@@ -71,6 +71,7 @@ my $edate = DateTime->from_epoch(
 
 # TODO: zones/inzone, temperature
 print 
+"comment:         ", $src->{note}, "\n",
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
 
