@@ -119,22 +119,25 @@ sub next {
 		$o->{$f} = $a->{$f};
 	}
 
-	my $opart = $self->recint / $a->{dur};
+	$o->{dur} = $self->recint;
+	my $opart = $o->{dur} / $a->{dur};
 	foreach my $f ($self->store->fields_span(qw(chunk)) ){
 		next unless exists $a->{$f};
-		$o->{$f} = $opart * $a->{$f};
+		$o->{$f} ||= $opart * $a->{$f};
 		$a->{$f} -= $o->{$f};
 	}
 
 	my $l = $self->{last};
 	$l->{time} ||= $a->{time} - $a->{dur};
+	$o->{time} = $l->{time} + $o->{dur};
 		
 	foreach my $f ($self->store->fields_span(qw(trip abs)) ){
 		next unless exists $a->{$f};
 		$l->{$f} ||= $a->{$f};
 		my $d = $a->{$f} - $l->{$f};
-		$o->{$f} = $l->{$f} + $opart * $d;
+		$o->{$f} ||= $l->{$f} + $opart * $d;
 	}
+
 
 	# TODO: @f_geo Geo::Spline, Geo::Forward 
 
