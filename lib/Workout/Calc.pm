@@ -37,8 +37,8 @@ my $kelvin = 273.15;
 # TODO: calc vspd
 
 my %defaults = (
-#	vertmax	=> 4,		# (m/s)		maximum vertical speed
-#	accelmax => 8,		# (m/s²)	maximum acceleration
+	vspdmax	=> 4,		# (m/s)		maximum vertical speed
+	accelmax => 8,		# (m/s²)	maximum acceleration
 	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
 	spdmin	=> 1,		# (m/s)		minimum speed
 	pwrmin	=> 40,		# (W)
@@ -104,6 +104,7 @@ calculate the Chunk field named by the method.
 =item grad( $this, $last )
 =item angle( $this, $last )
 =item spd( $this, $last )
+=item accel( $this, $last )
 =item work( $this, $last )
 =item pwr( $this, $last )
 
@@ -252,6 +253,21 @@ sub spd {
 	return;
 }
 
+sub accel {
+	my( $self, $this, $last ) = @_;
+
+	if( defined $this->{accel} ){
+		return $this->{accel};
+
+	} elsif( defined $this->{spd} 
+		&& $this->{dur}
+		&& defined $last->{spd} ){
+
+		return ($this->{spd}-$last->{spd}) / $this->{dur};
+	}
+	return;
+}
+
 sub work {
 	my( $self, $this, $last ) = @_;
 
@@ -310,6 +326,7 @@ my @fields = qw(
 	grad
 	angle
 	spd
+	accel
 	work
 	pwr
 );

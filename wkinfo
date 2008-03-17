@@ -56,9 +56,11 @@ if( $needhelp ){
 my $ath = Workout::Athlete->new;
 my $calc = Workout::Calc->new( { athlete => $ath });
 my $src = Workout::file( $fname, { ftype => $itype, calc => $calc } );
+my $smth = Workout::filter( 'Smooth', $src, {
+	calc	=> $calc,
+});
 my $mem = Workout::Store::Memory->new;
-$mem->from( $src );
-# TODO: smooth data
+$mem->from( $smth );
 
 my $sdate = DateTime->from_epoch( 
 	epoch		=> $mem->time_start,
@@ -71,7 +73,7 @@ my $edate = DateTime->from_epoch(
 
 # TODO: zones/inzone, temperature
 print 
-"comment:         ", $src->{note}, "\n",
+"comment:         ", $src->note, "\n",
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
 
