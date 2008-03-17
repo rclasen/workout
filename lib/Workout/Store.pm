@@ -248,7 +248,32 @@ sub recint {
 	return $self->{recint};
 }
 
-# TODO accessors for workout/athlete data
+
+=head2 note
+
+return comment string for this workout
+
+=cut
+
+sub note {
+	my( $self ) = @_;
+	return $self->{note};
+}
+
+
+=head2 temperature
+
+return comment string for this workout
+
+=cut
+
+sub temperature {
+	my( $self ) = @_;
+	return $self->{temp};
+}
+
+
+# TODO accessors for athlete data
 
 # TODO: marker / lap data
 

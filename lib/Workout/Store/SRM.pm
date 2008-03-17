@@ -118,8 +118,6 @@ sub new {
 	$self;
 }
 
-# TODO: temperature
-
 # TODO: block_add
 # TODO: chunk_add
 # TODO: flush
@@ -166,6 +164,9 @@ sub iterate {
 	my $blockcnt = $_[5];
 	my $markcnt = $_[6];
 	$self->{note} = $_[7];
+	if( $self->{note} =~ /^(\d+)øC/ ){
+		$self->{temp} = $1;
+	}
 	$self->debug( "blocks: $blockcnt, marker: $markcnt");
 
 	############################################################
