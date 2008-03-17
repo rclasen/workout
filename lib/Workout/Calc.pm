@@ -39,8 +39,9 @@ my $kelvin = 273.15;
 my %defaults = (
 #	vertmax	=> 4,		# (m/s)		maximum vertical speed
 #	accelmax => 8,		# (m/s²)	maximum acceleration
-#	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
+	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
 	spdmin	=> 1,		# (m/s)		minimum speed
+	pwrmin	=> 40,		# (W)
 	#A 	 		# (m²)		Gesamt-Stirnfläche (Rad + Fahrer)
 	#Cw 	 		# ()		Luftwiderstandsbeiwert
 	#CwA	=> 0.3207;	# (m²)		$Cw * $A für unterlenker
@@ -144,6 +145,7 @@ sub climb {
 	if( defined $this->{climb} ){
 		return $this->{climb};
 
+	# TODO: use elefuzz
 	} elsif( defined $this->{ele} 
 		&& defined $last 
 		&& defined $last->{ele} ){

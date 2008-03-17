@@ -67,7 +67,10 @@ sub new {
 	$self->{data} = [[]];
 	$self->{supplied} = {};
 
+	$self->{lele} = undef;
 	$self->{dur_mov} = 0;
+	$self->{dur_cad} = 0;
+	$self->{dur_hr} = 0;
 	$self->{dist} = 0;
 	$self->{spd_max} = 0;
 	$self->{ele_min} = undef;
@@ -185,15 +188,36 @@ sub chunk_add {
 
 	$self->{dist} += $d->{dist} ||0;
 
-	if( ($d->{climb} || 0) > 0 ){
-		$self->{incline} += $d->{climb};
+	if( $d->{ele} ){
+		if( defined $self->{lele} ){
+			my $climb = $d->{ele} - $self->{lele};
+			# TODO: better fix climb calculation in Calc.pm
+
+			if( abs($climb) >= $self->calc->elefuzz ){
+				$self->{lele} = $d->{ele};
+				if( $climb > 0 ){
+					$self->{incline} += $climb;
+				}
+			}
+
+		} else {
+			$self->{lele} = $d->{ele};
+		}
 	}
 
-	$self->{work} += $d->{work} ||0;
+	$self->{work} += ($d->{work} ||0);
 
-	if( $d->{pwr} ||($d->{spd} || 0) > $self->calc->spdmin ){
+	if( ($d->{pwr} || 0) > $self->calc->pwrmin 
+		|| ($d->{spd} || 0) > $self->calc->spdmin ){
+
 		$self->{dur_mov} += $d->{dur};
-		$self->{hr_sum} += ($d->{hr}||0) * $d->{dur};
+		if( $d->{hr} ){
+			$self->{dur_hr} += $d->{dur};
+			$self->{hr_sum} += ($d->{hr}||0) * $d->{dur};
+		}
+	}
+	if( $d->{spd} ){
+		$self->{dur_cad} += $d->{dur};
 		$self->{cad_sum} += ($d->{cad}||0) * $d->{dur};
 	}
 
@@ -253,6 +277,16 @@ sub dur_mov {
 	$self->{dur_mov};
 }
 
+sub dur_hr {
+	my( $self ) = @_;
+	$self->{dur_hr};
+}
+
+sub dur_cad {
+	my( $self ) = @_;
+	$self->{dur_cad};
+}
+
 sub dur_creep {
 	my( $self ) = @_;
 
@@ -264,7 +298,7 @@ sub dur_creep {
 
 sub hr_avg {
 	my( $self ) = @_;
-	my $d = $self->dur_mov ||$self->dur
+	my $d = $self->dur_hr ||$self->dur
 		or return;
 	int($self->{hr_sum} / $d + 0.5);
 }
@@ -276,14 +310,14 @@ sub hr_max {
 
 sub cad_avg {
 	my( $self ) = @_;
-	my $d = $self->dur_mov ||$self->dur
+	my $d = $self->dur_cad ||$self->dur
 		or return;
 	int($self->{cad_sum} / $d + 0.5);
 }
 
 sub cad_max {
 	my( $self ) = @_;
-	int($self->{cad_max}+0.5);
+	int(($self->{cad_max}||0)+0.5);
 }
 
 sub ele_start {
