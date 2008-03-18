@@ -234,7 +234,7 @@ sub chunk_add {
 			$self->{hr_sum} += ($d->{hr}||0) * $d->{dur};
 		}
 	}
-	if( $d->{spd} ){
+	if( $d->{cad} ){
 		$self->{dur_cad} += $d->{dur};
 		$self->{cad_sum} += ($d->{cad}||0) * $d->{dur};
 	}
@@ -347,7 +347,7 @@ sub hr_max_time {
 
 sub cad_avg {
 	my( $self ) = @_;
-	my $d = $self->dur_cad ||$self->dur
+	my $d = $self->dur_cad || $self->dur
 		or return;
 	int($self->{cad_sum} / $d + 0.5);
 }
