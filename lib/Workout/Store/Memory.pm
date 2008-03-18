@@ -37,6 +37,8 @@ sub next {
 	while( $self->{cblk} < @$dat ){
 		my $blk = $dat->[$self->{cblk}];
 		if( $self->{cchk} < @$blk ){
+			$self->{cntin}++;
+			$self->{cntout}++;
 			return $blk->[$self->{cchk}++];
 		}
 		$self->{cblk}++;
@@ -73,14 +75,24 @@ sub new {
 	$self->{dur_hr} = 0;
 	$self->{dist} = 0;
 	$self->{spd_max} = 0;
+	$self->{spd_max_time} = undef;
+	$self->{accel_max} = 0;
+	$self->{accel_max_time} = undef;
 	$self->{ele_min} = undef;
 	$self->{ele_max} = 0;
+	$self->{ele_max_time} = undef;
+	$self->{grad_max} = 0;
+	$self->{grad_max_time} = undef;
 	$self->{incline} = 0;
 	$self->{work} = 0;
+	$self->{pwr_max} = 0;
+	$self->{pwr_max_time} = undef;
 	$self->{hr_sum} = 0;
 	$self->{hr_max} = 0;
+	$self->{hr_max_time} = undef;
 	$self->{cad_sum} = 0;
 	$self->{cad_max} = 0;
+	$self->{cad_max_time} = undef;
 
 	$self;
 }
@@ -173,16 +185,17 @@ add data chunk to last data block.
 =cut
 
 sub chunk_add {
-	my( $self, $d ) = @_;
+	my( $self, $i ) = @_;
 
 	my $last = $self->{data}[-1][-1];
-	$self->chunk_check( $d, $last );
+	$self->chunk_check( $i, $last );
 
 	# identify fields that were supplied for all chunks
-	foreach my $f ( keys %$d ){
+	foreach my $f ( keys %$i ){
 		$self->{supplied}{$f}++;
 	}
 
+	my $d = { %$i };
 	$self->calc->set( $d, $last );
 	push @{$self->block}, $d;
 
@@ -207,6 +220,11 @@ sub chunk_add {
 
 	$self->{work} += ($d->{work} ||0);
 
+	if( ($d->{pwr} || 0)  > $self->{pwr_max} ){
+		$self->{pwr_max} = $d->{pwr};
+		$self->{pwr_max_time} = $d->{time};
+	}
+
 	if( ($d->{pwr} || 0) > $self->calc->pwrmin 
 		|| ($d->{spd} || 0) > $self->calc->spdmin ){
 
@@ -223,14 +241,22 @@ sub chunk_add {
 
 	if( ($d->{hr} || 0) > $self->{hr_max} ){
 		$self->{hr_max} = $d->{hr};
+		$self->{hr_max_time} = $d->{time};
 	}
 
 	if( ($d->{cad} || 0) > $self->{cad_max} ){
 		$self->{cad_max} = $d->{cad};
+		$self->{cad_max_time} = $d->{time};
 	}
 
 	if( ($d->{spd} || 0) > $self->{spd_max} ){
 		$self->{spd_max} = $d->{spd};
+		$self->{spd_max_time} = $d->{time};
+	}
+
+	if( ($d->{accel} || 0) > $self->{accel_max} ){
+		$self->{accel_max} = $d->{accel};
+		$self->{accel_max_time} = $d->{time};
 	}
 
 	if( ! defined $self->{ele_min}
@@ -241,6 +267,12 @@ sub chunk_add {
 
 	if( ($d->{ele} || 0)  > $self->{ele_max} ){
 		$self->{ele_max} = $d->{ele};
+		$self->{ele_max_time} = $d->{time};
+	}
+
+	if( ($d->{grad} || 0)  > $self->{grad_max} ){
+		$self->{grad_max} = $d->{grad};
+		$self->{grad_max_time} = $d->{time};
 	}
 
 }
@@ -308,6 +340,11 @@ sub hr_max {
 	int($self->{hr_max}+0.5);
 }
 
+sub hr_max_time {
+	my( $self ) = @_;
+	$self->{hr_max_time};
+}
+
 sub cad_avg {
 	my( $self ) = @_;
 	my $d = $self->dur_cad ||$self->dur
@@ -318,6 +355,11 @@ sub cad_avg {
 sub cad_max {
 	my( $self ) = @_;
 	int(($self->{cad_max}||0)+0.5);
+}
+
+sub cad_max_time {
+	my( $self ) = @_;
+	$self->{cad_max_time};
 }
 
 sub ele_start {
@@ -338,6 +380,21 @@ sub ele_max {
 	int($self->{ele_max}+0.5);
 }
 
+sub ele_max_time {
+	my( $self ) = @_;
+	$self->{ele_max_time};
+}
+
+sub grad_max {
+	my( $self ) = @_;
+	$self->{grad_max};
+}
+
+sub grad_max_time {
+	my( $self ) = @_;
+	$self->{grad_max_time};
+}
+
 sub incline {
 	my( $self ) = @_;
 	int($self->{incline}+0.5);
@@ -353,6 +410,21 @@ sub spd_max {
 	$self->{spd_max};
 }
 
+sub spd_max_time {
+	my( $self ) = @_;
+	$self->{spd_max_time};
+}
+
+sub accel_max {
+	my( $self ) = @_;
+	$self->{accel_max};
+}
+
+sub accel_max_time {
+	my( $self ) = @_;
+	$self->{accel_max_time};
+}
+
 sub spd_avg {
 	my( $self ) = @_;
 	my $d = $self->dur_mov
@@ -363,6 +435,16 @@ sub spd_avg {
 sub work {
 	my( $self ) = @_;
 	$self->{work};
+}
+
+sub pwr_max {
+	my( $self ) = @_;
+	$self->{pwr_max};
+}
+
+sub pwr_max_time {
+	my( $self ) = @_;
+	$self->{pwr_max_time};
 }
 
 sub pwr_avg {
