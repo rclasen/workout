@@ -74,6 +74,8 @@ my $edate = DateTime->from_epoch(
 # TODO: zones/inzone, temperature
 print 
 "comment:         ", $src->note, "\n",
+"chunks:          ", $smth->cntin, " (spdcut=", $smth->cntspd, " elecut=",
+	$smth->cntele,")\n",
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
 
@@ -81,24 +83,34 @@ print
 "creeping:        ", fmtdur( $mem->dur_creep ), " h (", int($mem->dur_creep/60), "m)\n",
 "moving:          ", fmtdur( $mem->dur_mov ), " h (", int($mem->dur_mov/60), "m)\n",
 
-"Heartrate avg:   ", ($mem->hr_avg || "?"), " 1/min\n",
-"Heartrate max:   ", ($mem->hr_max || "?"), " 1/min\n",
+"Heartrate avg:   ", ($mem->hr_avg || '?'), " 1/min\n",
+"Heartrate max:   ", ($mem->hr_max || '?'), " 1/min at ",
+	fmttime($mem->hr_max_time), "\n",
 
-"Cadence avg:     ", ($mem->cad_avg || "?"), " 1/s\n",
-"Cadence max:     ", ($mem->cad_max || "?"), " 1/s\n",
+"Cadence avg:     ", ($mem->cad_avg || '?'), " 1/s\n",
+"Cadence max:     ", ($mem->cad_max || '?'), " 1/s at ",
+	fmttime($mem->cad_max_time), "\n",
 
-"start elevation: ", ($mem->ele_start ||"?"), " m\n",
-"min elevation:   ", ($mem->ele_min ||"?"), " m\n",
-"max elevation:   ", ($mem->ele_max ||"?"), " m\n",
-"total incline:   ", ($mem->incline ||"?"), " m\n",
+"start elevation: ", ($mem->ele_start ||'?'), " m\n",
+"min elevation:   ", ($mem->ele_min ||'?'), " m\n",
+"max elevation:   ", ($mem->ele_max ||'?'), " m at ",
+	fmttime($mem->ele_max_time), "\n",
+"max slope:       ", sprintf( '%.1f', ($mem->grad_max ||"0")), " % at ",
+	fmttime($mem->grad_max_time), "\n",
+"total incline:   ", ($mem->incline ||'?'), " m\n",
 
-"total distance:  ", sprintf( "%.2f", ($mem->dist||0) / 1000), " km\n",
+"total distance:  ", sprintf( '%.2f', ($mem->dist||0) / 1000), " km\n",
 
-"max speed:       ", sprintf( "%.2f", ($mem->spd_max||0) * 3.6 ), " km/h\n",
-"avg speed:       ", sprintf( "%.2f", ($mem->spd_avg||0) * 3.6 ), " km/h\n",
+"max speed:       ", sprintf( '%.2f', ($mem->spd_max||0) * 3.6 ), " km/h at ",
+	fmttime($mem->spd_max_time), "\n",
+"avg speed:       ", sprintf( '%.2f', ($mem->spd_avg||0) * 3.6 ), " km/h\n",
+"max accel:       ", sprintf( '%.2f', ($mem->accel_max||0) ), " m/s² at ",
+	fmttime($mem->accel_max_time), "\n",
 
-"total work:      ", sprintf( "%.2f", ($mem->work||0) / 1000 ), " kJ\n",
-"avg Power:       ", sprintf( "%.2f", ($mem->pwr_avg||"?") ), " W\n",
+"total work:      ", sprintf( '%.2f', ($mem->work||0) / 1000 ), " kJ\n",
+"avg Power:       ", sprintf( '%.2f', ($mem->pwr_avg||'?') ), " W\n",
+"max Power:       ", sprintf( '%.2f', ($mem->pwr_max||'?') ), " W at ",
+	fmttime($mem->pwr_max_time), "\n",
 "\n";
 
 1;
@@ -110,4 +122,12 @@ sub fmtdur {
 	sprintf('%d:%02d:%02d', $h, $m, $s);
 }
 
-
+sub fmttime {
+	my $t = shift;
+	return '?' unless $t;
+	my $date = DateTime->from_epoch(
+		epoch		=> $t,
+		time_zone	=> 'local',
+	);
+	$date->hms;
+}

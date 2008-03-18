@@ -38,7 +38,8 @@ my $kelvin = 273.15;
 
 my %defaults = (
 	vspdmax	=> 4,		# (m/s)		maximum vertical speed
-	accelmax => 8,		# (m/s²)	maximum acceleration
+	gradmax => 40,		# (%)           maximum gradient/slope
+	accelmax => 6,		# (m/s²)	maximum acceleration
 	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
 	spdmin	=> 1,		# (m/s)		minimum speed
 	pwrmin	=> 40,		# (W)

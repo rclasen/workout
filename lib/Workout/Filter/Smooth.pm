@@ -47,12 +47,13 @@ new iterator
 sub new {
 	my $class = shift;
 	my $self = $class->SUPER::new( @_ );
+	# TODO: split rolling average out into seperate filter
 	$self->{ravg_num} = 3;
 	$self->{ravg_hist} = [];
 	$self->{ravg_keys} = [qw( spd )];
 	$self->{last} = undef;
-	$self->{lele} = undef;
-	$self->{lspd} = undef;
+	$self->{cntspd} = 0;
+	$self->{cntele} = 0;
 	$self;
 }
 
@@ -66,31 +67,56 @@ sub next {
 	my $i = $self->src->next;
 	defined $i or return;
 
+	$self->{cntin}++;
+
 	my $m = {%$i};
-	$self->calc->set( $m, $self->{last} );
-	$self->{last} = $m;
+	my $l = $self->{last};
+
+	delete @$m{qw(climb xdist dist accel grad angle)};
+
+	$m->{climb} = $self->calc->climb( $m, $l );
+
+	$m->{dist} = $self->calc->dist( $m, $l );
+	$m->{xdist} = $self->calc->xdist( $m, $l );
+
+	# ele / vspdmax / gradmax
+	if( defined $l && defined $l->{ele} && defined $m->{ele} ){
+		my $max = $m->{dur} * $self->calc->vspdmax;
+		if( defined $m->{xdist} ){
+			my $gmax = $m->{xdist} * $self->calc->gradmax / 100;
+			$max = $gmax if $gmax < $max;
+		}
+
+		if( abs($m->{climb}) > $max ){
+			$self->{cntele}++;
+			$m->{climb} = $max * abs($m->{climb})/$m->{climb};
+			$m->{ele} = $l->{ele} + $m->{climb};
+			$m->{grad} = $self->calc->grad( $m );
+			$m->{angle} = $self->calc->angle( $m );
+			if( exists $m->{lon} ){ # TODO: hack
+				delete @$m{qw( spd dist )};
+				$m->{dist} = $self->calc->dist( $m, $l );
+			} else {
+				delete @$m{qw( xdist )};
+				$m->{xdist} = $self->calc->xdist( $m, $l );
+			}
+		}
+	}
+
+	$m->{dist} = $self->calc->dist( $m, $l );
+	$m->{spd} ||= $self->calc->spd( $m, $l );
+	$m->{accel} = $self->calc->accel( $m, $l );
 
 	# speed / accelmax
-	if( defined $self->{lspd} && defined $m->{spd} ){
-		my $accel = $m->{spd} - $self->{lspd};
-		my $max = $m->{dur} * $self->calc->accelmax;
+	if( defined $l && defined $l->{spd} && defined $m->{spd} ){
+		my $max = $self->calc->accelmax;
 
-		if( abs($accel) > $max ){
-			$m->{spd} = $self->{lspd} + $max * abs($accel)/$accel;
+		if( abs($m->{accel}) > $max ){
+			$self->{cntspd}++;
+			$m->{accel} = $max * abs($m->{accel})/$m->{accel};
+			$m->{spd} = $l->{spd} + $m->{accel} * $m->{dur};
 		}
 	}
-	$self->{lspd} = $m->{spd};
-
-	# ele / vspdmax
-	if( defined $self->{lele} && defined $m->{ele} ){
-		my $climb = $m->{ele} - $self->{lele};
-		my $max = $m->{dur} * $self->calc->vspdmax;
-
-		if( abs($climb) > $max ){
-			$m->{ele} = $self->{lele} + $max * abs($climb)/$climb;
-		}
-	}
-	$self->{lele} = $m->{ele};
 
 	# rolling averages
 	if( @{$self->{ravg_hist}} >= $self->{ravg_num} ){
@@ -111,9 +137,34 @@ sub next {
 	}
 
 	unshift @{$self->{ravg_hist}}, $m;
+	delete @$o{qw( accel )};
+	$o->{accel} = $self->calc->accel( $m, $l );
 
+	$self->{last} = $o;
+	$self->{cntout}++;
 	$o;
 }
+
+=head2 cntele
+
+number of chunks where elevation was adjusted due to change limits
+
+=cut
+
+sub cntele {
+	$_[0]->{cntele};
+}
+
+=head2 cntspd
+
+number of chunks where speed was cut/limited
+
+=cut
+
+sub cntspd {
+	$_[0]->{cntspd};
+}
+
 
 1;
 __END__
