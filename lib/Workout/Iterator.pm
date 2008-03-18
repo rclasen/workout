@@ -40,6 +40,8 @@ sub new {
 
 	my $self = $class->SUPER::new( $a );
 	$self->{store} = $store;
+	$self->{cntin} = 0;
+	$self->{cntout} = 0;
 
 	return $self;
 }
@@ -83,6 +85,26 @@ sub store {
 	$self->{store};
 }
 
+
+=head2 cntin
+
+number of chunks passed into this iterator
+
+=cut
+
+sub cntin {
+	$_[0]->{cntin};
+}
+
+=head2 cntout
+
+number of chunks passed out of this iterator
+
+=cut
+
+sub cntout {
+	$_[0]->{cntout};
+}
 
 1;
 __END__

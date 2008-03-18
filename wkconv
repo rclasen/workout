@@ -10,6 +10,7 @@ use Getopt::Long;
 my $itype;
 my $otype;
 my $recint = 5;
+my $opt_verbose;
 
 my $needhelp;
 my $wanthelp;
@@ -19,6 +20,7 @@ if( ! GetOptions(
 	"input|i=s"	=> \$itype,
 	"output|o=s"	=> \$otype,
 	"recint|r=i"	=> \$recint,
+	"verbose|v!"	=> \$opt_verbose,
 )){
 	$needhelp++;
 }
@@ -71,3 +73,7 @@ my $dst = Workout::file( $ofile, {
 $dst->from( $res );
 $dst->flush;
 
+print 
+"input=", $join->cntin, " ",
+"joined=", $join->cntout, " ",
+"resampled=", $res->cntout, "\n" if $opt_verbose;

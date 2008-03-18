@@ -53,11 +53,13 @@ sub next {
 	if( $self->{queued} ){
 		$self->{last}= $self->{queued};
 		$self->{queued} = undef;
+		$self->{cntout}++;
 		return $self->{last};
 	}
 
 	my $t = $self->src->next
 		or return;
+	$self->{cntin}++;
 
 	my $l = $self->{last};
 	my $ltime = $t->{time} - $t->{dur};
@@ -70,6 +72,7 @@ sub next {
 	}
 
 	$self->{last} = $t;
+	$self->{cntout}++;
 	return $t;
 }
 

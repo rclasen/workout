@@ -56,6 +56,9 @@ sub next {
 		@_ = unpack( "CCCCC", $buf );
 		my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
 			* 3.0 / 26;
+
+		$self->{cntin}++;
+		$self->{cntout}++;
 		return {
 			time	=> $blk->{stime} + $cck * $store->recint,
 			dur	=> $store->recint,

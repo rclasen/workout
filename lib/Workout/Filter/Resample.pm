@@ -73,6 +73,7 @@ sub next {
 	# aggregate data
 	while( ! $a || ! exists $a->{dur} || $a->{dur} < $self->recint ){
 		my $r = $self->src->next or return;
+		$self->{cntin}++;
 
 		#my $s = { %$a };
 		#print "reading chunk ", ++$icnt, "\n";
@@ -142,6 +143,7 @@ sub next {
 	# TODO: @f_geo Geo::Spline, Geo::Forward 
 
 	#print "split: ", Data::Dumper->Dump( [$l, $s, $o, $a], [qw(l s o a)] );
+	$self->{cntout}++;
 	$self->{last} = $o;
 	return $o;
 }

@@ -67,6 +67,8 @@ sub next {
 		my $pt = $seg->{points}[$self->{cpt}++];
 		$pt->{dur} = $self->calc->dur( $pt, $self->{lpt} );
 		$self->{lpt} = $pt;
+		$self->{cntin}++;
+		$self->{cntout}++;
 		return $pt if $pt->{dur};
 	}
 	return;
