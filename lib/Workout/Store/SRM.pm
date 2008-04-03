@@ -201,29 +201,34 @@ sub iterate {
 			or croak "failed to read data block";
 
 		@_ = unpack( "Vv", $buf );
+		my $stime = $day + $_[0] / 100;
+		if( my $last = $self->{blocks}[-1] ){
+			my $fix = 0;
+			while( $last->{etime} > $stime + $fix ){
+				$fix += 3600;
+			}
+			if( $fix ){
+				warn "fixing start time of block ".
+				(@{$self->{blocks}}+1) ." from ". $stime
+				." to ". ($stime + $fix);
+				$stime += $fix;
+			}
+		}
+
+		my $ckcnt = $_[1];
+		my $etime = $stime + $ckcnt * $self->recint;
+
 		my $blk = {
-			stime	=> $day + $_[0] / 100,
-			ckcnt	=> $_[1],
+			stime	=> $stime,
+			etime	=> $etime,
+			ckcnt	=> $ckcnt,
 			ckstart => $blockcks +1, # 1..
 			skip	=> 0,
 		};
 		push @{$self->{blocks}}, $blk;
-		$self->debug( "block $blk->{stime}, cnt: $blk->{ckcnt}");
+		$self->debug( "block $stime to $etime, cnt: $ckcnt");
 		$blockcks += $_[1];
 	}
-	# mark leading blocks to be skipped
-	foreach my $blk ( @{$self->{blocks}} ){
-		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
-		$self->debug( "skipping block $blk->{stime}" );
-		$blk->{skip}++;
-	}
-	# mark leading blocks to be skipped
-	foreach my $blk ( reverse @{$self->{blocks}} ){
-		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
-		$self->debug( "skipping block $blk->{stime}" );
-		$blk->{skip}++;
-	}
-
 	############################################################
 	# calibration data, ff
 
@@ -236,8 +241,36 @@ sub iterate {
 
 	$self->debug( "chunks: $ckcnt, blockchunks: $blockcks" );
 
-	$blockcks == $ckcnt
-		or warn "inconsistent file: data block chunk count too large";
+	if( $blockcks < $ckcnt ){
+		warn "inconsistency: block chunks < total";
+
+	} elsif( $blockcks > $ckcnt ){
+		warn "inconsistency: block chunks > total, truncating last blocks";
+
+		my $extra = $blockcks - $ckcnt;
+		foreach my $blk ( reverse @{$self->{blocks}} ){
+			if( $extra <= $blk->{ckcnt} ){
+				$blk->{ckcnt} -= $extra;
+				last;
+			} else {
+				$extra -= $blk->{ckcnt};
+				$blk->{ckcnt} = 0;
+			}
+		}
+	}
+
+	# mark too short leading blocks to be skipped
+	foreach my $blk ( @{$self->{blocks}} ){
+		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
+		$self->debug( "skipping block $blk->{stime} (< $self->{blkmin}sec)" );
+		$blk->{skip}++;
+	}
+	# mark too short trailing blocks to be skipped
+	foreach my $blk ( reverse @{$self->{blocks}} ){
+		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
+		$self->debug( "skipping block $blk->{stime} (< $self->{blkmin}sec)" );
+		$blk->{skip}++;
+	}
 
 	############################################################
 	# data chunks are read by next()

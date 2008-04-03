@@ -322,10 +322,14 @@ sub chunk_check {
 
 	my $ltime = $c->{time} - $c->{dur};
 	if( $l && ( $l->{time} > $ltime )){
-		croak "no/negativ time step";
+		croak "no/negativ time step: l=".  $l->{time} 
+			." c=". $c->{time}
+			." d=". $c->{dur};
 	}
 	if( $l && abs($ltime - $l->{time}) > 0.1){
-		croak "found time gap since last chunk";
+		croak "found time gap since last chunk: l=". $l->{time} 
+			." c=". $c->{time}
+			." d=". $c->{dur};
 	}
 
 	foreach my $f ( $self->fields_required ){
