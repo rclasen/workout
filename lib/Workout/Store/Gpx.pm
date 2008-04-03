@@ -46,7 +46,9 @@ sub next {
 		my $track = $tracks->[$self->{ctrack}];
 
 		# next track?
-		if( @{$track->{segments}} <= $self->{cseg} ){
+		if( defined $track->{segments} 
+			&& @{$track->{segments}} <= $self->{cseg} ){
+
 			$self->{ctrack}++;
 			$self->{cseg} = 0;
 			$self->{cpt} = 0;
@@ -56,7 +58,9 @@ sub next {
 		my $seg = $track->{segments}[$self->{cseg}];
 
 		# next segment?
-		if( @{$seg->{points}} <= $self->{cpt} ){
+		if( defined $seg->{points} 
+			&& @{$seg->{points}} <= $self->{cpt} ){
+
 			$self->{cseg}++;
 			$self->{cpt} = 0;
 			$self->{lpt} = undef;
