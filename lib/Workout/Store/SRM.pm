@@ -293,10 +293,17 @@ sub read {
 		};
 		push @{$self->{blocks}}, $blk;
 
-		$self->debug( "block ". $#{$self->{blocks}} .": "
-			. $stime->hms 
-			.", first: $blockcks "
-			.", chunks: $ckcnt");
+		if( $self->{debug} ){
+			my $etime = $stime->clone->add( 
+				seconds => $ckcnt * $self->recint );
+
+			$self->debug( "block ". $#{$self->{blocks}} .": "
+				. sprintf( '%5d+%5d=%5d', 
+					$blockcks, $ckcnt, ($blockcks + $ckcnt) )
+				." ".  $stime->hms . " (". $stime->epoch .")"
+				." to ". $etime->hms . " (". $etime->epoch .")"
+				);
+		}
 
 		$blockcks += $ckcnt;
 	}

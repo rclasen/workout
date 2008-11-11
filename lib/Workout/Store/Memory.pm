@@ -199,6 +199,12 @@ sub chunk_add {
 	$self->calc->set( $d, $last );
 	push @{$self->block}, $d;
 
+	$self->chunk_summarize( $d );
+}
+
+sub chunk_summarize {
+	my( $self, $d ) = @_;
+
 	$self->{dist} += $d->{dist} ||0;
 
 	if( $d->{ele} ){

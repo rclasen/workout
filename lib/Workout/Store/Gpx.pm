@@ -48,6 +48,8 @@ sub next {
 	my( $self ) = @_;
 	
 	my $tracks = $self->{tracks};
+	# TODO: skip chunks without time, remember distance?
+	# TODO: sort tracks by start time
 	while( $self->{ctrack} < @$tracks ){
 		my $track = $tracks->[$self->{ctrack}];
 
