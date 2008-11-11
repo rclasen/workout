@@ -31,6 +31,7 @@ sub new {
 	my( $class, $store, $a ) = @_;
 
 	my $self = $class->SUPER::new( $store, $a );
+	$self->{tracks} = $store->{gpx}->tracks;
 	$self->{ctrack} = 0;
 	$self->{cseg} = 0;
 	$self->{cpt} = 0;
@@ -46,7 +47,7 @@ sub new {
 sub next {
 	my( $self ) = @_;
 	
-	my $tracks = $self->store->{tracks};
+	my $tracks = $self->{tracks};
 	while( $self->{ctrack} < @$tracks ){
 		my $track = $tracks->[$self->{ctrack}];
 
@@ -126,10 +127,8 @@ sub read {
 			or croak "open '$fname': $!";
 	}
 
-	my $gpx = Geo::Gpx->new( input => $fh )
+	$self->{gpx} = Geo::Gpx->new( input => $fh )
 		or croak "cannot read file: $!";
-
-	$self->{tracks} = $gpx->tracks;
 
 	close($fh);
 
