@@ -218,7 +218,9 @@ sub chunk_add {
 		}
 	}
 
-	$self->{work} += ($d->{work} ||0);
+	if( ($d->{work}||0) > 0 ){
+		$self->{work} += $d->{work};
+	}
 
 	if( ($d->{pwr} || 0)  > $self->{pwr_max} ){
 		$self->{pwr_max} = $d->{pwr};
