@@ -6,7 +6,7 @@ Workout::Filter::Smooth - Smoothen Workout data
 
 =head1 SYNOPSIS
 
-  $src = Workout::Store::SRM->new( "foo.srm" );
+  $src = Workout::Store::SRM->read( "foo.srm" );
   $join = Workout::Filter::Smooth->new( $src );
   while( my $chunk = $join->next ){
   	# do something

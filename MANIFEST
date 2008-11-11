@@ -15,7 +15,6 @@ lib/Workout/Iterator/Chained.pm
 lib/Workout/Join.pm
 lib/Workout/Resample.pm
 lib/Workout/Store.pm
-lib/Workout/Store/File.pm
 lib/Workout/Store/Gpx.pm
 lib/Workout/Store/HRM.pm
 lib/Workout/Store/Memory.pm

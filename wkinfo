@@ -60,7 +60,7 @@ if( $needhelp ){
 
 my $ath = Workout::Athlete->new;
 my $calc = Workout::Calc->new( { debug => $debug, athlete => $ath });
-my $src = Workout::file( $fname, { 
+my $src = Workout::file_read( $fname, { 
 	debug	=> $debug, 
 	ftype	=> $itype, 
 	calc	=> $calc,

@@ -5,13 +5,13 @@ Workout - Fabric to easily create workout objects
 =head1 SYNOPSIS
 
   # read SRM file with 1sec recint and multiple blocks
-  $src = Workout::file( "input.srm" ); 
+  $src = Workout::file_read( "input.srm" ); 
   $it = $src->iterate;
   while( defined(my $chunk = $it->next)){
   	print join(",",@$chunk{qw(time dur pwr)}),"\n";
   }
 
-  $dst = Workout::file( "foo", { ftype => "hrm" , write => 1 });
+  $dst = Workout::file_new( "foo", { ftype => "hrm" });
 
 =head1 DESCRIPTION
 
@@ -46,24 +46,36 @@ foreach my $store ( __PACKAGE__->stores ){
 
 # TODO: automagically pass $calc, $athlete, and other options to new instances
 
-=head2 file( $fname, $a )
+=head2 file_read( $fname, $a )
 
 instanciate object according to specified ftype (or guess one).
 
 =cut
 
-sub file {
+sub file_type_class {
+	my( $type ) = @_;
+
+	exists $ftype{lc $type}
+		or croak "unsupported filetype: $type";
+
+	return $ftype{lc $type};
+}
+
+sub file_read {
 	my( $fname, $a ) = @_;
 
-	my $ftype = $a->{ftype} || "";
-	if( ! $ftype && $fname =~ /\.([^.]+)$/ ){
-		$ftype = lc $1;
-	}
+	my $class = &file_type_class( $a->{ftype} 
+		|| ($fname =~ /\.([^.]+)$/ )[0]
+		|| "" );
+	$class->read( $fname, $a );	
+}
 
-	$ftype && exists $ftype{$ftype}
-		or croak "unsupported filetype: $ftype";
+sub file_new {
+	my( $a ) = @_;
 
-	$ftype{$ftype}->new( $fname, $a );	
+	my $class = &file_type_class( $a->{ftype} 
+		|| "" );
+	$class->new( $a );	
 }
 
 =head2 filter( $type, <args> )

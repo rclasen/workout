@@ -6,7 +6,7 @@ Workout::Filter::Resample - Resample Workout data
 
 =head1 SYNOPSIS
 
-  $src = Workout::Store::SRM->new( "foo.srm" );
+  $src = Workout::Store::SRM->read( "foo.srm" );
   $new = Workout::Filter::Resample->new( $src, { recint => 10 } );
   while( $chunk = $new->next ){
   	# do smething

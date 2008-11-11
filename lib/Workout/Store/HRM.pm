@@ -4,12 +4,16 @@ Workout::Store::HRM - read/write polar HRM files
 
 =head1 SYNOPSIS
 
-  $src = Workout::Store::Gpx->new( "foo.gpx" );
-  while( $chunk = $src->next ){
+  use Workout::Store::HRM;
+
+  $src = Workout::Store::HRM->read( "foo.hrm" );
+  $iter = $src->iterate;
+  while( $chunk = $iter->next ){
   	...
   }
 
-  use Workout::Store::HRM;
+  $src->write( "out.hrm" );
+
 
 =head1 DESCRIPTION
 
@@ -21,7 +25,7 @@ package Workout::Store::HRM;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store::File';
+use base 'Workout::Store';
 use Carp;
 use DateTime;
 
@@ -119,15 +123,17 @@ sub fmtdur {
 	sprintf( '%02i:%02i:%02.1f', $hrs, $min, $sec );
 }
 
-=head2 flush
+=head2 write
 
-flush data to disk.
+write data to disk.
 
 =cut
 
-sub flush {
-	my( $self ) = @_;
-	my $fh = $self->fh;
+sub write {
+	my( $self, $fname, $a ) = @_;
+
+	open( my $fh, '>', $fname )
+		or croak "open '$fname': $!";
 
 	@{$self->{data}} 
 		or croak "no data";
@@ -240,7 +246,8 @@ $self->{note}
 		) ), "\n";
 	};
 
-	$self->SUPER::flush;
+	close($fh);
+	1;
 }
 
 
@@ -249,7 +256,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store::File
+Workout::Store
 
 =head1 AUTHOR
 

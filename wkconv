@@ -52,8 +52,12 @@ if( $needhelp ){
 	
 my( $ifile, $ofile ) = @ARGV;
 
+$itype ||= lc( ($ifile =~ /\.([^.]+)$/)[0] );
+$otype ||= lc( ($ofile =~ /\.([^.]+)$/)[0] );
+
+
 my $calc = Workout::Calc->new;
-my $src = Workout::file( $ifile, { 
+my $src = Workout::file_read( $ifile, { 
 	ftype	=> $itype,
 	calc	=> $calc,
 } );
@@ -64,14 +68,13 @@ my $res = Workout::filter('Resample', $join, {
 	calc => $calc, 
 	recint => $recint,
 } );
-my $dst = Workout::file( $ofile, { 
+my $dst = Workout::file_new( { 
 	ftype	=> $otype,
 	calc	=> $calc, 
 	recint	=> $recint, 
-	write	=> 1,
 } );
 $dst->from( $res );
-$dst->flush;
+$dst->write( $ofile );
 
 print 
 "input=", $join->cntin, " ",

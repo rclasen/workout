@@ -5,7 +5,7 @@ Workout::Calc - helper functions for calculating workout data fields
 =head1 SYNOPSIS
 
   $calc = Workout::Calc->new;
-  $src = Workout::Store::SRM->new( "foo.srm", { calc => $calc } );
+  $src = Workout::Store::SRM->read( "foo.srm", { calc => $calc } );
   ...
 
 =head1 DESCRIPTION

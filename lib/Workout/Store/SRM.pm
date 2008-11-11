@@ -1,14 +1,17 @@
 
 =head1 NAME
 
-Workout::Store::SRM - Perl extension for blah blah blah
+Workout::Store::SRM - Perl extension to read/write SRM files
 
 =head1 SYNOPSIS
 
-  $src = Workout::Store::Gpx->new( "foo.gpx" );
-  while( $chunk = $src->next ){
+  $src = Workout::Store::SRM->read( "foo.srm" );
+  $iter = $src->iterate;
+  while( $chunk = itersrc->next ){
   	...
   }
+
+  $src->write( "out.srm" );
 
 =head1 DESCRIPTION
 
@@ -106,7 +109,7 @@ package Workout::Store::SRM;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store::File';
+use base 'Workout::Store';
 use Carp;
 use DateTime;
 
@@ -136,9 +139,9 @@ constructor
 =cut
 
 sub new {
-	my( $class, $fname, $a ) = @_;
+	my( $class,$a ) = @_;
 
-	my $self = $class->SUPER::new( $fname, $a );
+	my $self = $class->SUPER::new( $a );
 
 	push @{$self->{fsupported}}, @fsupported;
 	$self->{blkmin} = $a->{blkmin} || 120; # min. block length/seconds
@@ -151,8 +154,6 @@ sub new {
 	$self->{blocks} = [];
 	$self->{marker} = [];
 	$self->{chunks} = [];
-
-	$self->read unless $self->{write};
 
 	$self;
 }
@@ -199,14 +200,15 @@ sub gradient {
 
 # TODO: block_add
 # TODO: chunk_add
-# TODO: flush
+# TODO: write
 
-# TOOD: make read a constructor
 sub read {
-	my( $self ) = @_;
+	my( $class, $fname, $a ) = @_;
+	my $self = $class->new( $a );
 
+	open( my $fh, '<', $fname )
+		or croak "open '$fname': $!";
 
-	my $fh = $self->fh;
 	my $buf;
 
 	############################################################
@@ -349,7 +351,7 @@ sub read {
 	############################################################
 	# read data chunks 
 
-	while( CORE::read( $self->fh, $buf, 5 ) == 5 ){
+	while( CORE::read( $fh, $buf, 5 ) == 5 ){
 
 		@_ = unpack( "CCCCC", $buf );
 
@@ -364,7 +366,8 @@ sub read {
 	@{$self->{chunks}} < $ckcnt && warn "cannot read all data chunks";
 	$self->debug( "read ". @{$self->{chunks}} ." chunks" );
 
-	return;
+	close($fh);
+	$self;
 }
 
 =head2 iterate
@@ -386,7 +389,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store::File
+Workout::Store
 
 =head1 AUTHOR
 

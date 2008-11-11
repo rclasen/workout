@@ -5,9 +5,9 @@ Workout::Store - Base Class for Sport Workout data Stores
 =head1 SYNOPSIS
 
   # read SRM file with 1sec recint and multiple blocks
-  $src = Workout::Store::SRM->new( "input.srm" ); 
+  $src = Workout::Store::SRM->read( "input.srm" ); 
   # read Gpx file for elevation
-  $ele = Workout::Store::Gpx->new( "iele.gpx );
+  $ele = Workout::Store::Gpx->read( "iele.gpx );
 
   # join, resample and merge input files into a memory copy
   $join = Workout::Filter::Join->new( $src );
@@ -22,9 +22,9 @@ Workout::Store - Base Class for Sport Workout data Stores
   # write to file, calculating missing fields where necessary
   $conv = Workout::Filter::CalcMissing->new( $mem );
   # write to HRM file (one block) and different recint
-  $dst = Workout::Store::HRM->new( "out.hrm", { write => 1, recint => 5 } );
+  $dst = Workout::Store::HRM->new( { recint => 5 } );
   $dst->from( $conv );
-  $dst->flush;
+  $dst->write( "out.hrm" );
 
 
 =head1 DESCRIPTION

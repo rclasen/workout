@@ -5,7 +5,7 @@ Workout::Base - Base Class for Workout framework
 =head1 SYNOPSIS
 
   # read SRM file with 1sec recint and multiple blocks
-  $src = Workout::Store::SRM->new( "input.srm" ); 
+  $src = Workout::Store::SRM->read( "input.srm" ); 
   $it = $src->iterate;
   while( defined(my $chunk = $it->next)){
   	print join(",",@$chunk{qw(time dur pwr)}),"\n";

@@ -11,7 +11,7 @@ Workout::Athlete - Athlete specific Data
   );
   $ath->vo2max( 30 );
   $calc = Workout::Calc->new( $ath );
-  $src = Workout::Store::SRM->new( "input.srm", { calc => $calc } );
+  $src = Workout::Store::SRM->read( "input.srm", { calc => $calc } );
   $dst = Workout::Store::Memory->new( { calc => $calc });
   $dst->from( $src );
 

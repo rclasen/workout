@@ -4,10 +4,15 @@ Workout::Store::Gpx - read/write GPS tracks in XML format
 
 =head1 SYNOPSIS
 
-  $src = Workout::Store::Gpx->new( "foo.gpx" );
-  while( $chunk = $src->next ){
+  use Workout::Store::Gpx;
+
+  $src = Workout::Store::Gpx->read( "foo.gpx" );
+  $iter = $src->iterate;
+  while( $chunk = $iter->next ){
   	...
   }
+
+  $src->write( "out.gpx" );
 
 =head1 DESCRIPTION
 
@@ -84,7 +89,7 @@ package Workout::Store::Gpx;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store::File';
+use base 'Workout::Store';
 use Carp;
 use Geo::Gpx;
 
@@ -98,9 +103,9 @@ sub filetypes {
 }
 
 sub new {
-	my( $class, $fname, $a ) = @_;
+	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( $fname, $a );
+	my $self = $class->SUPER::new( $a );
 
 	push @{$self->{fsupported}}, @fsupported;
 	push @{$self->{frequired}}, @frequired;
@@ -109,6 +114,24 @@ sub new {
 	$self;
 }
 
+sub read {
+	my( $class, $fname, $a ) = @_;
+	my $self = $class->new( $a );
+
+	open( my $fh, '<', $fname )
+		or croak "open '$fname': $!";
+
+	my $gpx = Geo::Gpx->new( input => $fh )
+		or croak "cannot read file: $!";
+
+	$self->{tracks} = $gpx->tracks;
+
+	close($fh);
+
+	$self;
+}
+
+
 =head2 iterate
 
 =cut
@@ -116,26 +139,19 @@ sub new {
 sub iterate {
 	my( $self ) = @_;
 
-	if( ! $self->{tracks} ){
-		my $gpx = Geo::Gpx->new( input => $self->fh )
-			or croak "cannot read file: $!";
-
-		$self->{tracks} = $gpx->tracks;
-	};
-
 	Workout::Store::Gpx::Iterator->new( $self );
 }
 
 # TODO: block_add
 # TODO: chunk_add
-# TODO: flush
+# TODO: write
 
 1;
 __END__
 
 =head1 SEE ALSO
 
-Workout::Store::File
+Workout::Store
 
 =head1 AUTHOR
 
