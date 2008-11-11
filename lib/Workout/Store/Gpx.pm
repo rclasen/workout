@@ -118,8 +118,13 @@ sub read {
 	my( $class, $fname, $a ) = @_;
 	my $self = $class->new( $a );
 
-	open( my $fh, '<', $fname )
-		or croak "open '$fname': $!";
+	my $fh;
+	if( ref $fname ){
+		$fh = $fname;
+	} else {
+		open( $fh, '<', $fname )
+			or croak "open '$fname': $!";
+	}
 
 	my $gpx = Geo::Gpx->new( input => $fh )
 		or croak "cannot read file: $!";

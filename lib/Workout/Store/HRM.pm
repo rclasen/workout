@@ -132,11 +132,9 @@ write data to disk.
 sub write {
 	my( $self, $fname, $a ) = @_;
 
-	open( my $fh, '>', $fname )
-		or croak "open '$fname': $!";
-
 	@{$self->{data}} 
 		or croak "no data";
+
 	my $last = $self->{data}[-1];
 	my $first = $self->{data}[0];
 
@@ -149,6 +147,14 @@ sub write {
 	my $dur = $last->{time} - $stime;
 	my $spdav = $self->{moving} ? $self->{dist} / $self->{moving} : 0;
 	my $eleav = $self->{elesum} * $self->{recint} / $dur;
+
+	my $fh;
+	if( ref $fname ){
+		$fh = $fname;
+	} else {
+		open( $fh, '>', $fname )
+			or croak "open '$fname': $!";
+	}
 
 	print $fh 
 "[Params]
