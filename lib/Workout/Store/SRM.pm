@@ -25,6 +25,16 @@ use base 'Workout::Iterator';
 use Carp;
 
 
+sub new {
+	my $class = shift;
+	my $self = $class->SUPER::new( @_ );
+
+	$self->{nbk} = 0;
+	$self->{nck} = 0;
+	$self->{ctime} = undef;
+	$self;
+}
+
 =head2 next
 
 =cut
@@ -34,42 +44,59 @@ sub next {
 
 	my $store = $self->store;
 
-	while( @{$store->{blocks}} ){
-		my $blk = $store->{blocks}[0];
+	# find next chunk
+	while( $self->{nbk} <= $#{$store->{blocks}} ){
+		my $blk = $store->{blocks}[$self->{nbk}];
 
-		$self->debug( "enter block $blk->{stime}")
-			unless $store->{chunk};
-
-		# last chunk in block?
-		my $cck = ++$store->{chunk};
-		if( $cck > $blk->{ckcnt} ){
-			$store->{chunk} = 0;
-			shift @{$store->{blocks}};
+		if( $blk->{skip} ){
+			$self->debug( "skipping junk block ". $self->{nbk} );
+			$self->{nbk}++;
 			next;
 		}
 
-		my $buf;
-		CORE::read( $store->fh, $buf, 5 ) == 5
-			or croak "failed to read data chunk";
-		next if $blk->{skip};
+		if( $self->{nck} >= $blk->{ckcnt} ){
+			$self->debug( "end of block ". $self->{nbk} );
+			$self->{nck} = 0;
+			$self->{nbk}++;
+			next;
+		}
 
-		@_ = unpack( "CCCCC", $buf );
-		my $kph = ( (( $_[1] & 0xf0) << 3) | ( $_[0] & 0x7f)) 
-			* 3.0 / 26;
+		# fix time to avoid overlapping
+		if( defined $self->{ctime} ){
+			$self->{ctime} += $store->recint;
 
-		$self->{cntin}++;
-		$self->{cntout}++;
-		return {
-			time	=> $blk->{stime} + $cck * $store->recint,
-			dur	=> $store->recint,
-			pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
-			spd	=> $kph / 3.6,
-			cad	=> $_[3],
-			hr	=> $_[4],
+			if( $self->{nck} == 0 ){
+				if( $self->{ctime} > $blk->{stime}->epoch ){
+					my $t = DateTime->from_epoch( 
+						epoch => $self->{ctime} );
+
+					warn "fixing time of block "
+						. $self->{nbk} 
+						. " from ".  $blk->{stime}->hms
+						. " to ". $t->hms;
+				} else {
+					$self->{ctime} = $blk->{stime}->epoch;
+				}
+			}
+
+		} else {
+			$self->{ctime} = $blk->{stime}->epoch
+		}
+
+		# TODO: more calc
+		my $idx = $blk->{ckstart} + $self->{nck}++;
+		my $ick = $store->{chunks}[$idx];
+		my $ock = { %$ick,
+			'time'	=> $self->{ctime},
+			'dur'	=> $store->recint,
 		};
+		$ock->{spd} /= 3.6; # km/h -> m/s
+
+		return $ock;
 	}
+
+	# no chunk found, return nothing
 	return;
-	# TODO: check we've really reached EOF after reading all blocks
 }
 
 
@@ -115,29 +142,69 @@ sub new {
 
 	push @{$self->{fsupported}}, @fsupported;
 	$self->{blkmin} = $a->{blkmin} || 120; # min. block length/seconds
-	$self->{blocks} = undef; # list with data block offsets
-	$self->{chunk} = 0; # chunks read in current block
 	$self->{tz} = $a->{tz} || 'local';
+
+	$self->{date} = undef;
+	$self->{circum} = undef;
+	$self->{zeropos} = undef;
+	$self->{gradient} = undef;
+	$self->{blocks} = [];
+	$self->{marker} = [];
+	$self->{chunks} = [];
+
+	$self->read unless $self->{write};
+
 	$self;
+}
+
+sub blkmin {
+	my $self = shift;
+	if( @_ ){
+		$self->{blkmin} = shift;
+	}
+	return $self->{blkmin};
+}
+
+sub date {
+	my $self = shift;
+	if( @_ ){
+		$self->{date} = shift;
+	}
+	return $self->{date};
+}
+
+sub circum {
+	my $self = shift;
+	if( @_ ){
+		$self->{circum} = shift;
+	}
+	return $self->{circum};
+}
+
+sub zeropos {
+	my $self = shift;
+	if( @_ ){
+		$self->{zeropos} = shift;
+	}
+	return $self->{zeropos};
+}
+
+sub gradient {
+	my $self = shift;
+	if( @_ ){
+		$self->{gradient} = shift;
+	}
+	return $self->{gradient};
 }
 
 # TODO: block_add
 # TODO: chunk_add
 # TODO: flush
 
-=head2 iterate
-
-read header (ie. non-chunk data) from file and return iterator
-
-=cut
-
-sub iterate {
+# TOOD: make read a constructor
+sub read {
 	my( $self ) = @_;
 
-	defined $self->{blocks}
-		and croak "file already open";
-
-	$self->{blocks} = [];
 
 	my $fh = $self->fh;
 	my $buf;
@@ -156,40 +223,46 @@ sub iterate {
 		$clen = 3;
 	}
 	
-	my $day = DateTime->new( 
+	$self->date( DateTime->new( 
 		year		=> 1880, 
 		month		=> 1, 
 		day		=> 1,
 		time_zone	=> $self->{tz},
-	)->add( days => $_[1] )->epoch;
-	#$circum = $_[2];
-	$self->{recint} = $_[3] / $_[4];
+	)->add( days => $_[1] ));
+
+	$self->circum( $_[2] );
+	$self->recint( $_[3] / $_[4] );
 	my $blockcnt = $_[5];
 	my $markcnt = $_[6];
-	$self->{note} = $_[7];
-	if( $self->{note} =~ /^(\d+)øC/ ){
-		$self->{temp} = $1;
+
+	$self->note( $_[7] );
+	if( $_[7] =~ /^(\d+)øC/ ){
+		$self->temperature( $1 );
 	}
-	$self->debug( "blocks: $blockcnt, marker: $markcnt");
+	$self->debug( "date: ". $self->date->ymd 
+		." blocks: $blockcnt, marker: $markcnt");
 
 	############################################################
-	# TODO: read marker
-#	my @marker;
+	# read marker
 	while( $markcnt-- >= 0 ){
 		CORE::read( $fh, $buf, $clen + 15 ) == $clen + 15
 			or croak "failed to read marker";
-#		@_ = unpack( "A[$clen]Cvvvvvvv", $buf );
-#		push @marker, {
-#			comment	=> $_[0],
-#			active	=> $_[1],
-#			ckstart	=> $_[2], # 1..
-#			ckend	=> $_[3], # 1..
-#			apwr	=> $_[4] / 8,
-#			ahr	=> $_[5] / 64,
-#			hcad	=> $_[6] / 32,
-#			aspd	=> $_[7] / 2500 * 9,
-#			pwc	=> $_[8],
-#		};
+		@_ = unpack( "A[$clen]Cvvvvvvv", $buf );
+		push @{$self->{marker}}, {
+			comment	=> $_[0],
+			active	=> $_[1],
+			ckstart	=> $_[2] -1, # 1..
+			ckend	=> $_[3] -1, # 1..
+			apwr	=> $_[4] / 8,
+			ahr	=> $_[5] / 64,
+			hcad	=> $_[6] / 32,
+			aspd	=> $_[7] / 2500 * 9,
+			pwc	=> $_[8],
+		};
+		$self->debug( "marker ". @{$self->{marker}}. ": " 
+			. '"'. $_[0] .'"'
+			. ", first: $_[2]"
+			. ", last: $_[3]");
 	}
 
 	############################################################
@@ -201,33 +274,24 @@ sub iterate {
 			or croak "failed to read data block";
 
 		@_ = unpack( "Vv", $buf );
-		my $stime = $day + $_[0] / 100;
-		if( my $last = $self->{blocks}[-1] ){
-			my $fix = 0;
-			while( $last->{etime} > $stime + $fix ){
-				$fix += 3600;
-			}
-			if( $fix ){
-				warn "fixing start time of block ".
-				(@{$self->{blocks}}+1) ." from ". $stime
-				." to ". ($stime + $fix);
-				$stime += $fix;
-			}
-		}
+		my $stime = $self->date->clone
+			->add( seconds =>  $_[0] / 100 );
 
 		my $ckcnt = $_[1];
-		my $etime = $stime + $ckcnt * $self->recint;
-
 		my $blk = {
 			stime	=> $stime,
-			etime	=> $etime,
 			ckcnt	=> $ckcnt,
-			ckstart => $blockcks +1, # 1..
+			ckstart => $blockcks,
 			skip	=> 0,
 		};
 		push @{$self->{blocks}}, $blk;
-		$self->debug( "block $stime to $etime, cnt: $ckcnt");
-		$blockcks += $_[1];
+
+		$self->debug( "block ". $#{$self->{blocks}} .": "
+			. $stime->hms 
+			.", first: $blockcks "
+			.", chunks: $ckcnt");
+
+		$blockcks += $ckcnt;
 	}
 	############################################################
 	# calibration data, ff
@@ -235,8 +299,8 @@ sub iterate {
 	CORE::read( $fh, $buf, 7 ) == 7
 		or croak "failed to read calibration data";
 	@_ = unpack( "vvvx", $buf );
-	#$self->{zeropos} = $_[0];
-	#$self->{gradient} = $_[1];
+	$self->zeropos( $_[0] );
+	$self->gradient( $_[1] );
 	my $ckcnt = $_[2];
 
 	$self->debug( "chunks: $ckcnt, blockchunks: $blockcks" );
@@ -250,9 +314,17 @@ sub iterate {
 		my $extra = $blockcks - $ckcnt;
 		foreach my $blk ( reverse @{$self->{blocks}} ){
 			if( $extra <= $blk->{ckcnt} ){
+				$self->debug( "truncating block "
+					. $blk->{stime}->hms
+					." by $extra chunks" );
+
 				$blk->{ckcnt} -= $extra;
 				last;
 			} else {
+				$self->debug( "truncating block "
+					. $blk->{stime}->hms
+					. "to 0 chunks" );
+
 				$extra -= $blk->{ckcnt};
 				$blk->{ckcnt} = 0;
 			}
@@ -261,21 +333,50 @@ sub iterate {
 
 	# mark too short leading blocks to be skipped
 	foreach my $blk ( @{$self->{blocks}} ){
-		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
-		$self->debug( "skipping block $blk->{stime} (< $self->{blkmin}sec)" );
+		last if $blk->{ckcnt} * $self->recint > $self->blkmin;
+		$self->debug( "leading junk block ". $blk->{stime}->hms 
+			." (< ".  $self->blkmin ."sec)" );
 		$blk->{skip}++;
 	}
 	# mark too short trailing blocks to be skipped
 	foreach my $blk ( reverse @{$self->{blocks}} ){
-		last if $blk->{ckcnt} * $self->recint > $self->{blkmin};
-		$self->debug( "skipping block $blk->{stime} (< $self->{blkmin}sec)" );
+		last if $blk->{ckcnt} * $self->recint > $self->blkmin;
+		$self->debug( "trailing junk block ". $blk->{stime}->hms 
+			." (< ".  $self->blkmin ."sec)" );
 		$blk->{skip}++;
 	}
 
 	############################################################
-	# data chunks are read by next()
+	# read data chunks 
 
-	Workout::Store::SRM::Iterator->new( $self );
+	while( CORE::read( $self->fh, $buf, 5 ) == 5 ){
+
+		@_ = unpack( "CCCCC", $buf );
+
+		push @{$self->{chunks}}, {
+			spd	=> 3.0 / 26 * 
+				( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) ),
+			pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
+			cad	=> $_[3],
+			hr	=> $_[4],
+		};
+	}
+	@{$self->{chunks}} < $ckcnt && warn "cannot read all data chunks";
+	$self->debug( "read ". @{$self->{chunks}} ." chunks" );
+
+	return;
+}
+
+=head2 iterate
+
+read header (ie. non-chunk data) from file and return iterator
+
+=cut
+
+sub iterate {
+	my $self = shift;
+
+	Workout::Store::SRM::Iterator->new( $self, @_ );
 }
 
 
