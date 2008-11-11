@@ -244,7 +244,10 @@ returns the recording interval in seconds.
 =cut
 
 sub recint {
-	my( $self ) = @_;
+	my $self = shift;
+	if( @_ ){
+		$self->{recint} = shift;
+	}
 	return $self->{recint};
 }
 
@@ -256,7 +259,10 @@ return comment string for this workout
 =cut
 
 sub note {
-	my( $self ) = @_;
+	my $self = shift;
+	if( @_ ){
+		$self->{note} = shift;
+	}
 	return $self->{note};
 }
 
@@ -268,7 +274,10 @@ return comment string for this workout
 =cut
 
 sub temperature {
-	my( $self ) = @_;
+	my $self = shift;
+	if( @_ ){
+		$self->{temp} = shift;
+	}
 	return $self->{temp};
 }
 
