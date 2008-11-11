@@ -39,7 +39,7 @@ sub new {
 	my( $class, $iter, $a ) = @_;
 
 	$iter->isa( 'Workout::Iterator' )
-		or $iter = $iter->iterate;
+		or $iter = $iter->iterate( $a );
 
 	my $self = $class->SUPER::new( $iter->store, $a );
 	$self->{src} = $iter;

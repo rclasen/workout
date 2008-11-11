@@ -3,6 +3,7 @@
 # TODO:
 # - get parameters (bike, user) from DB
 # - add data to DB
+# - one-line output for tabular lists of several workouts
 
 # graph:
 # - speed/power/elevation over time/distance
@@ -20,10 +21,13 @@ use Workout::Store::Memory;
 use Data::Dumper;
 
 my $itype;
+my $debug;
+
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
+	"debug!"	=> \$debug,
 	"help|h!"	=> \$wanthelp,
 	"input|i=s"	=> \$itype,
 )){
@@ -35,6 +39,7 @@ if( $wanthelp ){
 $0 [opt] <fname>
 calculate some fancy data from Workout data
 Options:
+--debug             enable debuging output
 --input|-i=<type>   input file type
 --help              this cruft
 EOF
@@ -54,9 +59,14 @@ if( $needhelp ){
 
 
 my $ath = Workout::Athlete->new;
-my $calc = Workout::Calc->new( { athlete => $ath });
-my $src = Workout::file( $fname, { ftype => $itype, calc => $calc } );
+my $calc = Workout::Calc->new( { debug => $debug, athlete => $ath });
+my $src = Workout::file( $fname, { 
+	debug	=> $debug, 
+	ftype	=> $itype, 
+	calc	=> $calc,
+} );
 my $smth = Workout::filter( 'Smooth', $src, {
+	debug	=> $debug,
 	calc	=> $calc,
 });
 my $mem = Workout::Store::Memory->new;
