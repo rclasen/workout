@@ -31,9 +31,11 @@ our $VERSION = '0.01';
 
 # TODO: allow to supply start time
 
-__PACKAGE__->mk_accessors(qw(
-	recint
-));
+our %default = (
+	recint	=> 5,
+);
+
+__PACKAGE__->mk_accessors( keys %default );
 
 =head2 new( $src, $arg )
 
@@ -46,7 +48,7 @@ sub new {
 
 	$a||={};
 	my $self = $class->SUPER::new( $src, {
-		recint	=> 5,
+		%default,
 		%$a,
 	});
 	$self->{agg} = undef;
