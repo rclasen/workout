@@ -69,13 +69,20 @@ sub next {
 		$self->debug( "inserting ". $dur ."sec at ". $ltime);
 		# on block boundaries: 
 		#   queue current chunk and insert fake chunk
-		$self->{queued} = $o;
 
-		$o = Workout::Chunk->new( {
+		$self->{queued} = $o;
+		my $ma = $dur / ( $dur + $o->dur);
+		# TODO: move ele,lon,lat calc to ::Chunk
+		my %a = (
 			time    => $ltime,
 			dur     => $dur,
 			prev	=> $prev,
-		} );
+			ele => ($prev->ele||0) + ($o->ele||0) * $ma,
+			lon => ($prev->lon||0) + (($o->lon||0) - ($prev->lon||0)) * $ma,
+			lat => ($prev->lat||0) + (($o->lat||0) - ($prev->lat||0)) * $ma,
+		);
+
+		$o = Workout::Chunk->new( \%a );
 		$self->{queued}->prev( $o );
 
 	} else {

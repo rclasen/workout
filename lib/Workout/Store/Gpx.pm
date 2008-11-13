@@ -32,7 +32,7 @@ sub new {
 	my( $class, $store, $a ) = @_;
 
 	my $self = $class->SUPER::new( $store, $a );
-	$self->{track} = $store->{gpx}->tracks->[0];
+	$self->{track} = $store->track;
 	$self->{cseg} = 0;
 	$self->{cpt} = 0;
 	$self->{prev} = undef;
@@ -86,6 +86,7 @@ sub next {
 			$prev->lon, $prev->lat,
 			$ck->lon, $ck->lat 
 		));
+		# TODO: keep prev for lon,lat,climb calculations?
 		$ck->prev( $prev ) if $prev->dur;
 
 		$self->{cntout}++;
@@ -111,10 +112,26 @@ sub filetypes {
 	return "gpx";
 }
 
+__PACKAGE__->mk_ro_accessors(qw( track gpx last ));
+
+# TODO: Geo::Gpx doesn't support subsecond timestamps
+
 sub new {
 	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
+	$a ||= {};
+	my $self = $class->SUPER::new( {
+		%$a,
+		last	=> undef,
+		gpx	=> Geo::Gpx->new,
+		track	=> {
+			segments	=> [{
+				points	=> [],
+			}],
+		},
+	});
+	$self->gpx->tracks( [ $self->track ] );
+
 	$self;
 }
 
@@ -137,6 +154,7 @@ sub read {
 
 	@{$self->{gpx}->tracks} <= 1
 		or croak "cannot deal with multiple tracks per file";
+	$self->{track} = $self->gpx->tracks->[0];
 
 	$self;
 }
@@ -156,9 +174,52 @@ sub iterate {
 	});
 }
 
-# TODO: block_add
-# TODO: chunk_add
-# TODO: write
+sub block_add {
+	my( $self ) = @_;
+
+	push @{$self->track->{segments}}, {
+		points	=> [],
+	};
+}
+
+sub chunk_add {
+	my( $self, $c ) = @_;
+
+	unless( $c->lon && $c->lat ){
+		return;
+	}
+
+	$self->chunk_check( $c, $self->last );
+	$self->{last} = $c;
+
+	push @{$self->track->{segments}[-1]{points}}, {
+		lon	=> $c->lon,
+		lat	=> $c->lat,
+		ele	=> $c->ele,
+		time	=> $c->time,
+	};
+}
+
+sub write {
+	my( $self, $fname, $a ) = @_;
+
+	@{$self->{track}{segments}} 
+		or croak "no data";
+
+	my $fh;
+	if( ref $fname ){
+		$fh = $fname;
+	} else {
+		open( $fh, '>', $fname )
+			or croak "open '$fname': $!";
+	}
+
+	print $fh $self->gpx->xml;
+	close($fh)
+		or return;
+
+	1;
+}
 
 1;
 __END__

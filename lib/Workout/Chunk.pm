@@ -106,13 +106,20 @@ sub split {
 		hr	=> $self->hr,
 	};
 
-	if( my $p = $self->prev ){ 
-		# TODO: test ele, lon, lat
-		$a->{ele} = ($p->ele||0) + ($self->climb||0) * $ma;
-		$a->{lon} = ($p->lon||0) + (($self->lon||0) - ($p->lon||0)) * $ma;
-		$a->{lat} = ($p->lat||0) + (($self->lat||0) - ($p->lat||0)) * $ma;
+	my $p = $self->prev;
+
+	# TODO: allow reuse of lon,lat,ele calc in Filter::Join
+	# TODO: test ele, lon, lat
+	if( $p && defined($p->ele) && defined($self->ele) ){ 
+		$a->{ele} = $p->ele + ($self->ele - $p->ele) * $ma;
 	} else {
 		$a->{ele} = $self->ele;
+	}
+	if( $p && defined($p->lon) && defined($p->lat) &&
+		defined($self->lon) && defined($self->lat) ){
+
+		$a->{lon} = $p->lon + ($self->lon - $p->lon) * $ma;
+		$a->{lat} = $p->lat + ($self->lat - $p->lat) * $ma;
 	}
 
 	my $aa = Workout::Chunk->new( $a );
