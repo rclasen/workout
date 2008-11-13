@@ -1,0 +1,130 @@
+#!/usr/bin/perl
+
+# plot diagram with merged data of srm + gpx recordings
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp qw/tempfile/;
+use Workout;
+
+my $delta = 0;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"delta|d=i"	=> \$delta,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <srm-fname> <gpx-fname>
+submit workout data to endure database
+
+Options:
+--delta|-d=<d>      time delta
+--help              this cruft
+EOF
+	exit 0;
+}
+
+my $sfname = shift;
+if( ! $sfname ){
+	print STDERR "missing srm file\n";
+	$needhelp++;
+}
+
+my $gfname = shift;
+if( ! $gfname ){
+	print STDERR "missing gpx file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+
+
+# read srm
+my $srm = Workout::file_read( $sfname );
+my( $sdfh, $sdfname ) = tempfile( TMPDIR => 1 );
+my $srmi = $srm->iterate;
+while( defined(my $c = $srmi->next)){
+	print $sdfh join(' ', map { $c->$_ || 0 } 
+		qw( time spd cad hr pwr) ), "\n";
+}
+close($sdfh);
+
+# read gpx
+my $gpx = Workout::file_read( $gfname );
+my( $gdfh, $gdfname ) = tempfile( TMPDIR => 1 );
+my $gpxi = $gpx->iterate;
+my $l;
+while( defined(my $c = $gpxi->next)){
+	print $gdfh $c->time, ' ', $c->ele||0, "\n";
+	$l = $c;
+}
+close($gdfh);
+
+my( $pfh, $pfname ) = tempfile( TMPDIR => 1 );
+print $pfh
+"
+delta=$delta
+set mouse
+#set title 'spd'
+set xdata time
+set format x '\%H:\%M'
+#set xtics rotate
+set timefmt '\%s'
+set autoscale yfixmax
+set autoscale y2fixmax
+set yrange [ 0:* ]
+set size 1, 1
+set origin 0, 0
+set multiplot
+set lmargin 5
+set rmargin 5
+set size 1, 1
+set origin 0, 0
+set xtics nomirror 
+unset y2tics
+set ytics nomirror textcolor lt 9
+unset key
+#plot \\
+#	'$gdfname' using 1:2 \\
+#		title 'ele' with filledcurve y1=0 lt 9 axis x1y1, \\
+#	'$sdfname' using 1:(0) \\
+#		title '' with lines lt 0 axes x1y1 smooth bezier
+plot \\
+	'$gdfname' using 1:2 \\
+		title 'ele' with filledcurve y1=0 lt 9 axis x1y1, \\
+	0 title '' with lines lt 0 axes x1y1 smooth bezier
+set ytics nomirror textcolor lt 5
+set yrange [0:300]
+set y2range [ 0:* ]
+set y2tics
+set key
+plot \\
+	'$sdfname' using (\$1-946684800+delta):(\$2*3.6) \\
+		title 'spd' with lines lt 2 axes x1y2 smooth bezier, \\
+	'$sdfname' using (\$1-946684800+delta):3 \\
+		title 'cad' with lines lt 3 axes x1y2 smooth bezier, \\
+	'$sdfname' using (\$1-946684800+delta):4 \\
+		title 'hr' with lines lt 4 axes x1y2 smooth bezier, \\
+	'$sdfname' using (\$1-946684800+delta):5 \\
+		title 'pwr' with lines lt 5 axes x1y1 smooth bezier
+unset multiplot
+pause mouse
+if ( defined(MOUSE_BUTTON) && MOUSE_BUTTON != 1 ) reread
+";
+close($pfh);
+system( "gnuplot", $pfname );
+
+unlink($sdfname, $gdfname, $pfname);
+

@@ -1,3 +1,9 @@
+workout (0.04) unstable; urgency=low
+
+  * introduced Workout::Chunk and adjusted all componentes to use it
+
+ -- Rainer Clasen <bj@zuto.de>  Wed, 12 Nov 2008 22:59:20 +0100
+
 workout (0.03) unstable; urgency=low
 
   * rearranged modules

@@ -1,0 +1,125 @@
+#!/usr/bin/perl
+
+# convert srm to hrm
+# ... merge gpx ele into hrm when available
+# get summary info
+# generate body
+
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp qw/tempfile/;
+use Workout;
+use Workout::Athlete;
+
+my $recint = 5;
+my $otype;
+my $delta = 0;
+my $debug;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"debug!"	=> \$debug,
+	"type=s"	=> \$otype,
+	"recint|r=i"	=> \$recint,
+	"delta|d=i"	=> \$delta,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <srm-fname> <gpx-fname> <dst-fname>
+prepare workout data for mailing it to the trainer
+
+Options:
+--debug             enable debuging output
+--recint|-r=<int>   sampling interval (default=5)
+--help              this cruft
+EOF
+	exit 0;
+}
+
+my $sfname = shift;
+if( ! $sfname ){
+	print STDERR "missing srm file\n";
+	$needhelp++;
+}
+
+my $gfname = shift;
+if( ! $gfname ){
+	print STDERR "missing gpx file\n";
+	$needhelp++;
+}
+
+my $ofname = shift;
+if( ! $ofname ){
+	print STDERR "missing output file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+$otype ||= lc( ($ofname =~ /\.([^.]+)$/)[0] );
+
+my $ath = Workout::Athlete->new;
+
+# read srm
+my $srm = 
+	Workout::filter('Resample',
+	Workout::filter('Join',
+	Workout::filter('Timeshift',
+	Workout::file_read( $sfname,
+	{
+		debug	=> $debug,
+	}),
+	{ 
+		delta	=> $delta,
+		debug	=> $debug,
+	}),
+	{
+		debug	=> $debug,
+	}),
+	{
+		recint	=> $recint,
+		debug	=> $debug,
+	});
+	
+
+# read gpx
+my $gpx = Workout::filter('Join',
+	Workout::file_read( $gfname, 
+	{
+		debug	=> $debug,
+	}),
+	{
+		debug	=> $debug,
+	});
+
+
+# fill dst
+my $merge = Workout::filter('Merge', $srm, $gpx, [qw( ele )], {
+	debug	=> $debug,
+});
+my $dst = Workout::file_new( { 
+	debug	=> $debug,
+	ftype	=> $otype,
+	recint	=> $recint, 
+	athlete	=> $ath,
+} );
+$dst->from( $merge );
+
+# write dst
+open( my $fh, '>', $ofname )
+	or die "open '$ofname': $!";
+$dst->write( $fh );
+close( $fh );
+
+1;

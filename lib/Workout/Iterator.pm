@@ -24,10 +24,14 @@ use strict;
 use warnings;
 use base 'Workout::Base';
 use Carp;
-use Workout::Calc;
 
 our $VERSION = '0.01';
 
+__PACKAGE__->mk_ro_accessors(qw(
+	store
+	cntin
+	cntout
+));
 
 =head2 new( $store, $arg )
 
@@ -79,12 +83,6 @@ return store that's the source for this iterator (-chain).
 
 =cut
 
-sub store {
-	my( $self ) = @_;
-
-	$self->{store};
-}
-
 
 =head2 cntin
 
@@ -92,19 +90,12 @@ number of chunks passed into this iterator
 
 =cut
 
-sub cntin {
-	$_[0]->{cntin};
-}
-
 =head2 cntout
 
 number of chunks passed out of this iterator
 
 =cut
 
-sub cntout {
-	$_[0]->{cntout};
-}
 
 1;
 __END__

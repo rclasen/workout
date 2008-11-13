@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+
+# interactively determine time delta between multiple recordings for one
+# workout
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp qw/tempfile/;
+use Workout;
+
+my $delta = 0;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"delta|d=i"	=> \$delta,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <srm-fname> <gpx-fname>
+interactively determine time delta between multiple recordings for one workout
+
+Options:
+--delta|-d=<d>      initial delta
+--help              this cruft
+EOF
+	exit 0;
+}
+
+my $sfname = shift;
+if( ! $sfname ){
+	print STDERR "missing srm file\n";
+	$needhelp++;
+}
+
+my $gfname = shift;
+if( ! $gfname ){
+	print STDERR "missing gpx file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+
+# read srm
+my $srm = Workout::file_read( $sfname );
+my( $sdfh, $sdfname ) = tempfile( TMPDIR => 1 );
+my $srmi = $srm->iterate;
+while( defined(my $c = $srmi->next)){
+	print $sdfh $c->time, ' ', $c->spd||0, "\n";
+}
+close($sdfh);
+
+# read gpx
+my $gpx = Workout::file_read( $gfname );
+my( $gdfh, $gdfname ) = tempfile( TMPDIR => 1 );
+my $gpxi = $gpx->iterate;
+my $l;
+while( defined(my $c = $gpxi->next)){
+	print $gdfh $c->time, ' ', $c->spd||0, "\n";
+}
+close($gdfh);
+
+my( $pfh, $pfname ) = tempfile( TMPDIR => 1 );
+print $pfh
+"if( ! defined(delta) ) delta=$delta
+kp=0
+
+set mouse
+set title 'spd'
+set xdata time
+bind PageDown 'delta=delta-3600; kp=1; replot'
+bind Down     'delta=delta-60;   kp=1; replot'
+bind Left     'delta=delta-1;    kp=1; replot'
+bind Right    'delta=delta+1;    kp=1; replot'
+bind Up       'delta=delta+60;   kp=1; replot'
+bind PageUp   'delta=delta+3600; kp=1; replot'
+bind d        'replot'
+set format x '\%H:\%M'
+set xtics rotate
+set timefmt '\%s'
+plot \\
+	'$sdfname' using (\$1-946684800+delta):2 \\
+		title 'srm' with lines , \\
+	'$gdfname' using 1:2 \\
+		title 'gpx' with lines 
+pause mouse
+if ( kp || ( defined(MOUSE_BUTTON) && MOUSE_BUTTON != 1 )) reread
+print delta
+";
+close($pfh);
+system( "gnuplot", $pfname );
+
+unlink($sdfname, $gdfname, $pfname);
+

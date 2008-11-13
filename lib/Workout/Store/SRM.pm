@@ -20,6 +20,29 @@ Interface to read/write SRM power meter files
 =cut
 
 
+package Workout::Store::SRM::Chunk;
+use base 'Workout::Chunk';
+
+__PACKAGE__->mk_accessors(qw( pwr ));
+
+sub spd {
+	my $self = shift;
+	if( @_ ){
+		return $self->{spd} = $_[0] * 3.6;
+	}
+	($self->{spd}||0) / 3.6;
+}
+
+sub dist {
+	my $self = shift;
+	$self->spd * $self->dur;
+}
+
+sub work {
+	my $self = shift;
+	$self->pwr * $self->dur;
+}
+
 package Workout::Store::SRM::Iterator;
 use 5.008008;
 use strict;
@@ -35,6 +58,7 @@ sub new {
 	$self->{nbk} = 0;
 	$self->{nck} = 0;
 	$self->{ctime} = undef;
+	$self->{prev} = undef;
 	$self;
 }
 
@@ -54,6 +78,7 @@ sub next {
 		if( $blk->{skip} ){
 			$self->debug( "skipping junk block ". $self->{nbk} );
 			$self->{nbk}++;
+			$self->{prev} = undef;
 			next;
 		}
 
@@ -61,6 +86,7 @@ sub next {
 			$self->debug( "end of block ". $self->{nbk} );
 			$self->{nck} = 0;
 			$self->{nbk}++;
+			$self->{prev} = undef;
 			next;
 		}
 
@@ -69,7 +95,8 @@ sub next {
 			$self->{ctime} += $store->recint;
 
 			if( $self->{nck} == 0 ){
-				if( $self->{ctime} > $blk->{stime}->epoch ){
+				if( $self->{ctime} >
+				$blk->{stime}->hires_epoch ){
 					my $t = DateTime->from_epoch( 
 						epoch => $self->{ctime} );
 
@@ -78,22 +105,24 @@ sub next {
 						. " from ".  $blk->{stime}->hms
 						. " to ". $t->hms;
 				} else {
-					$self->{ctime} = $blk->{stime}->epoch;
+					$self->{ctime} = $blk->{stime}->hires_epoch;
 				}
 			}
 
 		} else {
-			$self->{ctime} = $blk->{stime}->epoch
+			$self->{ctime} = $blk->{stime}->hires_epoch
 		}
 
-		# TODO: more calc
 		my $idx = $blk->{ckstart} + $self->{nck}++;
 		my $ick = $store->{chunks}[$idx];
-		my $ock = { %$ick,
-			'time'	=> $self->{ctime},
-			'dur'	=> $store->recint,
-		};
-		$ock->{spd} /= 3.6; # km/h -> m/s
+		my $ock = Workout::Store::SRM::Chunk->new( $ick );
+		$ock->prev( $self->{prev} );
+		$ock->time( $self->{ctime} );
+		$ock->dur( $store->recint );
+
+		$self->{prev} = $ock;
+		$self->{cntin}++;
+		$self->{cntout}++;
 
 		return $ock;
 	}
@@ -126,11 +155,20 @@ my %magic_tag = (
 	SRM6	=> 6,
 );
 
-our @fsupported = qw( hr spd cad pwr );
-
 sub filetypes {
 	return "srm";
 }
+
+# TODO: move blkmin + junk skipping to Filter
+
+__PACKAGE__->mk_accessors(qw(
+	tz
+	blkmin
+	date
+	circum
+	zeropos
+	gradient
+));
 
 =head2 new( $file, $args )
 
@@ -141,61 +179,18 @@ constructor
 sub new {
 	my( $class,$a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
+	$a||={};
+	my $self = $class->SUPER::new( {
+		blkmin	=> 120, # min. block length/seconds
+		tz	=> 'local',
+		%$a,
+	});
 
-	push @{$self->{fsupported}}, @fsupported;
-	$self->{blkmin} = $a->{blkmin} || 120; # min. block length/seconds
-	$self->{tz} = $a->{tz} || 'local';
-
-	$self->{date} = undef;
-	$self->{circum} = undef;
-	$self->{zeropos} = undef;
-	$self->{gradient} = undef;
 	$self->{blocks} = [];
 	$self->{marker} = [];
 	$self->{chunks} = [];
 
 	$self;
-}
-
-sub blkmin {
-	my $self = shift;
-	if( @_ ){
-		$self->{blkmin} = shift;
-	}
-	return $self->{blkmin};
-}
-
-sub date {
-	my $self = shift;
-	if( @_ ){
-		$self->{date} = shift;
-	}
-	return $self->{date};
-}
-
-sub circum {
-	my $self = shift;
-	if( @_ ){
-		$self->{circum} = shift;
-	}
-	return $self->{circum};
-}
-
-sub zeropos {
-	my $self = shift;
-	if( @_ ){
-		$self->{zeropos} = shift;
-	}
-	return $self->{zeropos};
-}
-
-sub gradient {
-	my $self = shift;
-	if( @_ ){
-		$self->{gradient} = shift;
-	}
-	return $self->{gradient};
 }
 
 # TODO: block_add
@@ -247,7 +242,9 @@ sub read {
 		$self->temperature( $1 );
 	}
 	$self->debug( "date: ". $self->date->ymd 
-		." blocks: $blockcnt, marker: $markcnt");
+		." blocks: $blockcnt,"
+		." marker: $markcnt,"
+		." recint: ". $self->recint );
 
 	############################################################
 	# read marker
@@ -300,8 +297,9 @@ sub read {
 			$self->debug( "block ". $#{$self->{blocks}} .": "
 				. sprintf( '%5d+%5d=%5d', 
 					$blockcks, $ckcnt, ($blockcks + $ckcnt) )
-				." ".  $stime->hms . " (". $stime->epoch .")"
-				." to ". $etime->hms . " (". $etime->epoch .")"
+				." @". $_[0]
+				." ".  $stime->hms . " (".  $stime->hires_epoch .")"
+				." to ". $etime->hms . " (".  $etime->hires_epoch .")"
 				);
 		}
 
@@ -389,9 +387,13 @@ read header (ie. non-chunk data) from file and return iterator
 =cut
 
 sub iterate {
-	my $self = shift;
+	my( $self, $a ) = @_;
 
-	Workout::Store::SRM::Iterator->new( $self, @_ );
+	$a ||= {};
+	Workout::Store::SRM::Iterator->new( $self, {
+		%$a,
+		debug	=> $self->{debug},
+	});
 }
 
 

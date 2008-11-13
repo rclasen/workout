@@ -31,6 +31,10 @@ our $VERSION = '0.01';
 
 # TODO: allow to supply start time
 
+__PACKAGE__->mk_accessors(qw(
+	recint
+));
+
 =head2 new( $src, $arg )
 
 new Iterator
@@ -39,12 +43,15 @@ new Iterator
 
 sub new {
 	my( $class, $src, $a ) = @_;
-	my $self = $class->SUPER::new( $src, $a );
-	$self->{recint} = $a->{recint} || 5;
-	$self->{agg} = {
-		dur	=> 0,
-	};
-	$self->{last} = undef;
+
+	$a||={};
+	my $self = $class->SUPER::new( $src, {
+		recint	=> 5,
+		%$a,
+	});
+	$self->{agg} = undef;
+	$self->{prev} = undef;
+	$self->{prev_in} = undef;
 	$self;
 }
 
@@ -53,11 +60,6 @@ sub new {
 return recording/sampling interval in use
 
 =cut
-
-sub recint {
-	my( $self ) = @_;
-	$self->{recint};
-}
 
 =head2 next
 
@@ -68,83 +70,49 @@ return next (resampled) data chunk
 sub next {
 	my( $self ) = @_;
 
-	my $a = $self->{agg};
-
 	# aggregate data
-	while( ! $a || ! exists $a->{dur} || $a->{dur} < $self->recint ){
+	while( ! $self->{agg} 
+		|| $self->{agg}->dur < $self->recint ){
+
 		my $r = $self->src->next or return;
 		$self->{cntin}++;
+
+		my $l = $self->{prev_in};
+
+		# new block? throw away collected data and restart
+		my $ltime = $r->time - $r->dur;
+		if( $l && abs($ltime - $l->time) > 0.1){
+			$self->debug( "new block, resample reset" );
+			$self->{agg} = $r;
+			$self->{prev} = undef;
+			$self->{prev_in} = undef;
+			next;
+		}
 
 		#my $s = { %$a };
 		#print "reading chunk ", ++$icnt, "\n";
 		#print "-";
 
-		my $ndur = $a->{dur} + $r->{dur};
-		foreach my $f ($self->store->fields_span(qw(chunkv)) ){
-			if( exists $r->{$f} ){
-				$a->{$f} = ( ($a->{$f}||0) * $a->{dur} 
-					+ $r->{$f} * $r->{dur}) / $ndur;
-			} else {
-				delete $a->{$f};
-			}
+		if( ! $self->{agg} ){
+			$self->{agg} = $r;
+
+		} else {
+			# TODO: if $r->dur + $agg->dur > recint, then
+			# split before merge
+			$self->{agg} = $self->{agg}->merge( $r );
 		}
-
-		foreach my $f ($self->store->fields_span(qw(chunk)) ){
-			if( exists $r->{$f} ){
-				$a->{$f} += $r->{$f};
-			} else {
-				delete $a->{$f};
-			}
-		}
-
-		foreach my $f ($self->store->fields_span(qw( trip abs geo)) ){
-			if( exists $r->{$f} ){
-				$a->{$f} = $r->{$f};
-			} else {
-				delete $a->{$f};
-			}
-		}
-
-		#print "aggregated: ", Data::Dumper->Dump( [$s, $r, $a],[qw(s r a)] );
 	}
 
+	# TODO: fill with zeros when crossing inbound block boundaries
+	# TODO: move to seperate moduule for reuse in Merge.pm
 
-	my $o; # new outuput entry
-	#print "writing chunk ", ++$ocnt, "\n";
-	#print "+";
-
-	#my $s = { %$a };
-
-	foreach my $f ($self->store->fields_span(qw(chunkv)) ){
-		next unless exists $a->{$f};
-		$o->{$f} = $a->{$f};
-	}
-
-	$o->{dur} = $self->recint;
-	my $opart = $o->{dur} / $a->{dur};
-	foreach my $f ($self->store->fields_span(qw(chunk)) ){
-		next unless exists $a->{$f};
-		$o->{$f} ||= $opart * $a->{$f};
-		$a->{$f} -= $o->{$f};
-	}
-
-	my $l = $self->{last};
-	$l->{time} ||= $a->{time} - $a->{dur};
-	$o->{time} = $l->{time} + $o->{dur};
-		
-	foreach my $f ($self->store->fields_span(qw(trip abs)) ){
-		next unless exists $a->{$f};
-		$l->{$f} ||= $a->{$f};
-		my $d = $a->{$f} - $l->{$f};
-		$o->{$f} ||= $l->{$f} + $opart * $d;
-	}
-
-
-	# TODO: @f_geo Geo::Spline, Geo::Forward 
+	my $o;
+	( $o, $self->{agg} ) = $self->{agg}->split( $self->recint );
+	$o->prev( $self->{prev} );
 
 	#print "split: ", Data::Dumper->Dump( [$l, $s, $o, $a], [qw(l s o a)] );
 	$self->{cntout}++;
-	$self->{last} = $o;
+	$self->{prev} = $o;
 	return $o;
 }
 

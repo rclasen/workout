@@ -1,13 +1,13 @@
-package Workout::Filter::Join;
+package Workout::Filter::Timeshift;
 
 =head1 NAME
 
-Workout::Filter::Join - Join blocks within Workout data
+Workout::Filter::Timeshift - Timeshift Workout data
 
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->read( "foo.srm" );
-  $join = Workout::Filter::Join->new( $src );
+  $join = Workout::Filter::Timeshift->new( $src );
   while( my $chunk = $join->next ){
   	# do something
   }
@@ -27,6 +27,12 @@ use Carp;
 
 our $VERSION = '0.01';
 
+our %default = (
+	delta	=> 0,
+);
+
+__PACKAGE__->mk_accessors(keys %default );
+
 =head2 new( $src, $arg )
 
 new iterator
@@ -34,9 +40,13 @@ new iterator
 =cut
 
 sub new {
-	my $class = shift;
-	my $self = $class->SUPER::new( @_ );
-	$self->{queued} = undef;
+	my( $class, $src, $a ) = @_;
+
+	$a ||= {};
+	my $self = $class->SUPER::new( $src, {
+		%default,
+		%$a,
+	});
 	$self->{prev} = undef;
 	$self;
 }
@@ -50,41 +60,19 @@ get next data chunk
 sub next {
 	my( $self ) = @_;
 
-	if( $self->{queued} ){
-		$self->{prev} = $self->{queued};
-		$self->{queued} = undef;
-		$self->{cntout}++;
-		return $self->{prev};
-	}
-
 	my $i = $self->src->next
 		or return;
 	$self->{cntin}++;
-
-	my $prev = $self->{prev};
-	my $o = $i->clone;
-
-	my $ltime = $i->time - $i->dur;
-	if( $prev && (my $dur = $ltime - $prev->time) > 0.1){
-		$self->debug( "inserting ". $dur ."sec at ". $ltime);
-		# on block boundaries: 
-		#   queue current chunk and insert fake chunk
-		$self->{queued} = $o;
-
-		$o = Workout::Chunk->new( {
-			time    => $ltime,
-			dur     => $dur,
-			prev	=> $prev,
-		} );
-		$self->{queued}->prev( $o );
-
-	} else {
-		$o->prev( $prev );
-	}
-
-	$self->{prev} = $o;
 	$self->{cntout}++;
-	return $o;
+
+	my $o = $i->clone;
+	$o->{time} += $self->delta;
+
+	if( $i->{prev} ){
+		$o->{prev} = $self->{prev};
+	}
+	$self->{prev} = $o;
+	$o;
 }
 
 

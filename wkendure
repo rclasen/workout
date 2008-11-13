@@ -1,0 +1,111 @@
+#!/usr/bin/perl -w
+# merge and submit data to endure database
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp qw/tempfile/;
+use Workout;
+use Workout::Athlete;
+
+my $delta = 0;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"delta|d=i"	=> \$delta,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <srm-fname> [<gpx-fname>]
+submit workout data to endure database
+
+Options:
+--delta|-d=<d>      time delta
+--help              this cruft
+EOF
+	exit 0;
+}
+
+my $sfname = shift;
+if( ! $sfname ){
+	print STDERR "missing input file\n";
+	$needhelp++;
+}
+
+my $gfname = shift;
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+my $ath = Workout::Athlete->new;
+
+# read srm
+my $srm = Workout::file_read( $sfname );
+my $si = Workout::filter( 'Info', 
+	Workout::filter( 'Timeshift', $srm, { delta => $delta } )
+);
+Workout::Store::Null->from( $si );
+
+# read gpx
+my $gpx = $gfname 
+	?  Workout::file_read( $gfname )
+	:  Workout::Store::Null->new;
+my $gi = Workout::filter( 'Info', $gpx ); # TODO: Smooth
+Workout::Store::Null->from( $gi );
+
+my $sdate = DateTime->from_epoch( 
+	epoch		=> $gi->time_start||$si->time_start,
+	time_zone	=> 'local',
+);
+my $dur = max($gi->dur, $si->dur);
+my $dur_mov = $si->dur_mov || $gi->dur_mov;
+
+# TODO: actually submit data to DB / Web-API
+
+print 
+"Anfang:               ", $sdate->strftime( '%F %H:%M:%S' ), "\n",
+"Zeit Brutto:          ", fmtdur($dur), " h:m:s (", int($dur/60), "m)\n",
+"Zeit Netto:           ", fmtdur($dur_mov), " h:m:s (", int($dur_mov/60), "m)\n",
+"Temperatur:           ", ($srm->temperature||'?'),  " °C\n",
+"total work:           ", sprintf( "%.2f", ($si->work||0) / 1000 ), " kJ\n",
+"Distanz:              ", sprintf( '%1.1f', ($si->dist||$gi->dist||0) / 1000), " km\n",
+"Geschwindigkeit, Max: ", sprintf( '%1.1f', ($si->spd_max||$gi->spd_max||0) * 3.6), " km/h \n",
+"Starthöhe:            ", (int($gi->ele_start||0)||'?'), " m\n",
+"Höhe, Min:            ", (int($gi->ele_min||0)||'?'), " m\n",
+"Höhe, Max             ", (int($gi->ele_max||0)||'?'), " m\n",
+"Gesamte Steigung:     ", (int($gi->incline||0)||'?'), " m\n",
+"Trittfrequenz, Avg:   ", (int($si->cad_avg||0)||'?'), " 1/min\n",
+"Trittfrequenz, Max:   ", (int($si->cad_max||0)||'?'), " 1/min\n",
+"Puls, Avg:            ", (int($si->hr_avg||0)||'?'), " 1/s\n",
+"Puls, Max:            ", (int($si->hr_max||0)||'?'), " 1/s\n",
+"--\n",
+"Zeit creep:           ", fmtdur($dur-$dur_mov), " h:m:s (", 
+	int(($dur-$dur_mov)/60), "m)\n",
+"Zeit cad:             ", fmtdur($si->dur_cad), " h:m:s (",
+	int(($si->dur_cad||0)/60), "m) ", 
+	int(100*($si->dur_cad||0) / $dur_mov),"% \n",
+"avg speed:            ", sprintf( "%.2f", ($si->spd_avg||$gi->spd_avg||0) * 3.6 ), " km/h\n",
+"avg Power:            ", sprintf( "%.2f", ($si->pwr_avg||0) ), " W\n",
+"notes:                ", ($srm->note||""), "\n",
+"\n";
+
+
+sub fmtdur {
+	my $s = shift;
+	my $m = int($s / 60); $s %= 60;
+	my $h = int($m / 60); $m %= 60;
+	sprintf('%d:%02d:%02d', $h, $m, $s);
+}
+
+sub max {
+	my( $a, $b ) = @_;
+	$a > $b ? $a : $b;
+}

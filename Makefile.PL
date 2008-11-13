@@ -4,12 +4,17 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     NAME              => 'Workout',
-    VERSION_FROM      => 'lib/Workout/Store.pm', # finds $VERSION
+    VERSION      => '0.04',
     PREREQ_PM         => {}, # e.g., Module::Name => 1.1
     'EXE_FILES'       => [qw(
-		wkconv
-	        wkdump
-		wkinfo
+	wkconv
+	wkdelta
+	wkdump
+	wkendure
+	wkinfo
+	wkmerge
+	wkplot
+	wksend
     )],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Workout/Store.pm', # retrieve abstract from module

@@ -26,17 +26,27 @@ use 5.008008;
 use strict;
 use warnings;
 use base 'Workout::Store';
+use Workout::Chunk;
 use Carp;
 use DateTime;
 
 
 our $VERSION = '0.01';
 
-our @fsupported = qw( hr spd cad ele pwr );
-
 sub filetypes {
 	return "hrm";
 }
+
+__PACKAGE__->mk_accessors(qw(
+	athlete
+	tz
+	dist
+	climb
+	moving
+	elesum
+	elemax
+	spdmax
+));
 
 =head2 new( $file, $args )
 
@@ -45,22 +55,24 @@ constructor
 =cut
 
 sub new {
-	my( $class, $fname, $a ) = @_;
+	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( $fname, $a );
+	$a||={};
+	my $self = $class->SUPER::new( {
+		recint	=> 5,
+		tz	=> 'local',
+		%$a,
+	});
 
-	push @{$self->{fsupported}}, @fsupported;
 	$self->{data} = [];
-	$self->{recint} ||= 5; # different default
-	$self->{tz} = $a->{tz} || 'local';
 
 	# overall data (calc'd from chunks)
-	$self->{dist} = 0; # trip odo
-	$self->{climb} = 0, # sum of climb
-	$self->{moving} = 0; # moving time
-	$self->{elesum} = 0; # sum of ele
-	$self->{elemax} = 0; # max of ele
-	$self->{spdmax} = 0; # max of spd
+	$self->dist( 0 ); # trip odo
+	$self->climb( 0 ), # sum of climb
+	$self->moving( 0 ); # moving time
+	$self->elesum( 0 ); # sum of ele
+	$self->elemax( 0 ); # max of ele
+	$self->spdmax( 0 ); # max of spd
 	$self;
 }
 
@@ -87,24 +99,24 @@ sub chunk_add {
 	my $l = $self->{data}[-1] if @{$self->{data}};;
 
 	$self->chunk_check( $c, $l );
+	my $n = $c->clone;
+	$n->prev( $l );
 
-	if( defined $c->{spd} ){
-		my $dist = $self->calc->dist( $c, $l );
-
-		$self->{spdmax} = $c->{spd} if $c->{spd} > $self->{spdmax};
-		$self->{moving} += $c->{dur} if $c->{spd};
-		$self->{dist} += $dist;
+	if( defined( my $spd = $n->spd )){
+		$self->spdmax( $spd ) if $spd > $self->spdmax;
+		$self->{moving} += $n->dur if $spd;
 	}
+	$self->{dist} += $n->dist||0;
 
-	if( defined $c->{ele} ){
-		my $climb = $self->calc->climb( $c, $l );
+	if( defined( my $ele = $n->ele )){
+		my $climb = $n->climb;
 
 		$self->{climb} += $climb if defined $climb && $climb > 0;
-		$self->{elesum} += $c->{ele};
-		$self->{elemax} = $c->{ele} if $c->{ele} > $self->{elemax};
+		$self->{elesum} += $ele;
+		$self->elemax( $ele ) if $ele > $self->elemax;
 	}
 
-	push @{$self->{data}}, $c;
+	push @{$self->{data}}, $n;
 }
 
 # TODO: read / iterate
@@ -129,24 +141,28 @@ write data to disk.
 
 =cut
 
+# TODO: specify what to write: hr, spd, cad, ele, pwr
 sub write {
 	my( $self, $fname, $a ) = @_;
 
 	@{$self->{data}} 
 		or croak "no data";
 
+	my $athlete = $self->athlete
+		or croak "missing athlete info";
+
 	my $last = $self->{data}[-1];
 	my $first = $self->{data}[0];
 
-	my $stime = $first->{time} - $self->recint;
+	my $stime = $first->time - $self->recint;
 	my $sdate = DateTime->from_epoch( 
 		epoch		=> $stime,
-		time_zone	=> $self->{tz},
+		time_zone	=> $self->tz,
 	); 
 
-	my $dur = $last->{time} - $stime;
-	my $spdav = $self->{moving} ? $self->{dist} / $self->{moving} : 0;
-	my $eleav = $self->{elesum} * $self->{recint} / $dur;
+	my $dur = $last->time - $stime;
+	my $spdav = $self->moving ? $self->dist / $self->moving : 0;
+	my $eleav = $self->elesum * $self->recint / $dur;
 
 	my $fh;
 	if( ref $fname ){
@@ -158,9 +174,9 @@ sub write {
 
 	print $fh 
 "[Params]
-Version=107
-Monitor=23
-SMode=111111100
+Version=106
+Monitor=12
+SMode=11111110
 Date=", $sdate->strftime( '%Y%m%d' ), "
 StartTime=", $sdate->strftime( '%H:%M:%S.%1N' ), "
 Length=", $self->fmtdur( $dur ), "
@@ -171,24 +187,31 @@ Upper2=0
 Lower2=0
 Upper3=0
 Lower3=0
-Timer1=00:00
-Timer2=00:00
-Timer3=00:00
+Timer1=0:00:00.0
+Timer2=0:00:00.0
+Timer3=0:00:00.0
 ActiveLimit=0
-MaxHr=", int($self->athlete->hrmax), "
-RestHR=", int($self->athlete->hrrest), "
+MaxHr=", int($athlete->hrmax), "
+RestHR=", int($athlete->hrrest), "
 StartDelay=0
-VO2max=", int($self->athlete->vo2max), "
-Weight=", int($self->athlete->weight), "
+VO2max=", int($athlete->vo2max), "
+Weight=", int($athlete->weight), "
 
-[Note]
-$self->{note}
+";
 
-[IntTimes]
+	print $fh 
+"[Note]
+", $self->note ,"
+
+" if $self->note;
+
+=pod
+	print $fh
+"[IntTimes]
 ", $self->fmtdur( $dur ), "	0	0	0	0
 32	0	0	0	0	0
 0	0	0	0	0
-0	", int($self->{dist}), "	0	0	0	0
+0	", int($self->dist), "	0	0	0	0
 0	0	0	0	0	0
 ";
 	# TODO: temperature
@@ -201,11 +224,11 @@ $self->{note}
 
 [Summary-123]
 0	0	0	0	0	0
-",$self->athlete->hrmax,"	0	0	",$self->athlete->hrrest,"
+",$athlete->hrmax,"	0	0	",$athlete->hrrest,"
 0	0	0	0	0	0
-",$self->athlete->hrmax,"	0	0	",$self->athlete->hrrest,"
+",$athlete->hrmax,"	0	0	",$athlete->hrrest,"
 0	0	0	0	0	0
-",$self->athlete->hrmax,"	0	0	",$self->athlete->hrrest,"
+",$athlete->hrmax,"	0	0	",$athlete->hrrest,"
 0	-1
 
 [Summary-TH]
@@ -229,26 +252,27 @@ $self->{note}
 [SwapTimes]
 
 [Trip]
-", int($self->{dist} / 100 ), "
-", int($self->{climb}), "
-", int($self->{moving}), "
+", int($self->dist / 100 ), "
+", int($self->climb), "
+", int($self->moving), "
 ", int($eleav), "
-", int($self->{elemax}), "
+", int($self->elemax), "
 ", int($spdav * 3.6 * 128 ), "
-", int($self->{spdmax} * 3.6 * 128 ), "
-", int($self->{dist} / 1000), "
+", int($self->spdmax * 3.6 * 128 ), "
+", int($self->dist / 1000), "
 
-
-[HRData]
 ";
 
+=cut
+
+	print $fh "[HRData]\n";
 	foreach my $row ( @{$self->{data}} ){
 		print $fh join( "\t", (
-			int($row->{hr} || 0),
-			int(($row->{spd} || 0) * 36),
-			int($row->{cad} ||0),
-			int($row->{ele} ||0),
-			int($row->{pwr} ||0),
+			int(($row->hr || 0)+0.5),
+			int(($row->spd || 0) * 36+0.5),
+			int(($row->cad ||0)+0.5),
+			int(($row->ele ||0)+0.5),
+			int(($row->pwr ||0)+0.5),
 		) ), "\n";
 	};
 

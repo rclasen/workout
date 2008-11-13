@@ -24,7 +24,6 @@ use strict;
 use warnings;
 use base 'Workout::Iterator';
 use Carp;
-use Workout::Calc;
 
 our $VERSION = '0.01';
 

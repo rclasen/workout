@@ -69,15 +69,11 @@ sub next {
 
 	$self->{cntin}++;
 
-	my $m = {%$i};
-	my $l = $self->{last};
+	my $m = $i->clone;
+	$m->prev( $self->{last} );
 
-	delete @$m{qw(climb xdist dist accel grad angle)};
-
-	$m->{climb} = $self->calc->climb( $m, $l );
-
-	$m->{dist} = $self->calc->dist( $m, $l );
-	$m->{xdist} = $self->calc->xdist( $m, $l );
+die; # TODO: use ::Chunk
+# TODO: block ends?
 
 	# ele / vspdmax / gradmax
 	if( defined $l && defined $l->{ele} && defined $m->{ele} ){

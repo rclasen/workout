@@ -9,11 +9,11 @@ Workout::Athlete - Athlete specific Data
 	hrrest	=> 40,
 	weight	=> 80,
   );
-  $ath->vo2max( 30 );
-  $calc = Workout::Calc->new( $ath );
-  $src = Workout::Store::SRM->read( "input.srm", { calc => $calc } );
-  $dst = Workout::Store::Memory->new( { calc => $calc });
-  $dst->from( $src );
+  $ath->vo2max( 50 );
+  $src = Workout::Store::Gpx->read( "input.gpx" } );
+  $pwr = Workout::Filter::Pwr->new( $src, { athlete => $ath } );
+  $dst = Workout::Store::Memory->new;
+  $dst->from( $pwr );
 
 =head1 DESCRIPTION
 
@@ -35,7 +35,7 @@ our %default = (
 	hrrest	=> 40,
 	hrmax	=> 180,
 	weight	=> 80,
-	vo2max	=> 30,
+	vo2max	=> 50,
 );
 __PACKAGE__->mk_accessors( keys %default );
 

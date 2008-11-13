@@ -7,8 +7,8 @@ Workout::Base - Base Class for Workout framework
   # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
   $it = $src->iterate;
-  while( defined(my $chunk = $it->next)){
-  	print join(",",@$chunk{qw(time dur pwr)}),"\n";
+  while( defined(my $c = $it->next)){
+  	print join(",",$c->time, $c->dur, $c->pwr),"\n";
   }
 
 =head1 DESCRIPTION
@@ -23,10 +23,9 @@ use 5.008008;
 use strict;
 use warnings;
 use Carp;
-use Workout::Calc;
+use base 'Class::Accessor::Fast';
 
 our $VERSION = '0.01';
-
 
 =head2 new( $arg )
 
@@ -37,35 +36,10 @@ create empty class.
 sub new {
 	my( $class, $a ) = @_;
 
-	my $self = bless {
-		calc	=> $a->{calc},
-		debug	=> $a->{debug} || 0,
-	}, $class;
+	my $self = $class->SUPER::new( $a );
+	$self->{debug} = $a->{debug} || 0,
 
 	return $self;
-}
-
-=head2 calc
-
-returns the Workout::Calc object in use
-
-=cut
-
-sub calc {
-	my( $self ) = @_;
-
-	$self->{calc} ||= Workout::Calc->new;
-}
-
-=head2 athlete
-
-returns the Workout::Athlete in use ( ... by Workout::Calc)
-
-=cut
-
-sub athlete {
-	my $self = shift;
-	$self->calc->athlete( @_ );
 }
 
 =head2 debug

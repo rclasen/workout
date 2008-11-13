@@ -1,3 +1,5 @@
+use 5.008008;
+use warnings;
 =head1 NAME
 
 Workout::Store::Gpx - read/write GPS tracks in XML format
@@ -21,24 +23,26 @@ Interface to read/write GPS files
 =cut
 
 package Workout::Store::Gpx::Iterator;
-use 5.008008;
 use strict;
-use warnings;
 use base 'Workout::Iterator';
+use Geo::Distance;
 use Carp;
 
 sub new {
 	my( $class, $store, $a ) = @_;
 
 	my $self = $class->SUPER::new( $store, $a );
-	$self->{tracks} = $store->{gpx}->tracks;
-	$self->{ctrack} = 0;
+	$self->{track} = $store->{gpx}->tracks->[0];
 	$self->{cseg} = 0;
 	$self->{cpt} = 0;
-	$self->{lpt} = undef;
+	$self->{prev} = undef;
 	$self;
 }
 
+sub _geocalc {
+	my( $self ) = @_;
+	$self->{geocalc} ||= new Geo::Distance;
+}
 
 =head2 next
 
@@ -47,41 +51,46 @@ sub new {
 sub next {
 	my( $self ) = @_;
 	
-	my $tracks = $self->{tracks};
-	# TODO: skip chunks without time, remember distance?
-	# TODO: sort tracks by start time
-	while( $self->{ctrack} < @$tracks ){
-		my $track = $tracks->[$self->{ctrack}];
+	return unless $self->{track};
 
-		# next track?
-		if( defined $track->{segments} 
-			&& @{$track->{segments}} <= $self->{cseg} ){
-
-			$self->{ctrack}++;
-			$self->{cseg} = 0;
-			$self->{cpt} = 0;
-			$self->{lpt} = undef;
-			next;
-		}
-		my $seg = $track->{segments}[$self->{cseg}];
+	my $segs = $self->{track}{segments};
+	while( $self->{cseg} < @$segs ){
+		my $seg = $segs->[$self->{cseg}];
 
 		# next segment?
 		if( defined $seg->{points} 
 			&& @{$seg->{points}} <= $self->{cpt} ){
 
+			$self->debug( "next segment" );
 			$self->{cseg}++;
 			$self->{cpt} = 0;
-			$self->{lpt} = undef;
+			$self->{prev} = undef;
 			next;
 		}
 
 		# next point!
-		my $pt = $seg->{points}[$self->{cpt}++];
-		$pt->{dur} = $self->calc->dur( $pt, $self->{lpt} );
-		$self->{lpt} = $pt;
+		my $ck = Workout::Chunk->new(
+			$seg->{points}[$self->{cpt}++] );
 		$self->{cntin}++;
+
+		# TODO: keep distance of time-less points? croak?
+		next unless $ck->time;
+
+		my $prev = $self->{prev};
+		$self->{prev} = $ck;
+
+		next unless $prev;
+
+		$ck->dur( $ck->time - $prev->time );
+		$ck->dist( $self->_geocalc->distance( 'meter', 
+			$prev->lon, $prev->lat,
+			$ck->lon, $ck->lat 
+		));
+		$ck->prev( $prev ) if $prev->dur;
+
 		$self->{cntout}++;
-		return $pt if $pt->{dur};
+		return $ck;
+
 	}
 	return;
 }
@@ -98,9 +107,6 @@ use Geo::Gpx;
 
 our $VERSION = '0.01';
 
-our @fsupported = qw( ele lon lat ); # TODO
-our @frequired = qw( lon lat );
-
 sub filetypes {
 	return "gpx";
 }
@@ -109,11 +115,6 @@ sub new {
 	my( $class, $a ) = @_;
 
 	my $self = $class->SUPER::new( $a );
-
-	push @{$self->{fsupported}}, @fsupported;
-	push @{$self->{frequired}}, @frequired;
-	$self->{blocks} = undef; # list with data block offsets
-	$self->{chunk} = 0; # chunks read in current block
 	$self;
 }
 
@@ -134,6 +135,9 @@ sub read {
 
 	close($fh);
 
+	@{$self->{gpx}->tracks} <= 1
+		or croak "cannot deal with multiple tracks per file";
+
 	$self;
 }
 
@@ -143,9 +147,13 @@ sub read {
 =cut
 
 sub iterate {
-	my( $self ) = @_;
+	my( $self, $a ) = @_;
 
-	Workout::Store::Gpx::Iterator->new( $self );
+	$a ||= {};
+	Workout::Store::Gpx::Iterator->new( $self, {
+		%$a,
+		debug	=> $self->{debug},
+	});
 }
 
 # TODO: block_add

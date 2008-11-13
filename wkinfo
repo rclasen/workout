@@ -1,24 +1,14 @@
 #!/usr/bin/perl -w
 
-# TODO:
-# - get parameters (bike, user) from DB
-# - add data to DB
-# - one-line output for tabular lists of several workouts
-
-# graph:
-# - speed/power/elevation over time/distance
-# - energy/incline over time/distance
-# - distance over time
-# - power distribution
+# TODO: options for parameters (bike, user)
+# TODO: one-line output for tabular lists of several workouts
 
 use strict;
 use DateTime;
 use Getopt::Long;
 use Workout;
+use Workout::Store::Null;
 use Workout::Athlete;
-use Workout::Calc;
-use Workout::Store::Memory;
-use Data::Dumper;
 
 my $itype;
 my $debug;
@@ -57,70 +47,84 @@ if( $needhelp ){
 	exit 1;
 }
 
-
 my $ath = Workout::Athlete->new;
-my $calc = Workout::Calc->new( { debug => $debug, athlete => $ath });
+
 my $src = Workout::file_read( $fname, { 
 	debug	=> $debug, 
 	ftype	=> $itype, 
-	calc	=> $calc,
 } );
-my $smth = Workout::filter( 'Smooth', $src, {
+# TODO: filter Smooth
+#my $smth = Workout::filter( 'Smooth', $src, {
+#	debug	=> $debug,
+#});
+my $smth = $src;
+my $pwr = Workout::filter( 'Pwr', $smth, { 
 	debug	=> $debug,
-	calc	=> $calc,
+	athlete => $ath,
 });
-my $mem = Workout::Store::Memory->new;
-$mem->from( $smth );
+my $info = Workout::filter( 'Info', $pwr, {
+	debug	=> $debug,
+});
+my $null = Workout::Store::Null->new;
+$null->from( $info );
+
+if( $info->cntin == 0 ){
+	print "file seems empty\n";
+	exit;
+}
 
 my $sdate = DateTime->from_epoch( 
-	epoch		=> $mem->time_start,
+	epoch		=> $info->time_start,
 	time_zone	=> 'local',
 );
 my $edate = DateTime->from_epoch(
-	epoch		=> $mem->time_end,
+	epoch		=> $info->time_end,
 	time_zone	=> 'local',
 );
 
 # TODO: zones/inzone, temperature
 print 
-"comment:         ", $src->note, "\n",
-"chunks:          ", $smth->cntin, " (spdcut=", $smth->cntspd, " elecut=",
-	$smth->cntele,")\n",
+"comment:         ", ($src->note||""), "\n",
+# TODO: filter Smooth
+#"chunks:          ", $smth->cntin, " (spdcut=", $smth->cntspd, " elecut=",
+#	$smth->cntele,")\n",
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
 
-"duration:        ", fmtdur( $mem->dur ), " h (", int($mem->dur/60), "m)\n",
-"creeping:        ", fmtdur( $mem->dur_creep ), " h (", int($mem->dur_creep/60), "m)\n",
-"moving:          ", fmtdur( $mem->dur_mov ), " h (", int($mem->dur_mov/60), "m)\n",
+"duration:        ", fmtdur( $info->dur ), " h (", int($info->dur/60), "m)\n",
+"creeping:        ", fmtdur( $info->dur_creep ), " h (",
+	int($info->dur_creep||0/60), "m)\n",
+"moving:          ", fmtdur( $info->dur_mov ), " h (",
+	int($info->dur_mov||0/60), "m)\n",
 
-"Heartrate avg:   ", ($mem->hr_avg || '?'), " 1/min\n",
-"Heartrate max:   ", ($mem->hr_max || '?'), " 1/min at ",
-	fmttime($mem->hr_max_time), "\n",
+"Heartrate avg:   ", (int($info->hr_avg||0) || '?'), " 1/min\n",
+"Heartrate max:   ", (int($info->hr_max||0) || '?'), " 1/min at ",
+	fmttime($info->hr_max_time), "\n",
 
-"Cadence avg:     ", ($mem->cad_avg || '?'), " 1/s\n",
-"Cadence max:     ", ($mem->cad_max || '?'), " 1/s at ",
-	fmttime($mem->cad_max_time), "\n",
+"Cadence avg:     ", (int($info->cad_avg||0) || '?'), " 1/s\n",
+"Cadence max:     ", (int($info->cad_max||0) || '?'), " 1/s at ",
+	fmttime($info->cad_max_time), "\n",
 
-"start elevation: ", ($mem->ele_start ||'?'), " m\n",
-"min elevation:   ", ($mem->ele_min ||'?'), " m\n",
-"max elevation:   ", ($mem->ele_max ||'?'), " m at ",
-	fmttime($mem->ele_max_time), "\n",
-"max slope:       ", sprintf( '%.1f', ($mem->grad_max ||"0")), " % at ",
-	fmttime($mem->grad_max_time), "\n",
-"total incline:   ", ($mem->incline ||'?'), " m\n",
+"start elevation: ", (int($info->ele_start||0) ||'?'), " m\n",
+"min elevation:   ", (int($info->ele_min||0) ||'?'), " m\n",
+"max elevation:   ", (int($info->ele_max||0) ||'?'), " m at ",
+	fmttime($info->ele_max_time), "\n",
+"max slope:       ", sprintf( '%.1f', ($info->grad_max||0)), " % at ",
+	fmttime($info->grad_max_time), "\n",
+"total incline:   ", (int($info->incline||0) ||'?'), " m\n",
 
-"total distance:  ", sprintf( '%.2f', ($mem->dist||0) / 1000), " km\n",
+"total distance:  ", sprintf( '%.2f', ($info->dist||0) / 1000), " km\n",
 
-"max speed:       ", sprintf( '%.2f', ($mem->spd_max||0) * 3.6 ), " km/h at ",
-	fmttime($mem->spd_max_time), "\n",
-"avg speed:       ", sprintf( '%.2f', ($mem->spd_avg||0) * 3.6 ), " km/h\n",
-"max accel:       ", sprintf( '%.2f', ($mem->accel_max||0) ), " m/s² at ",
-	fmttime($mem->accel_max_time), "\n",
+"max speed:       ", sprintf( '%.2f', ($info->spd_max||0) * 3.6 ), " km/h at ",
+	fmttime($info->spd_max_time), "\n",
+"avg speed:       ", sprintf( '%.2f', ($info->spd_avg||0) * 3.6 ), " km/h\n",
+"max accel:       ", sprintf( '%.2f', ($info->accel_max||0) ), " m/s² at ",
+	fmttime($info->accel_max_time), "\n",
 
-"total work:      ", sprintf( '%.2f', ($mem->work||0) / 1000 ), " kJ\n",
-"avg Power:       ", sprintf( '%.2f', ($mem->pwr_avg||'?') ), " W\n",
-"max Power:       ", sprintf( '%.2f', ($mem->pwr_max||'?') ), " W at ",
-	fmttime($mem->pwr_max_time), "\n",
+"total work:      ", sprintf( '%.2f', ($info->work||0) / 1000 ), " kJ\n",
+"avg Power:       ", sprintf( '%.2f', ($info->pwr_avg||0) ), " W\n", # TODO
+"max Power:       ", sprintf( '%.2f', ($info->pwr_max||0) ), " W at ", # TODO
+	fmttime($info->pwr_max_time), "\n",
 "\n";
 
 1;
