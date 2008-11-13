@@ -28,7 +28,7 @@ use Carp;
 
 our $VERSION = '0.01';
 
-__PACKAGE__->mk_accessors(qw(
+__PACKAGE__->mk_ro_accessors(qw(
 	src2
 	fields
 ));
@@ -37,45 +37,38 @@ sub new {
 	my( $class, $src, $src2, $fields, $a ) = @_;
 
 	$a ||= {};
-	my $self = $class->SUPER::new( $src, { 
+	$class->SUPER::new( $src, { 
 		%$a,
 		src2	=> $src2,
 		fields	=> $fields,
 	});
-	$self->{prev} = undef;
-	$self->{prev1} = undef;
-	$self->{prev2} = undef;
-
-	$self;
 }
 
-sub next {
+sub _fetch2 {
+	my( $self ) = @_;
+
+	my $r = $self->src2->next 
+		or return;
+
+	$self->{cntin}++;
+	$r;
+}
+
+sub process {
 	my( $self ) = shift;
 
 	# get src1
-	my $i = $self->src->next
+	my $i = $self->_fetch
 		or return;
-	$self->{cntin}++;
 
 	my $stime = $i->time - $i->dur;
 
-	# new src1 block?
-	if( $self->{prev1} && abs($stime - $self->{prev1}->time) > 0.1 ){
-		$self->{prev} = undef;
-		$self->{prev1} = undef;
-	}
-
 	my $o = $i->clone;
-	$o->prev( $self->{prev} );
-	$self->{prev} = $o;
-	$self->{cntout}++;
 
 	# skip src2 chunks preluding src1
 	while( ! $self->{agg} || $self->{agg}->time < $stime ){
-		if( ! ( $self->{agg} = $self->src2->next )){
-			return $o;
-		}
-		$self->{cntin}++;
+		$self->{agg} = $self->_fetch2
+			or return $o;
 	}
 
 	# src1 preludes src2...
@@ -89,20 +82,18 @@ sub next {
 
 	# add more src2 to agg until long enough for src1->dur
 	while( $self->{agg} && $self->{agg}->dur < $o->dur ){
-		my $n = $self->src2->next;
+		my $n = $self->_fetch2;
 
 		# end of src2
 		if( ! $n ){
 			$self->{agg} = undef;
 			last;
 		}
-		$self->{cntin}++;
 
 		# new block?
 		my $stime3 = $n->time - $n->dur;
-		if( $self->{prev2} && abs($stime3 - $n->time) > 0.1 ){
+		if( $n->isfirst ){
 			$self->{agg} = $n;
-			$self->{prev2} = undef;
 			last;
 		}
 		

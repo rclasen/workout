@@ -37,7 +37,6 @@ sub new {
 	my $class = shift;
 	my $self = $class->SUPER::new( @_ );
 	$self->{queued} = undef;
-	$self->{prev} = undef;
 	$self;
 }
 
@@ -47,50 +46,40 @@ get next data chunk
 
 =cut
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
-	if( $self->{queued} ){
-		$self->{prev} = $self->{queued};
+	if( my $r = $self->{queued} ){
 		$self->{queued} = undef;
-		$self->{cntout}++;
-		return $self->{prev};
+		return $r;
 	}
 
-	my $i = $self->src->next
+	my $i = $self->_fetch
 		or return;
-	$self->{cntin}++;
 
-	my $prev = $self->{prev};
 	my $o = $i->clone;
+	my $last = $self->last;
 
-	my $ltime = $i->time - $i->dur;
-	if( $prev && (my $dur = $ltime - $prev->time) > 0.1){
+	if( $last && $i->isfirst ){
+		my $ltime = $i->time - $i->dur;
+		my $dur = $ltime - $last->time;
 		$self->debug( "inserting ". $dur ."sec at ". $ltime);
-		# on block boundaries: 
-		#   queue current chunk and insert fake chunk
 
 		$self->{queued} = $o;
+
 		my $ma = $dur / ( $dur + $o->dur);
 		# TODO: move ele,lon,lat calc to ::Chunk
 		my %a = (
 			time    => $ltime,
 			dur     => $dur,
-			prev	=> $prev,
-			ele => ($prev->ele||0) + ($o->ele||0) * $ma,
-			lon => ($prev->lon||0) + (($o->lon||0) - ($prev->lon||0)) * $ma,
-			lat => ($prev->lat||0) + (($o->lat||0) - ($prev->lat||0)) * $ma,
+			ele => ($last->ele||0) + ($o->ele||0) * $ma,
+			lon => ($last->lon||0) + (($o->lon||0) - ($last->lon||0)) * $ma,
+			lat => ($last->lat||0) + (($o->lat||0) - ($last->lat||0)) * $ma,
 		);
 
 		$o = Workout::Chunk->new( \%a );
-		$self->{queued}->prev( $o );
-
-	} else {
-		$o->prev( $prev );
 	}
 
-	$self->{prev} = $o;
-	$self->{cntout}++;
 	return $o;
 }
 

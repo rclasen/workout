@@ -61,16 +61,13 @@ sub new {
 
 =cut
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
-	my $i = $self->src->next;
-	defined $i or return;
-
-	$self->{cntin}++;
+	my $i = $self->_fetch
+		or return;
 
 	my $m = $i->clone;
-	$m->prev( $self->{last} );
 
 die; # TODO: use ::Chunk
 # TODO: block ends?
@@ -137,7 +134,6 @@ die; # TODO: use ::Chunk
 	$o->{accel} = $self->calc->accel( $m, $l );
 
 	$self->{last} = $o;
-	$self->{cntout}++;
 	$o;
 }
 

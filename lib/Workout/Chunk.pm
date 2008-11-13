@@ -74,8 +74,18 @@ create new Athlete object
 
 =cut
 
+sub isfirst {
+	my( $self ) = @_;
+
+	return 1 unless $self->prev;
+	return 1 if $self->time - $self->dur - $self->prev->time > 0.1;
+	return 0;
+}
+	
 sub clone {
 	my( $self ) = @_;
+
+	# use accessor for copying to allow conversions
 	Workout::Chunk->new( { map {
 		$_ => $self->$_;
 	} @core_fields } );
@@ -85,6 +95,7 @@ sub split {
 	my( $self, $at ) = @_;
 
 	if( $at > $self->dur ){
+		# TODO: merge with zero-Chunk?
 		return;
 
 	} elsif( $self->dur - $at < 0.1 ){

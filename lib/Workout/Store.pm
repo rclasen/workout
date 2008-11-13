@@ -146,7 +146,7 @@ sub chunk_check {
 			." c=". $c->time
 			." d=". $c->dur;
 	}
-	if( abs($ltime - $l->time) > 0.1){
+	if( $c->isfirst ){
 		croak "found time gap since last chunk: l=". $l->time 
 			." c=". $c->time
 			." d=". $c->dur;

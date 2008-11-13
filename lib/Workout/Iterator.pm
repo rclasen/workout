@@ -27,11 +27,14 @@ use Carp;
 
 our $VERSION = '0.01';
 
-__PACKAGE__->mk_ro_accessors(qw(
-	store
-	cntin
-	cntout
-));
+our %init = (
+	store	=> undef,
+	cntin	=> 0,
+	cntout	=> 0,
+	last	=> undef,
+);
+
+__PACKAGE__->mk_ro_accessors( keys %init );
 
 =head2 new( $store, $arg )
 
@@ -42,13 +45,14 @@ create empty Iterator.
 sub new {
 	my( $class, $store, $a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
-	$self->{store} = $store;
-	$self->{cntin} = 0;
-	$self->{cntout} = 0;
-
-	return $self;
+	$a ||= {};
+	$class->SUPER::new( {
+		%$a,
+		%init,
+		store	=> $store,
+	});
 }
+
 
 =head2 next
 
@@ -56,8 +60,17 @@ return next chunk
 
 =cut
 
+sub process { croak "not implemented" ; };
+
 sub next {
-	croak "not implemented";
+	my $self = shift;
+
+	my $r = $self->process( @_ )
+		or return;
+	$self->{cntout}++;
+	$r->prev( $self->last ) if $self->last;
+
+	return $self->{last} = $r;
 }
 
 =head2 all

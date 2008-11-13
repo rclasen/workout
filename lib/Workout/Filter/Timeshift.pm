@@ -43,12 +43,10 @@ sub new {
 	my( $class, $src, $a ) = @_;
 
 	$a ||= {};
-	my $self = $class->SUPER::new( $src, {
+	$class->SUPER::new( $src, {
 		%default,
 		%$a,
 	});
-	$self->{prev} = undef;
-	$self;
 }
 
 =head2 next
@@ -57,21 +55,14 @@ get next data chunk
 
 =cut
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
-	my $i = $self->src->next
+	my $i = $self->_fetch
 		or return;
-	$self->{cntin}++;
-	$self->{cntout}++;
 
 	my $o = $i->clone;
 	$o->{time} += $self->delta;
-
-	if( $i->{prev} ){
-		$o->{prev} = $self->{prev};
-	}
-	$self->{prev} = $o;
 	$o;
 }
 

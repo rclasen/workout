@@ -40,10 +40,11 @@ sub new {
 	$iter->isa( 'Workout::Iterator' )
 		or $iter = $iter->iterate( $a );
 
-	my $self = $class->SUPER::new( $iter->store, $a );
-	$self->{src} = $iter;
-
-	return $self;
+	$a ||= {};
+	$class->SUPER::new( $iter->store, {
+		%$a,
+		src	=> $iter,
+	});
 }
 
 =head2 src
@@ -53,10 +54,16 @@ another iterator oder a store.
 
 =cut
 
-sub src {
+sub src { $_[0]->{src}; }
+
+sub _fetch {
 	my( $self ) = @_;
 
-	$self->{src};
+	my $r = $self->src->next 
+		or return;
+
+	$self->{cntin}++;
+	$r;
 }
 
 

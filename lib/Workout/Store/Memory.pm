@@ -30,7 +30,7 @@ sub new {
 	$self;
 }
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
 	my $dat = $self->store->{data};
@@ -38,7 +38,6 @@ sub next {
 		my $blk = $dat->[$self->{cblk}];
 		if( $self->{cchk} < @$blk ){
 			$self->{cntin}++;
-			$self->{cntout}++;
 			return $blk->[$self->{cchk}++];
 		}
 		$self->{cblk}++;

@@ -57,26 +57,16 @@ sub new {
 	$class->SUPER::new( $src, {
 		%defaults,
 		%$a,
-		prev	=> undef,
 	});
 }
 
-sub next {
+sub process {
 	my $self = shift;
 
-	my $i = $self->src->next
+	my $i = $self->_fetch
 		or return;
 
-	# mirror block boundaries
-	$self->{prev} = undef unless defined $i->prev;
-
-	# clone required to keep ->prev intact
 	my $o = $i->clone;
-	$o->prev( $self->{prev} );
-	$self->{prev} = $o;
-	$self->{cntin}++;
-	$self->{cntout}++;
-
 
 	# check for available data
 	return $o if defined $o->work;

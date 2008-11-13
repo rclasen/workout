@@ -35,7 +35,6 @@ sub new {
 	$self->{track} = $store->track;
 	$self->{cseg} = 0;
 	$self->{cpt} = 0;
-	$self->{prev} = undef;
 	$self;
 }
 
@@ -48,7 +47,7 @@ sub _geocalc {
 
 =cut
 
-sub next {
+sub process {
 	my( $self ) = @_;
 	
 	return unless $self->{track};
@@ -64,7 +63,6 @@ sub next {
 			$self->debug( "next segment" );
 			$self->{cseg}++;
 			$self->{cpt} = 0;
-			$self->{prev} = undef;
 			next;
 		}
 
@@ -76,20 +74,19 @@ sub next {
 		# TODO: keep distance of time-less points? croak?
 		next unless $ck->time;
 
-		my $prev = $self->{prev};
-		$self->{prev} = $ck;
+		# remember first chunk for calculations
+		my $last = $self->last;
+		unless( $last ){
+			$self->{last} = $ck;
+			next;
+		}
 
-		next unless $prev;
-
-		$ck->dur( $ck->time - $prev->time );
+		$ck->dur( $ck->time - $last->time );
 		$ck->dist( $self->_geocalc->distance( 'meter', 
-			$prev->lon, $prev->lat,
+			$last->lon, $last->lat,
 			$ck->lon, $ck->lat 
 		));
-		# TODO: keep prev for lon,lat,climb calculations?
-		$ck->prev( $prev ) if $prev->dur;
 
-		$self->{cntout}++;
 		return $ck;
 
 	}

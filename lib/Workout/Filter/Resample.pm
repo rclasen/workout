@@ -52,8 +52,6 @@ sub new {
 		%$a,
 	});
 	$self->{agg} = undef;
-	$self->{prev} = undef;
-	$self->{prev_in} = undef;
 	$self;
 }
 
@@ -69,25 +67,20 @@ return next (resampled) data chunk
 
 =cut
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
 	# aggregate data
 	while( ! $self->{agg} 
 		|| $self->{agg}->dur < $self->recint ){
 
-		my $r = $self->src->next or return;
-		$self->{cntin}++;
-
-		my $l = $self->{prev_in};
+		my $r = $self->_fetch
+			or return;
 
 		# new block? throw away collected data and restart
-		my $ltime = $r->time - $r->dur;
-		if( $l && abs($ltime - $l->time) > 0.1){
+		if( $r->isfirst ){
 			$self->debug( "new block, resample reset" );
 			$self->{agg} = $r;
-			$self->{prev} = undef;
-			$self->{prev_in} = undef;
 			next;
 		}
 
@@ -110,11 +103,8 @@ sub next {
 
 	my $o;
 	( $o, $self->{agg} ) = $self->{agg}->split( $self->recint );
-	$o->prev( $self->{prev} );
 
 	#print "split: ", Data::Dumper->Dump( [$l, $s, $o, $a], [qw(l s o a)] );
-	$self->{cntout}++;
-	$self->{prev} = $o;
 	return $o;
 }
 

@@ -79,7 +79,11 @@ sub new {
 	my( $class, $iter, $a ) = @_;
 
 	$a||={};
-	$class->SUPER::new( $iter, { %default, %$a, %init } );
+	$class->SUPER::new( $iter, { 
+		%default, 
+		%$a, 
+		%init,
+	});
 }
 
 sub set_min {
@@ -108,14 +112,11 @@ sub set_max {
 	}
 }
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
-	my $d = $self->src->next
+	my $d = $self->_fetch
 		or return;
-
-	$self->{cntin}++;
-	$self->{cntout}++;
 
 	$self->{chunk_first} ||= $d;
 	$self->{chunk_last} = $d;

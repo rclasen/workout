@@ -21,7 +21,7 @@ use warnings;
 use Carp;
 use base 'Workout::Iterator';
 
-sub next { }
+sub process { }
 
 
 package Workout::Store::Null;

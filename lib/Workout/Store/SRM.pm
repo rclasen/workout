@@ -58,7 +58,6 @@ sub new {
 	$self->{nbk} = 0;
 	$self->{nck} = 0;
 	$self->{ctime} = undef;
-	$self->{prev} = undef;
 	$self;
 }
 
@@ -66,7 +65,7 @@ sub new {
 
 =cut
 
-sub next {
+sub process {
 	my( $self ) = @_;
 
 	my $store = $self->store;
@@ -78,7 +77,6 @@ sub next {
 		if( $blk->{skip} ){
 			$self->debug( "skipping junk block ". $self->{nbk} );
 			$self->{nbk}++;
-			$self->{prev} = undef;
 			next;
 		}
 
@@ -86,7 +84,6 @@ sub next {
 			$self->debug( "end of block ". $self->{nbk} );
 			$self->{nck} = 0;
 			$self->{nbk}++;
-			$self->{prev} = undef;
 			next;
 		}
 
@@ -116,13 +113,10 @@ sub next {
 		my $idx = $blk->{ckstart} + $self->{nck}++;
 		my $ick = $store->{chunks}[$idx];
 		my $ock = Workout::Store::SRM::Chunk->new( $ick );
-		$ock->prev( $self->{prev} );
 		$ock->time( $self->{ctime} );
 		$ock->dur( $store->recint );
 
-		$self->{prev} = $ock;
 		$self->{cntin}++;
-		$self->{cntout}++;
 
 		return $ock;
 	}
