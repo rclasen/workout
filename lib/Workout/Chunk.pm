@@ -83,11 +83,12 @@ sub isfirst {
 }
 	
 sub clone {
-	my( $self ) = @_;
+	my( $self, $a ) = @_;
 
+	$a ||= {};
 	# use accessor for copying to allow conversions
 	Workout::Chunk->new( { map {
-		$_ => $self->$_;
+		$_ => $a->{$_} || $self->$_;
 	} @core_fields } );
 }
 

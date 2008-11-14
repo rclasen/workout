@@ -67,8 +67,9 @@ sub process {
 	my $i = $self->_fetch
 		or return;
 
-	my $m = $i->clone;
-	$m->prev( $self->last );
+	my $m = $i->clone({
+		prev	=> $self->last,
+	});
 
 die; # TODO: use ::Chunk
 # TODO: block ends?

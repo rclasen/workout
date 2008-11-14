@@ -99,8 +99,9 @@ sub chunk_add {
 	my $l = $self->{data}[-1] if @{$self->{data}};;
 
 	$self->chunk_check( $c, $l );
-	my $n = $c->clone;
-	$n->prev( $l );
+	my $n = $c->clone( {
+		prev	=> $l,
+	});
 
 	if( defined( my $spd = $n->spd )){
 		$self->spdmax( $spd ) if $spd > $self->spdmax;

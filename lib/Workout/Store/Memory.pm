@@ -104,8 +104,9 @@ sub chunk_add {
 	my $last = $self->{data}[-1][-1];
 	$self->chunk_check( $i, $last );
 
-	my $o = $i->clone;
-	$o->prev( $last );
+	my $o = $i->clone({
+		prev	=> $last,
+	});
 
 	push @{$self->block}, $o;
 }

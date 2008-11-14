@@ -57,9 +57,10 @@ sub process {
 	my $i = $self->_fetch
 		or return;
 
-	my $o = $i->clone;
 	my $last = $self->last;
-	$o->prev( $last );
+	my $o = $i->clone({
+		prev	=> $last,
+	});
 
 	if( $last && $i->isfirst ){
 		my $ltime = $i->time - $i->dur;

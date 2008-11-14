@@ -61,10 +61,10 @@ sub process {
 	my $i = $self->_fetch
 		or return;
 
-	my $o = $i->clone;
-	$o->prev( $self->last );
-	$o->{time} += $self->delta;
-	$o;
+	$i->clone({
+		prev	=> $self->last,
+		time	=> $i->time + $self->delta,
+	});
 }
 
 

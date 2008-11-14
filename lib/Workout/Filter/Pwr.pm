@@ -66,8 +66,9 @@ sub process {
 	my $i = $self->_fetch
 		or return;
 
-	my $o = $i->clone;
-	$o->prev( $self->last );
+	my $o = $i->clone({
+		prev	=> $self->last,
+	});
 
 	# check for available data
 	return $o if defined $o->work;
