@@ -43,11 +43,20 @@ our %init = (
 	dur_cad	=> 0,
 	dur_hr	=> 0,
 	dist	=> 0,
+	vspd_max	=> 0,
+	vspd_max_time	=> undef,
 	spd_max	=> 0,
 	spd_max_time	=> undef,
 	accel_max	=> 0,
 	accel_max_time	=> undef,
+	temp_sum	=> 0,
+	dur_temp	=> 0,
+	temp_min	=> undef,
+	temp_min_time	=> undef,
+	temp_max	=> 0,
+	temp_max_time	=> undef,
 	ele_min	=> undef,
+	ele_min_time	=> undef,
 	ele_max	=> 0,
 	ele_max_time	=> undef,
 	grad_max	=> 0,
@@ -87,28 +96,44 @@ sub new {
 }
 
 sub set_min {
-	my( $self, $field, $ck ) = @_;
+	my( $self, $ck ) = splice @_,0,2;
 
-	my $val = $ck->$field;
-	defined $val or return;
+	foreach my $field (@_){
+		my $val = $ck->$field;
+		defined $val or next;
 
-	my $fn = $field .'_min';
-	if( ! defined $self->{$fn} || $self->{$fn} > $val ){
-		$self->{$fn} = $val;
-		$self->{"${fn}_time"} = $ck->time;
+		my $fn = $field .'_min';
+		if( ! defined $self->{$fn} || $self->{$fn} > $val ){
+			$self->{$fn} = $val;
+			$self->{$fn .'_time'} = $ck->time;
+		}
 	}
 }
 
 sub set_max {
-	my( $self, $field, $ck ) = @_;
+	my( $self, $ck ) = splice @_,0,2;
 
-	my $val = $ck->$field;
-	defined $val or return;
+	foreach my $field (@_){
+		my $val = $ck->$field;
+		defined $val or next;
 
-	my $fn = $field .'_max';
-	if( $self->{$fn} < $val ){
-		$self->{$fn} = $val;
-		$self->{"${fn}_time"} = $ck->time;
+		my $fn = $field .'_max';
+		if( $self->{$fn} < $val ){
+			$self->{$fn} = $val;
+			$self->{$fn .'_time'} = $ck->time;
+		}
+	}
+}
+
+sub set_asum {
+	my( $self, $ck ) = splice @_,0,2;
+
+	foreach my $field (@_){
+		my $val = $ck->$field;
+		defined $val or next;
+
+		$self->{$field.'_sum'} += $val * $ck->dur;
+		$self->{'dur_'.$field} += $ck->dur;
 	}
 }
 
@@ -144,29 +169,17 @@ sub process {
 		$self->{work} += $work;
 	}
 
-	$self->set_max( 'pwr', $d );
 
 	if( ($d->pwr||0) > $self->pwrmin
 		|| ($d->spd||0) > $self->spdmin ){
 
 		$self->{dur_mov} += $d->dur;
-		if( my $hr = $d->hr ){
-			$self->{dur_hr} += $d->dur;
-			$self->{hr_sum} += $hr * $d->dur;
-		}
-	}
-	if( my $cad = $d->cad ){
-		$self->{dur_cad} += $d->dur;
-		$self->{cad_sum} += $cad * $d->dur;
+		$self->set_asum( $d, 'hr' );
 	}
 
-	$self->set_max( 'hr', $d );
-	$self->set_max( 'cad', $d );
-	$self->set_max( 'spd', $d );
-	$self->set_max( 'accel', $d );
-	$self->set_min( 'ele', $d );
-	$self->set_max( 'ele', $d );
-	$self->set_max( 'grad', $d );
+	$self->set_asum( $d, qw( cad temp ));
+	$self->set_max( $d, qw( pwr hr cad spd vspd accel temp ele grad ));
+	$self->set_min( $d, qw( temp ele ));
 
 	$d;
 }
@@ -221,6 +234,23 @@ sub cad_avg {
 	$self->cad_sum / $d;
 }
 
+sub temp_start {
+	my( $self ) = @_;
+
+	my $s = $self->chunk_first
+		or return;
+	$s->temp;
+}
+
+sub temp_avg {
+	my( $self ) = @_;
+
+	my $dur = $self->dur_temp || $self->dur
+		or return;
+
+	$self->temp_sum / $dur;
+}
+
 sub ele_start {
 	my( $self ) = @_;
 
@@ -234,6 +264,15 @@ sub spd_avg {
 	my $d = $self->dur_mov
 		or return;
 	$self->dist / $d;
+}
+
+sub vspd_avg {
+	my $self = shift;
+	my $c = $self->incline
+		or return;
+	my $d = $self->dur_mov
+		or return;
+	$c/$d;
 }
 
 sub pwr_avg {

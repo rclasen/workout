@@ -74,7 +74,7 @@ print
 "Anfang:               ", $sdate->strftime( '%F %H:%M:%S' ), "\n",
 "Zeit Brutto:          ", fmtdur($dur), " h:m:s (", int($dur/60), "m)\n",
 "Zeit Netto:           ", fmtdur($dur_mov), " h:m:s (", int($dur_mov/60), "m)\n",
-"Temperatur:           ", ($srm->temperature||'?'),  " °C\n",
+"Temperatur:           ", ($si->temp_avg||'?'),  " °C\n",
 "total work:           ", sprintf( "%.2f", ($si->work||0) / 1000 ), " kJ\n",
 "Distanz:              ", sprintf( '%1.1f', ($si->dist||$gi->dist||0) / 1000), " km\n",
 "Geschwindigkeit, Max: ", sprintf( '%1.1f', ($si->spd_max||$gi->spd_max||0) * 3.6), " km/h \n",

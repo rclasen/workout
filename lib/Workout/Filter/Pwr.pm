@@ -80,10 +80,11 @@ sub process {
 	defined( my $dist = $o->dist )
 		or return $o;
 	my $ele = $o->ele ||0;
+	my $temp = $o->temp || $self->atemp;
 
 
 	# intermediate results for power
-	my $rho = ($kelvin / ($kelvin +$self->atemp)) * $rho_0 * 
+	my $rho = ($kelvin / ($kelvin + $temp)) * $rho_0 * 
 		$e^(($ele * $rho_0 * $g) / $P_0);
 	my $Fstg = ($self->weight + $self->athlete->weight) * $g * ( 
 		$self->Cr * cos($angle) + sin($angle));

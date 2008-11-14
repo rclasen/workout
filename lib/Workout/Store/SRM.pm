@@ -117,6 +117,7 @@ sub process {
 			prev	=> $self->last,
 			time	=> $self->{ctime},
 			dur	=> $store->recint,
+			temp	=> $store->temperature,
 		});
 
 		$self->{cntin}++;

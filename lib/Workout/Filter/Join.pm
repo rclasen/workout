@@ -75,6 +75,7 @@ sub process {
 			prev	=> $self->last,
 			time    => $ltime,
 			dur     => $dur,
+			temp => ($last->temp||0) + ($o->temp||0) * $ma,
 			ele => ($last->ele||0) + ($o->ele||0) * $ma,
 			lon => ($last->lon||0) + (($o->lon||0) - ($last->lon||0)) * $ma,
 			lat => ($last->lat||0) + (($o->lat||0) - ($last->lat||0)) * $ma,

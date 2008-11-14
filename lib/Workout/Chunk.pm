@@ -51,6 +51,8 @@ hr	chunkv	-		heartrate, avg (1/min)
 work	chunk	pwr,dur		total, (Joule)
 		angle,speed,..(guess)
 
+temp	abs	-		temperature °C
+
 =cut
 
 our @core_fields = qw( 
@@ -64,6 +66,7 @@ our @core_fields = qw(
 	cad
 	hr
 	work
+	temp
 );
 __PACKAGE__->mk_accessors(@core_fields);
 
@@ -122,6 +125,11 @@ sub split {
 
 	# TODO: allow reuse of lon,lat,ele calc in Filter::Join
 	# TODO: test ele, lon, lat
+	if( $p && defined($p->temp) && defined($self->temp) ){ 
+		$a->{temp} = $p->temp + ($self->temp - $p->temp) * $ma;
+	} else {
+		$a->{temp} = $self->temp;
+	}
 	if( $p && defined($p->ele) && defined($self->ele) ){ 
 		$a->{ele} = $p->ele + ($self->ele - $p->ele) * $ma;
 	} else {
@@ -141,6 +149,7 @@ sub split {
 		dur	=> $remain,
 		dist	=> ($self->dist||0) * $mb,
 		work	=> ($self->work||0) * $mb,
+		temp	=> $self->temp,
 		ele	=> $self->ele,
 		lon	=> $self->lon,
 		lat	=> $self->lat,
@@ -160,6 +169,7 @@ sub merge {
 			+ ($b->cad||0) * ($b->dur||0)) / $ndur,
 		hr	=> (($a->hr||0)  * ($a->dur||0) 
 			+ ($b->hr||0)  * ($b->dur||0)) / $ndur,
+		temp	=> $b->temp,
 		ele	=> $b->ele,
 		lon	=> $b->lon,
 		lat	=> $b->lat,
@@ -230,6 +240,14 @@ sub climb {
 	($self->ele||0) - ($p->ele||0);
 }
 
+sub vspd {
+	my $self = shift;
+	my $c = $self->climb or return;
+	my $d = $self->dur or return;
+	$c / $d;
+}
+
+	
 sub xdist {
 	my $self = shift;
 
