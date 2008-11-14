@@ -64,6 +64,7 @@ sub process {
 	my $stime = $i->time - $i->dur;
 
 	my $o = $i->clone;
+	$o->prev( $self->last );
 
 	# skip src2 chunks preluding src1
 	while( ! $self->{agg} || $self->{agg}->time < $stime ){

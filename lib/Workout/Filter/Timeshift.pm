@@ -62,6 +62,7 @@ sub process {
 		or return;
 
 	my $o = $i->clone;
+	$o->prev( $self->last );
 	$o->{time} += $self->delta;
 	$o;
 }

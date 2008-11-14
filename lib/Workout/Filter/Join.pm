@@ -59,6 +59,7 @@ sub process {
 
 	my $o = $i->clone;
 	my $last = $self->last;
+	$o->prev( $last );
 
 	if( $last && $i->isfirst ){
 		my $ltime = $i->time - $i->dur;
@@ -70,6 +71,7 @@ sub process {
 		my $ma = $dur / ( $dur + $o->dur);
 		# TODO: move ele,lon,lat calc to ::Chunk
 		my %a = (
+			prev	=> $self->last,
 			time    => $ltime,
 			dur     => $dur,
 			ele => ($last->ele||0) + ($o->ele||0) * $ma,
@@ -78,6 +80,7 @@ sub process {
 		);
 
 		$o = Workout::Chunk->new( \%a );
+		$self->{queued}->prev( $o );
 	}
 
 	return $o;

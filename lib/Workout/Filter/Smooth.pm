@@ -68,6 +68,7 @@ sub process {
 		or return;
 
 	my $m = $i->clone;
+	$m->prev( $self->last );
 
 die; # TODO: use ::Chunk
 # TODO: block ends?

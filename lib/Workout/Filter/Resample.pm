@@ -103,6 +103,7 @@ sub process {
 
 	my $o;
 	( $o, $self->{agg} ) = $self->{agg}->split( $self->recint );
+	$o->prev( $self->last );
 
 	#print "split: ", Data::Dumper->Dump( [$l, $s, $o, $a], [qw(l s o a)] );
 	return $o;

@@ -67,6 +67,7 @@ sub process {
 		or return;
 
 	my $o = $i->clone;
+	$o->prev( $self->last );
 
 	# check for available data
 	return $o if defined $o->work;

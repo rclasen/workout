@@ -142,8 +142,8 @@ write data to disk.
 =cut
 
 # TODO: specify what to write: hr, spd, cad, ele, pwr
-sub write {
-	my( $self, $fname, $a ) = @_;
+sub do_write {
+	my( $self, $fh ) = @_;
 
 	@{$self->{data}} 
 		or croak "no data";
@@ -163,14 +163,6 @@ sub write {
 	my $dur = $last->time - $stime;
 	my $spdav = $self->moving ? $self->dist / $self->moving : 0;
 	my $eleav = $self->elesum * $self->recint / $dur;
-
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
-	} else {
-		open( $fh, '>', $fname )
-			or croak "open '$fname': $!";
-	}
 
 	print $fh 
 "[Params]
@@ -275,9 +267,6 @@ Weight=", int($athlete->weight), "
 			int(($row->pwr ||0)+0.5),
 		) ), "\n";
 	};
-
-	close($fh);
-	1;
 }
 
 

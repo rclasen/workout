@@ -58,6 +58,27 @@ __PACKAGE__->mk_accessors(qw(
 	note
 ));
 
+sub do_read { croak "not suported"; };
+
+sub read {
+	my( $class, $fname, $a ) = @_;
+	my $self = $class->new( $a );
+
+	my $fh;
+	if( ref $fname ){
+		$fh = $fname;
+	} else {
+		open( $fh, '<', $fname )
+			or croak "open '$fname': $!";
+	}
+
+	$self->do_read( $fh );
+
+	close($fh);
+	$self;
+}
+
+
 =head2 from( $iter )
 
 copy workout data from specified source (other Workout::Store or
@@ -152,6 +173,28 @@ sub chunk_check {
 			." d=". $c->dur;
 	}
 }
+
+sub do_write { croak "not suported"; };
+
+sub write {
+	my( $self, $fname, $a ) = @_;
+
+	my $fh;
+	if( ref $fname ){
+		$fh = $fname;
+	} else {
+		open( $fh, '>', $fname )
+			or croak "open '$fname': $!";
+	}
+
+	$self->do_write( $fh );
+
+	close($fh)
+		or return;
+
+	1;
+}
+
 
 1;
 __END__

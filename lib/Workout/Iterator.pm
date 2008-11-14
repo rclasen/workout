@@ -68,7 +68,6 @@ sub next {
 	my $r = $self->process( @_ )
 		or return;
 	$self->{cntout}++;
-	$r->prev( $self->last ) if $self->last;
 
 	return $self->{last} = $r;
 }

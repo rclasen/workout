@@ -67,8 +67,10 @@ sub process {
 		}
 
 		# next point!
-		my $ck = Workout::Chunk->new(
-			$seg->{points}[$self->{cpt}++] );
+		my $ck = Workout::Chunk->new( {
+			%{$seg->{points}[$self->{cpt}++]},
+			prev	=> $self->last,
+		});
 		$self->{cntin}++;
 
 		# TODO: keep distance of time-less points? croak?
@@ -132,28 +134,15 @@ sub new {
 	$self;
 }
 
-sub read {
-	my( $class, $fname, $a ) = @_;
-	my $self = $class->new( $a );
-
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
-	} else {
-		open( $fh, '<', $fname )
-			or croak "open '$fname': $!";
-	}
+sub do_read {
+	my( $self, $fh ) = @_;
 
 	$self->{gpx} = Geo::Gpx->new( input => $fh )
 		or croak "cannot read file: $!";
 
-	close($fh);
-
 	@{$self->{gpx}->tracks} <= 1
 		or croak "cannot deal with multiple tracks per file";
 	$self->{track} = $self->gpx->tracks->[0];
-
-	$self;
 }
 
 
@@ -197,25 +186,13 @@ sub chunk_add {
 	};
 }
 
-sub write {
-	my( $self, $fname, $a ) = @_;
+sub do_write {
+	my( $self, $fh ) = @_;
 
 	@{$self->{track}{segments}} 
 		or croak "no data";
 
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
-	} else {
-		open( $fh, '>', $fname )
-			or croak "open '$fname': $!";
-	}
-
 	print $fh $self->gpx->xml;
-	close($fh)
-		or return;
-
-	1;
 }
 
 1;

@@ -112,9 +112,12 @@ sub process {
 
 		my $idx = $blk->{ckstart} + $self->{nck}++;
 		my $ick = $store->{chunks}[$idx];
-		my $ock = Workout::Store::SRM::Chunk->new( $ick );
-		$ock->time( $self->{ctime} );
-		$ock->dur( $store->recint );
+		my $ock = Workout::Store::SRM::Chunk->new( {
+			%$ick,
+			prev	=> $self->last,
+			time	=> $self->{ctime},
+			dur	=> $store->recint,
+		});
 
 		$self->{cntin}++;
 
@@ -191,17 +194,8 @@ sub new {
 # TODO: chunk_add
 # TODO: write
 
-sub read {
-	my( $class, $fname, $a ) = @_;
-	my $self = $class->new( $a );
-
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
-	} else {
-		open( $fh, '<', $fname )
-			or croak "open '$fname': $!";
-	}
+sub do_read {
+	my( $self, $fh ) = @_;
 
 	my $buf;
 
@@ -369,9 +363,6 @@ sub read {
 	}
 	@{$self->{chunks}} < $ckcnt && warn "cannot read all data chunks";
 	$self->debug( "read ". @{$self->{chunks}} ." chunks" );
-
-	close($fh);
-	$self;
 }
 
 =head2 iterate
