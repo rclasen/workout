@@ -163,6 +163,7 @@ sub iterate {
 sub block_add {
 	my( $self ) = @_;
 
+	return unless @{$self->track->{segments}};
 	push @{$self->track->{segments}}, {
 		points	=> [],
 	};
@@ -172,7 +173,7 @@ sub chunk_add {
 	my( $self, $c ) = @_;
 
 	unless( $c->lon && $c->lat ){
-		return;
+		croak "missing lon/lat at ". $c->time;
 	}
 
 	$self->chunk_check( $c, $self->last );
