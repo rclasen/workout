@@ -44,6 +44,7 @@ sub new {
 	$class->SUPER::new( $iter->store, {
 		%$a,
 		src	=> $iter,
+		queue	=> [],
 	});
 }
 
@@ -56,14 +57,29 @@ another iterator oder a store.
 
 sub src { $_[0]->{src}; }
 
+sub _push {
+	my $self = shift;
+	push @{$self->{queue}}, @_;
+}
+
+sub _pop {
+	my $self = shift;
+	pop @{$self->{queue}};
+}
+
 sub _fetch {
 	my( $self ) = @_;
 
-	my $r = $self->src->next 
-		or return;
+	if( my $r = $self->_pop ){
+		return $r;
+	}
 
-	$self->{cntin}++;
-	$r;
+	if( my $r = $self->src->next ){
+		$self->{cntin}++;
+		return $r;
+	}
+
+	return;
 }
 
 

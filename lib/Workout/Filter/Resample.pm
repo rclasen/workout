@@ -47,12 +47,10 @@ sub new {
 	my( $class, $src, $a ) = @_;
 
 	$a||={};
-	my $self = $class->SUPER::new( $src, {
+	$class->SUPER::new( $src, {
 		%default,
 		%$a,
 	});
-	$self->{queue} = ();
-	$self;
 }
 
 =head2 recint
@@ -72,58 +70,73 @@ sub process {
 
 	my @merge;
 	my $dur = 0;
-
-	if( my $q = pop @{$self->{queue}} ){
-		$dur = $q->dur;
-		push @merge, $q;
-	}
-
+	my $next;
 
 	# collect data
 	while( $dur < $self->recint ){
 
-		# TODO: append zeros when @merge is too small?
-		my $r = $self->_fetch
-			or return;
+		$next = $self->_fetch
+			or last;
 
-		# new block?
-		if( $r->isblockfirst ){
-			my $p = $r->prev;
-			my $gap = $r->gap;
-			my $gdur = $dur + $gap;
+		# block terminated while collecting
+		my $p = $merge[-1];
+		if( $p && $next->isblockfirst( $p ) ){
+			my $gap = $next->gap( $p );
 
-			# fill small gaps with zeros
-			if( $gdur < $self->recint ){
+			# gap is too small to complete $dur, fill with zero
+			if( $dur + $gap < $self->recint ){
 				$self->debug( "filling small ". $gap 
-					."sec gap at ". $r->stime );
-				push @merge, $p->synthesize($r->stime, $r);
-				$dur = $gdur;
+					."sec block gap at ". $p->time );
+				push @merge, $p->synthesize($next->stime, $next);
+				$dur += $gap;
 
+			# got enough data, exit
 			} elsif( $dur > $self->recint / 2 ){
-				$self->debug( "extending block end from ". $dur 
-					."sec at ". $r->stime );
-				push @merge, $p->synthesize($r->stime, $r);
-				$dur = $gdur;
+				$self->_push( $next );
+				last;
 
-			} elsif( $gdur > $self->recint ){
-				# TODO: append zeros when gap is too large?
-				$self->debug( "block end at ". $r->stime 
-					.", actually dropping ". $dur ."sec data");
+			# not enoug data, drop it and restart collecting
+			} else {
+				$self->debug( "block end at ". $p->time
+				.", actually dropping ". $dur ."sec data");
 				@merge = ();
 				$dur = 0;
 			}
+
 		}
 
-		push @merge, $r;
-		$dur += $r->dur;
+		push @merge, $next;
+		$dur += $next->dur;
 	}
 
-	# merge
+	if( ! $dur ){
+		return;
+
+	} elsif( $dur < $self->recint / 2 ){
+		$self->debug( "dropping ". $dur ."sec data at workout end");
+		return;
+
+	} # else enough data present
+
+	my $time = $merge[0]->stime + $self->recint;
+
+	# ... fill end with zeros to complete recint
+	if( $dur < $self->recint ){
+		my $p = $merge[-1];
+
+		$self->debug( "extending workout/block end from ". $dur ."sec at ".
+			$p->time );
+		my $n = $p->synthesize($time, $next);
+		push @merge, $n;
+		$dur += $n->dur;
+	}
+
+	# merge collected chunks
 	my $agg = Workout::Chunk::merge( @merge );
 
-	# split
-	my( $o, $q ) = $agg->split( $agg->stime + $self->recint );
-	push @{$self->{queue}}, $q;
+	# split of recint and remember remainder
+	my( $o, $q ) = $agg->split( $time );
+	$self->_push( $q ) if $q;
 	$o->prev( $self->last );
 
 	return $o;

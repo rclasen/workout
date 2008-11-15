@@ -47,7 +47,6 @@ sub new {
 		%default,
 		%$a,
 	});
-	$self->{queue} = ();
 	$self->{stime} = undef;
 	$self;
 }
@@ -61,40 +60,33 @@ get next data chunk
 sub process {
 	my( $self ) = @_;
 
-	if( my $r = pop @{$self->{queue}} ){
-		$r->prev( $self->last );
-		return $r;
-	}
-
 	my $i = $self->_fetch
 		or return;
 
 	$self->{stime} ||= $i->stime;
 
 	my $last = $self->last;
-	my $o = $i->clone({
-		prev	=> $last,
-	});
 
-	if( $last && $i->isblockfirst ){
-		push @{$self->{queue}}, $o;
+	if( $last && $i->isblockfirst( $last ) ){
+		$self->_push( $i );
 
-		$self->debug( "joining chunks ". $last->time ." and ". $i->time );
-		
-		if( $self->recint && $i->gap > $self->recint ){
+		if( $self->recint && $i->gap( $last) > $self->recint ){
 			my $elapsed = $last->time - $self->{stime};
 			my $time = $self->{stime} + $self->recint 
 				* (1+int($elapsed/$self->recint));
 
-			$o = $last->synthesize( $time, $i );
-			push @{$self->{queue}}, $o->synthesize( $i->stime, $i );
-
-		} else {
-			$o = $last->synthesize( $i->stime, $i );
+			$self->debug( "insert join from ". $last->time ." to ". $time );
+			return $last->synthesize( $time, $i );
 		}
+
+		$self->debug( "insert join from ". $last->time ." to ".  $i->stime );
+		return $last->synthesize( $i->stime, $i );
+
 	}
 
-	return $o;
+	return $i->clone({
+		prev	=> $last,
+	});
 }
 
 
