@@ -96,7 +96,7 @@ sub from { # TODO: make this a constructor
 
 	my $last;
 	while( defined( my $chunk = $iter->next )){
-		if( $last && $chunk->time - $chunk->dur - $last->time > 0.01 ){
+		if( $chunk->isblockfirst ){
 			$self->block_add;
 		}
 		$self->chunk_add( $chunk );
@@ -161,14 +161,13 @@ sub chunk_check {
 
 	return unless $l;
 
-	my $ltime = $c->time - $c->dur;
-	if( $l->time > $ltime ){
-		croak "no/negativ time step: l=".  $l->time 
+	if( $l->time > $c->stime ){
+		croak "nolinear time step: l=".  $l->time 
 			." c=". $c->time
 			." d=". $c->dur;
 	}
-	if( $c->isfirst ){
-		croak "found time gap since last chunk: l=". $l->time 
+	if( $c->isblockfirst( $l ) ){
+		croak "found unexpected gap without block start: l=". $l->time 
 			." c=". $c->time
 			." d=". $c->dur;
 	}

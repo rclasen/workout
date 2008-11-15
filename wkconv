@@ -67,6 +67,7 @@ my $src = Workout::file_read( $ifile, {
 	debug	=> $debug,
 } );
 my $join = Workout::filter('Join', $src, {
+	recint	=> $recint,
 	debug	=> $debug,
 });
 my $res = Workout::filter('Resample', $join, { 

@@ -189,7 +189,7 @@ sub time_start {
 
 	my $c = $self->chunk_first
 		or return;
-	$c->time - $c->dur;
+	$c->stime;
 }
 
 sub time_end {

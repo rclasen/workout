@@ -6,6 +6,10 @@ use Workout;
 use Getopt::Long;
 
 
+my $recint;
+my $join;
+my @fields;
+
 my $debug;
 my $itype;
 
@@ -13,8 +17,11 @@ my $needhelp;
 my $wanthelp;
 
 if( ! GetOptions(
-	"debug!"	=> \$debug,
 	"input|i=s"	=> \$itype,
+	"fields|f=s"	=> \@fields,
+	"recint|r=i"	=> \$recint,
+	"join|j"	=> \$join,
+	"debug!"	=> \$debug,
 	"help|h!"	=> \$wanthelp,
 )){
 	$needhelp++;
@@ -27,9 +34,12 @@ dump workout file as tab seperated list
 
 --debug             enable debuging output
 --help              this help
---input|-i=<type>   input file type
+--join              join blocks
+--recint|-r=<sec>   resample data to this interval
+--fields|-f=<n,n..> dump specified fields
 
-for now only .srm files are supported
+please look at Workout::Chunk for supported fields
+
 EOF
 	exit 0;
 }
@@ -44,21 +54,30 @@ if( $needhelp ){
 	exit 1;
 }
 
+if( @fields ){
+	@fields = split(/,/,join(',',@fields));
+} else {
+	#@fields ||= (qw( time dur dist spd cad hr work pwr));
+	@fields = qw( time dur spd pwr ele );
+}
+
 my $ifile = shift;
 
 my $src = Workout::file_read( $ifile, {
 	ftype	=> $itype,
 	debug	=> $debug,
 } );
-
-# TODO: allow user to specify fields he wants to be dumped
-#my @fields = qw( time dur dist spd cad hr work pwr);
-my @fields = qw( time dur spd pwr ele );
 my $iter = $src->iterate;
-#my $iter = 
-#	Workout::filter( 'Resample', 	# TODO
-#	Workout::filter( 'Join', $src ),	# TODO
-#	{ recint => 5 } );
+
+$iter = Workout::filter( 'Join', $iter, {
+	debug	=> $debug,
+	recint	=> $recint,
+} ) if $join;
+
+$iter = Workout::filter( 'Resample', $iter, {
+	debug	=> $debug,
+	recint	=> $recint,
+} ) if $recint;
 
 print join("\t", @fields), "\n";
 while( my $r = $iter->next ){

@@ -60,24 +60,24 @@ my $ath = Workout::Athlete->new;
 
 # read srm
 my $srm = 
-	Workout::filter('Resample', 
-	Workout::filter('Join',
+	Workout::filter( 'Resample', 
+	Workout::filter( 'Join',
 	Workout::filter( 'Timeshift', 
 	Workout::file_read( $sfname ), 
 	{ delta => $delta } ),
-	{} ),
+	{ recint => $recint } ),
 	{ recint => $recint } );
 
 # read gpx
-my $gpx = Workout::filter('Join',
+my $gpx = Workout::filter( 'Join',
 	$gfname 
 	? Workout::file_read( $gfname )
 	: Workout::Store::Null->new );
 
 
 # fill hrm
-my $merge = Workout::filter('Merge', $srm, $gpx, [qw( ele )] );
-my $info = Workout::filter('Info', $merge );
+my $merge = Workout::filter( 'Merge', $srm, $gpx, [qw( ele )] );
+my $info = Workout::filter( 'Info', $merge );
 
 my $dst = Workout::file_new( { 
 	ftype	=> "hrm",

@@ -85,6 +85,7 @@ my $srm =
 		debug	=> $debug,
 	}),
 	{
+		recint	=> $recint,
 		debug	=> $debug,
 	}),
 	{

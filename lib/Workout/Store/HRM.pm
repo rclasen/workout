@@ -155,7 +155,7 @@ sub do_write {
 	my $last = $self->{data}[-1];
 	my $first = $self->{data}[0];
 
-	my $stime = $first->time - $self->recint;
+	my $stime = $first->stime;
 	my $sdate = DateTime->from_epoch( 
 		epoch		=> $stime,
 		time_zone	=> $self->tz,

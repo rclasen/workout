@@ -61,29 +61,30 @@ sub process {
 	my $i = $self->_fetch
 		or return;
 
-	my $stime = $i->time - $i->dur;
+	my $stime = $i->stime;
 
 	my $o = $i->clone({
-		prev	=> $self->last;
+		prev	=> $self->last,
 	});
 
-	# skip src2 chunks preluding src1
+	# skip src2 chunks that predate src1
 	while( ! $self->{agg} || $self->{agg}->time < $stime ){
 		$self->{agg} = $self->_fetch2
 			or return $o;
 	}
 
-	# src1 preludes src2...
-	my $stime2 = $self->{agg}->time - $self->{agg}->dur;
+	# nothing to merge when src2 data is after src1
+	# TODO: queue src2 for later use
+	my $stime2 = $self->{agg}->stime;
 	if( $stime2 > $i->time ){
 		return $o;
 	}
 
 	# throw part of src2 preluding src1 away.
-	$self->{agg} = ($self->{agg}->split( $stime - $stime2 ))[1];
+	$self->{agg} = ($self->{agg}->split( $stime2 ))[1];
 
 	# add more src2 to agg until long enough for src1->dur
-	while( $self->{agg} && $self->{agg}->dur < $o->dur ){
+	while( $self->{agg} && $self->{agg}->time < $o->time ){
 		my $n = $self->_fetch2;
 
 		# end of src2
@@ -93,8 +94,8 @@ sub process {
 		}
 
 		# new block?
-		my $stime3 = $n->time - $n->dur;
-		if( $n->isfirst ){
+		my $stime3 = $n->stime;
+		if( $n->isblockfirst ){
 			$self->{agg} = $n;
 			last;
 		}
@@ -105,7 +106,7 @@ sub process {
 	return $o unless $self->{agg};
 
 	my $o2;
-	( $o2, $self->{agg} ) = $self->{agg}->split( $o->dur );
+	( $o2, $self->{agg} ) = $self->{agg}->split( $o->time );
 
 	foreach my $f (@{$self->fields}){
 		$o->$f( $o2->$f );

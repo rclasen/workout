@@ -77,14 +77,7 @@ create new Athlete object
 
 =cut
 
-sub isfirst {
-	my( $self ) = @_;
-
-	return 1 unless $self->prev;
-	return 1 if $self->time - $self->dur - $self->prev->time > 0.1;
-	return 0;
-}
-	
+# copy this chunk
 sub clone {
 	my( $self, $a ) = @_;
 
@@ -95,56 +88,88 @@ sub clone {
 	} @core_fields } );
 }
 
+# caluclate data for time between two chunks
+sub _intersect {
+	my( $self, $next, $a ) = @_;
+
+	my $new = Workout::Chunk->new( $a );
+
+	my $dur = $new->time - $self->time;
+	my $ma = $dur / ($next->time - $self->time);
+
+	if( defined($self->temp) && defined($next->temp) ){ 
+		$new->{temp} = $self->temp + ($next->temp - $self->temp) * $ma;
+	} else {
+		$new->{temp} = $next->temp;
+	}
+
+	if( defined($self->ele) && defined($next->ele) ){ 
+		$new->{ele} = $self->ele + ($next->ele - $self->ele) * $ma;
+	} else {
+		$new->{ele} = $next->ele;
+	}
+
+	if( defined($self->lon) && defined($self->lat) &&
+		defined($next->lon) && defined($next->lat) ){
+
+		$new->{lon} = $self->lon + ($next->lon - $self->lon) * $ma;
+		$new->{lat} = $self->lat + ($next->lat - $self->lat) * $ma;
+	}
+
+	$new;
+}
+
+# generate chunk that follows the current and lasts at most to the next
+sub synthesize {
+	my( $self, $time, $next ) = @_;
+
+	my $dur = $time - $self->time;
+	croak "invalid synthesize time ". $time ." for ".$self->time
+		unless $dur > 0;
+
+	my %a = (
+		time	=> $time,
+		dur	=> $time - $self->time,
+		prev	=> $self,
+	);
+
+	return Workout::Chunk->new( \%a )
+		unless $next;
+
+	$self->_intersect( $next, \%a );
+}
+
+# split current chunk at specified time
 sub split {
-	my( $self, $at ) = @_;
+	my( $self, $time ) = @_;
 
-	if( $at > $self->dur ){
-		# TODO: merge with zero-Chunk?
-		return;
+	my $remain = $self->time - $time;
+	croak "invalid split time ". $time ." for ". $self->time
+		if $remain < 0;
 
-	} elsif( $self->dur - $at < 0.1 ){
-		return $self->clone; # , undef;
+	return $self->clone # , undef
+		if $remain < 0.1;
 
-	} # else ...
+	my $dur = $self->dur - $remain;
+	my $ma = $dur / $self->dur;
+	my $p = $self->prev;
 
-	my $remain = $self->dur - $at;
-	my $ma = $at / $self->dur;
-	my $mb = $remain / $self->dur;
-
-	my $a = {
-		prev	=> $self->prev,
-		'time'	=> $self->time - $remain,
-		dur	=> $at,
+	my %aa = (
+		prev	=> $p,
+		'time'	=> $time,
+		dur	=> $dur,
 		dist	=> ($self->dist||0) * $ma,
 		work	=> ($self->work||0) * $ma,
 		cad	=> $self->cad,
 		hr	=> $self->hr,
-	};
+	);
+	my $a = $p 
+		? $p->_intersect( $self, \%aa )
+		: Workout::Chunk->new( \%aa );
 
-	my $p = $self->prev;
-
-	# TODO: allow reuse of lon,lat,ele calc in Filter::Join
-	# TODO: test ele, lon, lat
-	if( $p && defined($p->temp) && defined($self->temp) ){ 
-		$a->{temp} = $p->temp + ($self->temp - $p->temp) * $ma;
-	} else {
-		$a->{temp} = $self->temp;
-	}
-	if( $p && defined($p->ele) && defined($self->ele) ){ 
-		$a->{ele} = $p->ele + ($self->ele - $p->ele) * $ma;
-	} else {
-		$a->{ele} = $self->ele;
-	}
-	if( $p && defined($p->lon) && defined($p->lat) &&
-		defined($self->lon) && defined($self->lat) ){
-
-		$a->{lon} = $p->lon + ($self->lon - $p->lon) * $ma;
-		$a->{lat} = $p->lat + ($self->lat - $p->lat) * $ma;
-	}
-
-	my $aa = Workout::Chunk->new( $a );
-	return $aa, Workout::Chunk->new({ 
-		prev	=> $aa,
+	my $mb = $remain / $self->dur;
+	return $a, Workout::Chunk->new({ 
+		prev	=> $a,
 		'time'	=> $self->time,
 		dur	=> $remain,
 		dist	=> ($self->dist||0) * $mb,
@@ -156,28 +181,44 @@ sub split {
 		cad	=> $self->cad,
 		hr	=> $self->hr,
 	});
-
 }
 
-sub merge {
-	my( $a, $b ) = @_;
+our @fields_avg = qw( cad hr );
 
-	my $ndur = $a->dur + $b->dur;
-	return Workout::Chunk->new({
-		prev	=> $a->prev,
-		cad	=> (($a->cad||0) * ($a->dur||0) 
-			+ ($b->cad||0) * ($b->dur||0)) / $ndur,
-		hr	=> (($a->hr||0)  * ($a->dur||0) 
-			+ ($b->hr||0)  * ($b->dur||0)) / $ndur,
-		temp	=> $b->temp,
-		ele	=> $b->ele,
-		lon	=> $b->lon,
-		lat	=> $b->lat,
-		work	=> ($a->work||0) + ($b->work||0),
-		dist	=> ($a->dist||0) + ($b->dist||0),
-		dur	=> $ndur,
-		'time'	=> $b->time,
-	});
+sub merge {
+	my %a;
+
+	$a{prev} = $_[0]->prev;
+
+	foreach my $c(@_){
+		foreach my $f ( qw( dur work dist )){
+			if( defined( my $v = $c->$f )){
+				$a{$f} += $v;
+			}
+		}
+
+		foreach my $f ( @fields_avg ){
+			if( defined( my $v = $c->$f )){
+				$a{$f} += $v * $c->dur;
+			}
+		}
+	}
+	$a{dur} or croak "merged chunk is too short";
+
+
+	foreach my $f (qw( time temp ele lon lat )){
+		if( defined( my $v = $_[-1]->$f )){
+			$a{$f} = $v;
+		}
+	}
+
+	foreach my $f ( @fields_avg ){
+		if( defined($a{$f})){
+			$a{$f} /= $a{dur};
+		}
+	}
+
+	return Workout::Chunk->new( \%a );
 }
 
 =pod
@@ -232,7 +273,28 @@ chunk based fields
 =cut
 
 # TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, spdmin=moving
-# TODO: calc vspd
+
+sub isfirst {
+	my $self = shift;
+	return ! $self->prev;
+}
+
+sub stime {
+	my $self = shift;
+	$self->time - $self->dur;
+}
+
+sub gap {
+	my $self = shift;
+	my $p = shift || $self->prev or return;
+	$self->stime - $p->time;
+}
+
+sub isblockfirst {
+	my $self = shift;
+	my $p = shift || $self->prev or return;
+	abs($self->gap($p) ||0) > 0.1;
+}
 
 sub climb {
 	my $self = shift;

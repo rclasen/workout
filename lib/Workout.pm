@@ -19,6 +19,9 @@ easily create workout objects
 
 =cut
 
+# TODO: capabilities for auto plumb: blocking, variable recint, supported fields
+# TODO: automatic plumbing of filters
+
 package Workout;
 
 use 5.008008;

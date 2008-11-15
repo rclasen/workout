@@ -27,16 +27,28 @@ use Carp;
 
 our $VERSION = '0.01';
 
+our %default = (
+	recint	=> undef,
+);
+
+__PACKAGE__->mk_accessors( keys %default );
+
 =head2 new( $src, $arg )
 
-new iterator
+new Iterator
 
 =cut
 
 sub new {
-	my $class = shift;
-	my $self = $class->SUPER::new( @_ );
-	$self->{queued} = undef;
+	my( $class, $src, $a ) = @_;
+
+	$a||={};
+	my $self = $class->SUPER::new( $src, {
+		%default,
+		%$a,
+	});
+	$self->{queue} = ();
+	$self->{stime} = undef;
 	$self;
 }
 
@@ -49,40 +61,37 @@ get next data chunk
 sub process {
 	my( $self ) = @_;
 
-	if( my $r = $self->{queued} ){
-		$self->{queued} = undef;
+	if( my $r = pop @{$self->{queue}} ){
+		$r->prev( $self->last );
 		return $r;
 	}
 
 	my $i = $self->_fetch
 		or return;
 
+	$self->{stime} ||= $i->stime;
+
 	my $last = $self->last;
 	my $o = $i->clone({
 		prev	=> $last,
 	});
 
-	if( $last && $i->isfirst ){
-		my $ltime = $i->time - $i->dur;
-		my $dur = $ltime - $last->time;
-		$self->debug( "inserting ". $dur ."sec at ". $ltime);
+	if( $last && $i->isblockfirst ){
+		push @{$self->{queue}}, $o;
 
-		$self->{queued} = $o;
+		$self->debug( "joining chunks ". $last->time ." and ". $i->time );
+		
+		if( $self->recint && $i->gap > $self->recint ){
+			my $elapsed = $last->time - $self->{stime};
+			my $time = $self->{stime} + $self->recint 
+				* (1+int($elapsed/$self->recint));
 
-		my $ma = $dur / ( $dur + $o->dur);
-		# TODO: move ele,lon,lat calc to ::Chunk
-		my %a = (
-			prev	=> $self->last,
-			time    => $ltime,
-			dur     => $dur,
-			temp => ($last->temp||0) + ($o->temp||0) * $ma,
-			ele => ($last->ele||0) + ($o->ele||0) * $ma,
-			lon => ($last->lon||0) + (($o->lon||0) - ($last->lon||0)) * $ma,
-			lat => ($last->lat||0) + (($o->lat||0) - ($last->lat||0)) * $ma,
-		);
+			$o = $last->synthesize( $time, $i );
+			push @{$self->{queue}}, $o->synthesize( $i->stime, $i );
 
-		$o = Workout::Chunk->new( \%a );
-		$self->{queued}->prev( $o );
+		} else {
+			$o = $last->synthesize( $i->stime, $i );
+		}
 	}
 
 	return $o;

@@ -51,7 +51,7 @@ sub new {
 		%default,
 		%$a,
 	});
-	$self->{agg} = undef;
+	$self->{queue} = ();
 	$self;
 }
 
@@ -70,42 +70,62 @@ return next (resampled) data chunk
 sub process {
 	my( $self ) = @_;
 
-	# aggregate data
-	while( ! $self->{agg} 
-		|| $self->{agg}->dur < $self->recint ){
+	my @merge;
+	my $dur = 0;
 
+	if( my $q = pop @{$self->{queue}} ){
+		$dur = $q->dur;
+		push @merge, $q;
+	}
+
+
+	# collect data
+	while( $dur < $self->recint ){
+
+		# TODO: append zeros when @merge is too small?
 		my $r = $self->_fetch
 			or return;
 
-		# new block? throw away collected data and restart
-		if( $r->isfirst ){
-			$self->debug( "new block, resample reset" );
-			$self->{agg} = $r;
-			next;
+		# new block?
+		if( $r->isblockfirst ){
+			my $p = $r->prev;
+			my $gap = $r->gap;
+			my $gdur = $dur + $gap;
+
+			# fill small gaps with zeros
+			if( $gdur < $self->recint ){
+				$self->debug( "filling small ". $gap 
+					."sec gap at ". $r->stime );
+				push @merge, $p->synthesize($r->stime, $r);
+				$dur = $gdur;
+
+			} elsif( $dur > $self->recint / 2 ){
+				$self->debug( "extending block end from ". $dur 
+					."sec at ". $r->stime );
+				push @merge, $p->synthesize($r->stime, $r);
+				$dur = $gdur;
+
+			} elsif( $gdur > $self->recint ){
+				# TODO: append zeros when gap is too large?
+				$self->debug( "block end at ". $r->stime 
+					.", actually dropping ". $dur ."sec data");
+				@merge = ();
+				$dur = 0;
+			}
 		}
 
-		#my $s = { %$a };
-		#print "reading chunk ", ++$icnt, "\n";
-		#print "-";
-
-		if( ! $self->{agg} ){
-			$self->{agg} = $r;
-
-		} else {
-			# TODO: if $r->dur + $agg->dur > recint, then
-			# split before merge
-			$self->{agg} = $self->{agg}->merge( $r );
-		}
+		push @merge, $r;
+		$dur += $r->dur;
 	}
 
-	# TODO: fill with zeros when crossing inbound block boundaries
-	# TODO: move to seperate moduule for reuse in Merge.pm
+	# merge
+	my $agg = Workout::Chunk::merge( @merge );
 
-	my $o;
-	( $o, $self->{agg} ) = $self->{agg}->split( $self->recint );
+	# split
+	my( $o, $q ) = $agg->split( $agg->stime + $self->recint );
+	push @{$self->{queue}}, $q;
 	$o->prev( $self->last );
 
-	#print "split: ", Data::Dumper->Dump( [$l, $s, $o, $a], [qw(l s o a)] );
 	return $o;
 }
 
