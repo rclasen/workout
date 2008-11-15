@@ -93,9 +93,9 @@ print
 
 "duration:        ", fmtdur( $info->dur ), " h (", int($info->dur/60), "m)\n",
 "creeping:        ", fmtdur( $info->dur_creep ), " h (",
-	int($info->dur_creep||0/60), "m)\n",
+	int(($info->dur_creep||0)/60), "m)\n",
 "moving:          ", fmtdur( $info->dur_mov ), " h (",
-	int($info->dur_mov||0/60), "m)\n",
+	int(($info->dur_mov||0)/60), "m)\n",
 
 "Temperature min: ", (int($info->temp_min||0) || '?'), " °C\n",
 "Temperature max: ", (int($info->temp_max||0) || '?'), " °C\n",
