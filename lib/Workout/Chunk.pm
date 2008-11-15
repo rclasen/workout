@@ -123,9 +123,11 @@ sub _intersect {
 sub synthesize {
 	my( $self, $time, $next ) = @_;
 
+	croak "invalid synthesize time ".$time." for ".$self->time
+		unless $time > $self->time;
+	croak "invalid synthesize time ".$time." before ".$next->time
+		if $next && $time > $next->stime;
 	my $dur = $time - $self->time;
-	croak "invalid synthesize time ". $time ." for ".$self->time
-		unless $dur > 0;
 
 	my %a = (
 		time	=> $time,
@@ -187,6 +189,8 @@ our @fields_avg = qw( cad hr );
 
 sub merge {
 	my %a;
+
+	return $_[0]->clone if @_ < 2;
 
 	$a{prev} = $_[0]->prev;
 
