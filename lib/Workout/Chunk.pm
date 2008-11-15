@@ -82,10 +82,10 @@ sub clone {
 	my( $self, $a ) = @_;
 
 	$a ||= {};
-	# use accessor for copying to allow conversions
-	Workout::Chunk->new( { map {
-		$_ => $a->{$_} || $self->$_;
-	} @core_fields } );
+	Workout::Chunk->new( { 
+		%$self,
+		%$a,
+	});
 }
 
 # caluclate data for time between two chunks

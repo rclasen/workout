@@ -20,29 +20,6 @@ Interface to read/write SRM power meter files
 =cut
 
 
-package Workout::Store::SRM::Chunk;
-use base 'Workout::Chunk';
-
-__PACKAGE__->mk_accessors(qw( pwr ));
-
-sub spd {
-	my $self = shift;
-	if( @_ ){
-		return $self->{spd} = $_[0] * 3.6;
-	}
-	($self->{spd}||0) / 3.6;
-}
-
-sub dist {
-	my $self = shift;
-	$self->spd * $self->dur;
-}
-
-sub work {
-	my $self = shift;
-	$self->pwr * $self->dur;
-}
-
 package Workout::Store::SRM::Iterator;
 use 5.008008;
 use strict;
@@ -92,32 +69,35 @@ sub process {
 			$self->{ctime} += $store->recint;
 
 			if( $self->{nck} == 0 ){
-				if( $self->{ctime} >
-				$blk->{stime}->hires_epoch ){
+				if( $self->{ctime} > $blk->{stime} ){
+					my $b = DateTime->from_epoch( 
+						epoch => $blk->{stime} );
 					my $t = DateTime->from_epoch( 
 						epoch => $self->{ctime} );
 
 					warn "fixing time of block "
 						. $self->{nbk} 
-						. " from ".  $blk->{stime}->hms
+						. " from ".  $b->hms
 						. " to ". $t->hms;
 				} else {
-					$self->{ctime} = $blk->{stime}->hires_epoch;
+					$self->{ctime} = $blk->{stime};
 				}
 			}
 
 		} else {
-			$self->{ctime} = $blk->{stime}->hires_epoch
+			$self->{ctime} = $blk->{stime};
 		}
 
 		my $idx = $blk->{ckstart} + $self->{nck}++;
 		my $ick = $store->{chunks}[$idx];
-		my $ock = Workout::Store::SRM::Chunk->new( {
+		my $ock = Workout::Chunk->new( {
 			%$ick,
 			prev	=> $self->last,
 			time	=> $self->{ctime},
 			dur	=> $store->recint,
 			temp	=> $store->temperature,
+			dist	=> $ick->{spd}/3.6 * $store->recint,
+			work	=> $ick->{pwr} * $store->recint,
 		});
 
 		$self->{cntin}++;
@@ -151,6 +131,7 @@ my %magic_tag = (
 	SRM4	=> 4,
 	SRM5	=> 5,
 	SRM6	=> 6,
+	SRM7	=> 7,
 );
 
 sub filetypes {
@@ -209,10 +190,15 @@ sub do_read {
 	exists $magic_tag{$_[0]}
 		or croak "unrecognized file format";
 	my $version = $magic_tag{$_[0]};
-	my $clen = 255;
-	if( $version < 6 ){
+	my $clen;
+	if( $version == 5 ){
 		$clen = 3;
+	} elsif( $version == 6 ){
+		$clen = 255;
+	} else {
+		croak "unsupported file version: $version";
 	}
+
 	
 	$self->date( DateTime->new( 
 		year		=> 1880, 
@@ -220,6 +206,7 @@ sub do_read {
 		day		=> 1,
 		time_zone	=> $self->{tz},
 	)->add( days => $_[1] ));
+	my $wtime = $self->date->hires_epoch;
 
 	$self->circum( $_[2] );
 	$self->recint( $_[3] / $_[4] );
@@ -267,8 +254,7 @@ sub do_read {
 			or croak "failed to read data block";
 
 		@_ = unpack( "Vv", $buf );
-		my $stime = $self->date->clone
-			->add( seconds =>  $_[0] / 100 );
+		my $stime = $wtime + $_[0] / 100;
 
 		my $ckcnt = $_[1];
 		my $blk = {
@@ -280,15 +266,16 @@ sub do_read {
 		push @{$self->{blocks}}, $blk;
 
 		if( $self->{debug} ){
-			my $etime = $stime->clone->add( 
-				seconds => $ckcnt * $self->recint );
+			my $sdate = DateTime->from_epoch( epoch => $stime);
+			my $etime = $stime + $ckcnt * $self->recint;
+			my $edate = DateTime->from_epoch( epoch => $etime);
 
 			$self->debug( "block ". $#{$self->{blocks}} .": "
 				. sprintf( '%5d+%5d=%5d', 
 					$blockcks, $ckcnt, ($blockcks + $ckcnt) )
 				." @". $_[0]
-				." ".  $stime->hms . " (".  $stime->hires_epoch .")"
-				." to ". $etime->hms . " (".  $etime->hires_epoch .")"
+				." ".  $sdate->hms . " (".  $stime .")"
+				." to ". $edate->hms . " (".  $etime .")"
 				);
 		}
 
@@ -316,14 +303,14 @@ sub do_read {
 		foreach my $blk ( reverse @{$self->{blocks}} ){
 			if( $extra <= $blk->{ckcnt} ){
 				$self->debug( "truncating block "
-					. $blk->{stime}->hms
+					. $blk->{stime}
 					." by $extra chunks" );
 
 				$blk->{ckcnt} -= $extra;
 				last;
 			} else {
 				$self->debug( "truncating block "
-					. $blk->{stime}->hms
+					. $blk->{stime}
 					. "to 0 chunks" );
 
 				$extra -= $blk->{ckcnt};
@@ -335,14 +322,14 @@ sub do_read {
 	# mark too short leading blocks to be skipped
 	foreach my $blk ( @{$self->{blocks}} ){
 		last if $blk->{ckcnt} * $self->recint > $self->blkmin;
-		$self->debug( "leading junk block ". $blk->{stime}->hms 
+		$self->debug( "leading junk block ". $blk->{stime}
 			." (< ".  $self->blkmin ."sec)" );
 		$blk->{skip}++;
 	}
 	# mark too short trailing blocks to be skipped
 	foreach my $blk ( reverse @{$self->{blocks}} ){
 		last if $blk->{ckcnt} * $self->recint > $self->blkmin;
-		$self->debug( "trailing junk block ". $blk->{stime}->hms 
+		$self->debug( "trailing junk block ". $blk->{stime}
 			." (< ".  $self->blkmin ."sec)" );
 		$blk->{skip}++;
 	}
