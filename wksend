@@ -76,7 +76,10 @@ my $gpx = Workout::filter( 'Join',
 
 
 # fill hrm
-my $merge = Workout::filter( 'Merge', $srm, $gpx, [qw( ele )] );
+my $merge = Workout::filter( 'Merge', $gpx, {
+	master	=> $srm,
+	fields	=> [qw( ele )],
+});
 my $info = Workout::filter( 'Info', $merge );
 
 my $dst = Workout::file_new( { 

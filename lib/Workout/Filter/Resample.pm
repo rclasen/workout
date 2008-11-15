@@ -29,8 +29,6 @@ use Carp;
 our $VERSION = '0.01';
 
 
-# TODO: allow to supply start time
-
 our %default = (
 	recint	=> 5,
 );
@@ -59,6 +57,7 @@ return recording/sampling interval in use
 
 =cut
 
+
 =head2 next
 
 return next (resampled) data chunk
@@ -68,15 +67,27 @@ return next (resampled) data chunk
 sub process {
 	my( $self ) = @_;
 
+	$self->_fetch_time( $self->recint );
+}
+
+sub _fetch_time {
+	my( $self, $wdur, $wtime ) = @_;
+
 	my @merge;
 	my $dur = 0;
 	my $next;
 
 	# collect data
-	while( $dur < $self->recint ){
+	while( $dur < $wdur ){
 
-		$next = $self->_fetch
+		$next = $self->_fetch_range( $wdur, $wtime )
 			or last;
+
+		if( $wtime && ( $next->stime < ($wtime - $wdur)) ){
+			$self->debug( "discarding chunk data between ".
+				$next->stime." and ". ($wtime-$wdur) );
+			$next = ($next->split( $wtime-$wdur ))[1];
+		}
 
 		# block terminated while collecting
 		my $p = $merge[-1];
@@ -84,14 +95,14 @@ sub process {
 			my $gap = $next->gap( $p );
 
 			# gap is too small to complete $dur, fill with zero
-			if( $dur + $gap < $self->recint ){
+			if( $dur + $gap < $wdur ){
 				$self->debug( "filling small ". $gap 
 					."sec block gap at ". $p->time );
 				push @merge, $p->synthesize($next->stime, $next);
 				$dur += $gap;
 
 			# got enough data, exit
-			} elsif( $dur > $self->recint / 2 ){
+			} elsif( $dur > $wdur / 2 ){
 				$self->_push( $next );
 				last;
 
@@ -112,16 +123,16 @@ sub process {
 	if( ! $dur ){
 		return;
 
-	} elsif( $dur < $self->recint / 2 ){
+	} elsif( $dur < $wdur / 2 ){
 		$self->debug( "dropping ". $dur ."sec data at workout end");
 		return;
 
 	} # else enough data present
 
-	my $time = $merge[0]->stime + $self->recint;
+	my $time = $merge[0]->stime + $wdur;
 
 	# ... fill end with zeros to complete recint
-	if( $dur < $self->recint ){
+	if( $dur < $wdur ){
 		my $p = $merge[-1];
 
 		$self->debug( "extending workout/block end from ". $dur ."sec at ".
@@ -140,6 +151,26 @@ sub process {
 	$o->prev( $self->last );
 
 	return $o;
+}
+
+sub _fetch_range {
+	my( $self, $wdur, $wtime ) = @_;
+
+	while( my $i = $self->_fetch ){
+		return $i unless $wtime;
+
+		if( $i->time < $wtime - $wdur ){
+			$self->debug( "skipping chunk ". $i->stime 
+				." to ". $i->time  );
+			next;
+		}
+		return $i if $i->stime < $wtime;
+
+		$self->debug( "delayed chunk ". $i->time );
+		$self->_push( $i );
+		last;
+	}
+	return;
 }
 
 

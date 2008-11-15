@@ -6,9 +6,12 @@ Workout::Filter::Merge - Merge Workout data
 
 =head1 SYNOPSIS
 
-  $src1 = Workout::Store::SRM->read( "foo.srm" );
-  $src2 = Workout::Store::Gpx->read( "foo.gpx" );
-  $merged = Workoute::Filter::Merge( $src1, $src2, [ "ele" ] );
+  $src_from = Workout::Store::Gpx->read( "foo.gpx" );
+  $src_to = Workout::Store::SRM->read( "foo.srm" );
+  $merged = Workoute::Filter::Merge( $src_from, $src_to, {
+  	master	=> $src_to,
+  	fields	=> [ "ele" ],
+  });
   while( $chunk = $merged->next ){
   	# do something
   }
@@ -23,31 +26,20 @@ whch fields to pick from the second, ... Store.
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Filter::Base';
+use base 'Workout::Filter::Resample';
 use Carp;
 
 our $VERSION = '0.01';
 
 __PACKAGE__->mk_ro_accessors(qw(
-	src2
+	master
 	fields
 ));
 
-sub new {
-	my( $class, $src, $src2, $fields, $a ) = @_;
-
-	$a ||= {};
-	$class->SUPER::new( $src, { 
-		%$a,
-		src2	=> $src2,
-		fields	=> $fields,
-	});
-}
-
-sub _fetch2 {
+sub _fetch_master {
 	my( $self ) = @_;
 
-	my $r = $self->src2->next 
+	my $r = $self->master->next 
 		or return;
 
 	$self->{cntin}++;
@@ -57,59 +49,20 @@ sub _fetch2 {
 sub process {
 	my( $self ) = shift;
 
-	# get src1
-	my $i = $self->_fetch
+	# get master
+	my $m = $self->_fetch_master
 		or return;
 
-	my $stime = $i->stime;
-
-	my $o = $i->clone({
+	my $o = $m->clone({
 		prev	=> $self->last,
 	});
 
-	# skip src2 chunks that predate src1
-	while( ! $self->{agg} || $self->{agg}->time < $stime ){
-		$self->{agg} = $self->_fetch2
-			or return $o;
-	}
-
-	# nothing to merge when src2 data is after src1
-	# TODO: queue src2 for later use
-	my $stime2 = $self->{agg}->stime;
-	if( $stime2 > $i->time ){
-		return $o;
-	}
-
-	# throw part of src2 preluding src1 away.
-	$self->{agg} = ($self->{agg}->split( $stime2 ))[1];
-
-	# add more src2 to agg until long enough for src1->dur
-	while( $self->{agg} && $self->{agg}->time < $o->time ){
-		my $n = $self->_fetch2;
-
-		# end of src2
-		if( ! $n ){
-			$self->{agg} = undef;
-			last;
-		}
-
-		# new block?
-		my $stime3 = $n->stime;
-		if( $n->isblockfirst ){
-			$self->{agg} = $n;
-			last;
-		}
-		
-		$self->{agg} = $self->{agg}->merge( $n );
-	}
-
-	return $o unless $self->{agg};
-
-	my $o2;
-	( $o2, $self->{agg} ) = $self->{agg}->split( $o->time );
+	#$self->debug( "merging chunk ". $m->stime ." to ". $m->time );
+	my $s = $self->_fetch_time( $m->dur, $m->time )
+		or return $o;
 
 	foreach my $f (@{$self->fields}){
-		$o->$f( $o2->$f );
+		$o->$f( $s->$f );
 	}
 
 	$o;

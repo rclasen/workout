@@ -14,7 +14,10 @@ Workout::Store - Base Class for Sport Workout data Stores
   # aggregate/split chunks
   $res = Workout::Filter::Resample->new( $join, { recint => 5 } ); 
   # add ele info
-  $merge = Workout::Filter::Merge->new( $res, $ele, [ 'ele' ] ); 
+  $merge = Workout::Filter::Merge->new( $ele, {
+  	master	=> $res, 
+	fields	=> [ 'ele' ],
+  }); 
   # tmp copy for demonstration purpose
   $mem = Workout::Store::Memory->new;
   $mem->from( $merge );

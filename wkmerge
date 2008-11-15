@@ -106,7 +106,9 @@ my $gpx = Workout::filter('Join',
 
 
 # fill dst
-my $merge = Workout::filter('Merge', $srm, $gpx, [qw( ele )], {
+my $merge = Workout::filter('Merge', $gpx, {
+	master	=> $srm, 
+	fields	=> [qw( ele )],
 	debug	=> $debug,
 });
 my $dst = Workout::file_new( { 
