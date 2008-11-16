@@ -25,7 +25,7 @@ package Workout::Store::HRM;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store';
+use base 'Workout::Store::Memory';
 use Workout::Chunk;
 use Carp;
 use DateTime;
@@ -37,16 +37,14 @@ sub filetypes {
 	return "hrm";
 }
 
-__PACKAGE__->mk_accessors(qw(
-	athlete
-	tz
-	dist
-	climb
-	moving
-	elesum
-	elemax
-	spdmax
-));
+our %defaults = (
+	athlete	=> undef,
+	tz	=> 'local',
+	recint	=> 5,
+	dist	=> 0,
+);
+
+__PACKAGE__->mk_accessors( keys %defaults );
 
 =head2 new( $file, $args )
 
@@ -58,22 +56,137 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a||={};
-	my $self = $class->SUPER::new( {
-		recint	=> 5,
-		tz	=> 'local',
+	$class->SUPER::new({
+		%defaults,
 		%$a,
+		date	=> undef,
+		time	=> 0,
+		columns	=> [],
 	});
+}
 
-	$self->{data} = [];
+sub do_read {
+	my( $self, $fh ) = @_;
 
-	# overall data (calc'd from chunks)
-	$self->dist( 0 ); # trip odo
-	$self->climb( 0 ), # sum of climb
-	$self->moving( 0 ); # moving time
-	$self->elesum( 0 ); # sum of ele
-	$self->elemax( 0 ); # max of ele
-	$self->spdmax( 0 ); # max of spd
-	$self;
+	my $parser;
+	my $gotparams;
+
+	while( defined(my $l = <$fh>) ){
+
+		if( $l =~/^\s*$/ ){
+			next;
+
+		} elsif( $l =~ /^\[(\w+)\]/ ){
+			my $blockname = lc $1;
+
+			if( $blockname eq 'params' ){
+				$parser = \&parse_params;
+				$gotparams++;
+
+			} elsif( $blockname eq 'hrdata' ){
+				$gotparams or croak "missing parameter block";
+				$self->{time} = $self->{date}->hires_epoch;
+				$parser = \&parse_hrdata;
+
+			} else {
+				$parser = undef;
+			}
+
+		} elsif( $parser ){
+			$parser->( $self, $l );
+
+		} # else ignore input
+	}
+}
+
+sub parse_params {
+	my( $self, $l ) = @_;
+
+	my( $k, $v ) = ($l =~ /^\s*(\S+)\s*=\s*(.*)\s*$/)
+		or croak "misformed input: $l";
+
+	$k = lc $k;
+
+	if( $k eq 'version' ){
+		($v == 106 || $v == 107)
+			or croak "unsupported version: $v";
+	
+	} elsif( $k eq 'interval' ){
+		($v == 238 || $v == 204)
+			and croak "unsupported data interval: $v";
+
+		$self->{recint} = $v;
+	
+	} elsif( $k eq 'date' ){
+		$v =~ /^(\d\d\d\d)(\d\d)(\d\d)$/
+			or croak "invalid date";
+
+		$self->{date} = DateTime->new(
+			year	=> $1,
+			month	=> $2,
+			day	=> $3,
+		);
+
+	} elsif( $k eq 'starttime' ){
+		$v =~ /^(\d+):(\d+):([\d.]+)$/
+			or croak "invalid starttime";
+
+		$self->{date}->add(
+			hours	=> $1,
+			minutes	=> $2,
+			seconds	=> $3,
+		);
+
+	} elsif( $k eq 'smode' ){
+		$v =~ /^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/
+			or croak "invalid smode";
+
+		# set unit conversion multiplieres
+		my( $mdist, $mele );
+		if( $8 ){ # uk
+			# 0.1 mph -> m/s
+			# ($x/10 * 1.609344)/3.6
+			$mdist = 1.609344/10/3.6;
+			# ft -> m
+			$mele = 0.3048;
+		} else { # metric
+			# 0.1 km/h -> m/s
+			# ($x/10)/3.6
+			$mdist = 1 / 36;
+			# m
+			$mele = 1;
+		}
+
+		# add parser for each column
+		my @cols = ( sub { 'hr'	=> $_[0] } );
+		push @cols, sub { 'dist' => $_[0] * $mdist * $self->recint } if $1;
+		push @cols, sub { 'cad' => $_[0] } if $2;
+		push @cols, sub { 'ele' => $_[0] * $mele } if $3;
+		push @cols, sub { 'work' => $_[0] * $self->recint } if $4;
+
+		# not supported, ignore:
+		#push @cols, sub { 'pbal' => $_[0] } if ($5||$6) && $9;
+		#push @cols, sub { 'air' => $_[0] } if $9;
+
+		$self->{columns} = \@cols;
+	}
+	
+}
+
+sub parse_hrdata {
+	my( $self, $l ) = @_;
+
+	my @row = split( /\t/, $l );
+
+	$self->{time} += $self->recint;
+	my %a = (
+		time	=> $self->{time},
+		dur	=> $self->recint,
+		map {
+			$_->( shift @row );
+		} @{$self->{columns}},
+	);
+	$self->_chunk_add( Workout::Chunk->new( \%a ));
 }
 
 =head2 block_add
@@ -89,38 +202,18 @@ sub block_add {
 	# else: first block, no data -> do nothing;
 }
 
-=head2 chunk_add( $chunk )
+=head2 chunk_check( $chunk )
 
 =cut
 
-sub chunk_add {
-	my( $self, $c ) = @_;
+sub chunk_check {
+	my( $self, $c, $l ) = @_;
 
-	my $l = $self->{data}[-1] if @{$self->{data}};;
+	$self->SUPER::chunk_check( $c, $l );
 
-	$self->chunk_check( $c, $l );
-	my $n = $c->clone( {
-		prev	=> $l,
-	});
-
-	if( defined( my $spd = $n->spd )){
-		$self->spdmax( $spd ) if $spd > $self->spdmax;
-		$self->{moving} += $n->dur if $spd;
-	}
-	$self->{dist} += $n->dist||0;
-
-	if( defined( my $ele = $n->ele )){
-		my $climb = $n->climb;
-
-		$self->{climb} += $climb if defined $climb && $climb > 0;
-		$self->{elesum} += $ele;
-		$self->elemax( $ele ) if $ele > $self->elemax;
-	}
-
-	push @{$self->{data}}, $n;
+	$self->{dist} += $c->dist||0;
 }
 
-# TODO: read / iterate
 
 =head2 fmtdur( $sec )
 
@@ -146,14 +239,14 @@ write data to disk.
 sub do_write {
 	my( $self, $fh ) = @_;
 
-	@{$self->{data}} 
-		or croak "no data";
+	my $data = $self->{data}[0];
+	@$data or croak "no data";
 
 	my $athlete = $self->athlete
 		or croak "missing athlete info";
 
-	my $last = $self->{data}[-1];
-	my $first = $self->{data}[0];
+	my $last = $data->[-1];
+	my $first = $data->[0];
 
 	my $stime = $first->stime;
 	my $sdate = DateTime->from_epoch( 
@@ -162,8 +255,6 @@ sub do_write {
 	); 
 
 	my $dur = $last->time - $stime;
-	my $spdav = $self->moving ? $self->dist / $self->moving : 0;
-	my $eleav = $self->elesum * $self->recint / $dur;
 
 	print $fh 
 "[Params]
@@ -198,68 +289,8 @@ Weight=", int($athlete->weight), "
 
 " if $self->note;
 
-=pod
-	print $fh
-"[IntTimes]
-", $self->fmtdur( $dur ), "	0	0	0	0
-32	0	0	0	0	0
-0	0	0	0	0
-0	", int($self->dist), "	0	0	0	0
-0	0	0	0	0	0
-";
-	# TODO: temperature
-	# TODO: individual laps
-
-	print $fh "
-[IntNotes]
-
-[ExtraData]
-
-[Summary-123]
-0	0	0	0	0	0
-",$athlete->hrmax,"	0	0	",$athlete->hrrest,"
-0	0	0	0	0	0
-",$athlete->hrmax,"	0	0	",$athlete->hrrest,"
-0	0	0	0	0	0
-",$athlete->hrmax,"	0	0	",$athlete->hrrest,"
-0	-1
-
-[Summary-TH]
-0	0	0	0	0	0
-0	0	0	0
-0	-1
-
-[HRZones]
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-
-[SwapTimes]
-
-[Trip]
-", int($self->dist / 100 ), "
-", int($self->climb), "
-", int($self->moving), "
-", int($eleav), "
-", int($self->elemax), "
-", int($spdav * 3.6 * 128 ), "
-", int($self->spdmax * 3.6 * 128 ), "
-", int($self->dist / 1000), "
-
-";
-
-=cut
-
 	print $fh "[HRData]\n";
-	foreach my $row ( @{$self->{data}} ){
+	foreach my $row ( @$data ){
 		print $fh join( "\t", (
 			int(($row->hr || 0)+0.5),
 			int(($row->spd || 0) * 36+0.5),
