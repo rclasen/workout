@@ -174,7 +174,7 @@ sub chunk_check {
 	my $l = $self->last_add
 		or return;
 
-	if( $l->time > $c->stime ){
+	if( $c->stime - $l->time > 0.1 ){
 		croak "nolinear time step: l=".  $l->time 
 			." c=". $c->time
 			." d=". $c->dur;
