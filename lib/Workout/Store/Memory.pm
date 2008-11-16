@@ -101,16 +101,17 @@ add data chunk to last data block.
 sub chunk_add {
 	my( $self, $i ) = @_;
 
-	my $last = $self->{data}[-1][-1];
-	$self->chunk_check( $i, $last );
-
-	my $o = $i->clone({
-		prev	=> $last,
-	});
-
-	push @{$self->block}, $o;
+	$self->chunk_check( $i, $self->{last} );
+	$self->_chunk_add( $i->clone );
 }
 
+sub _chunk_add {
+	my( $self, $n ) = @_;
+
+	$n->prev( $self->{last} );
+	$self->{last} = $n;
+	push @{$self->{data}[-1]}, $n;
+}
 
 1;
 __END__
