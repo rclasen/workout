@@ -13,9 +13,11 @@ use File::Temp qw/tempfile/;
 use Workout;
 use Workout::Athlete;
 
-my $recint = 5;
+my $join;
+my $recint;
 my $otype;
 my $delta = 0;
+my @fields;
 my $debug;
 
 my $wanthelp;
@@ -25,6 +27,8 @@ if( ! GetOptions(
 	"debug!"	=> \$debug,
 	"type=s"	=> \$otype,
 	"recint|r=i"	=> \$recint,
+	"join|j"	=> \$join,
+	"fields|f=s"	=> \@fields,
 	"delta|d=i"	=> \$delta,
 	"help|h!"	=> \$wanthelp,
 )){
@@ -39,6 +43,8 @@ prepare workout data for mailing it to the trainer
 Options:
 --debug             enable debuging output
 --recint|-r=<int>   sampling interval (default=5)
+--fields|-f=<n,n..> dump specified fields
+--join              join blocks
 --help              this cruft
 EOF
 	exit 0;
@@ -62,6 +68,14 @@ if( ! $ofname ){
 	$needhelp++;
 }
 
+if( @fields ){
+	@fields = split(/,/,join(',',@fields));
+} else {
+	#@fields ||= (qw( time dur dist spd cad hr work pwr));
+	@fields = qw( ele );
+}
+
+
 if( $needhelp ){
 	print STDERR "please use $0 --help for usage info\n";
 	exit 1;
@@ -71,52 +85,63 @@ $otype ||= lc( ($ofname =~ /\.([^.]+)$/)[0] );
 
 my $ath = Workout::Athlete->new;
 
+my $dst = Workout::file_new( { 
+	debug	=> $debug,
+	ftype	=> $otype,
+	athlete	=> $ath,
+} );
+
+if( $recint ){
+	$dst->recint( $recint );
+
+} elsif( $recint = $dst->recint ){
+	$debug && print STDERR "auto-resampling to $recint\n";
+
+}
+
+if( ! $join and $join = ! $dst->cap_block ){
+	$debug && print STDERR "auto-join\n";
+}
+
+
+
 # read srm
-my $srm = 
-	Workout::filter('Resample',
-	Workout::filter('Join',
-	Workout::filter('Timeshift',
-	Workout::file_read( $sfname,
-	{
-		debug	=> $debug,
-	}),
-	{ 
-		delta	=> $delta,
-		debug	=> $debug,
-	}),
-	{
-		recint	=> $recint,
-		debug	=> $debug,
-	}),
-	{
-		recint	=> $recint,
-		debug	=> $debug,
-	});
+my $srm = Workout::file_read( $sfname, {
+	debug	=> $debug,
+})->iterate;
+
+$srm = Workout::filter('Timeshift', $srm, { 
+	delta	=> $delta,
+	debug	=> $debug,
+});
+
+$srm = Workout::filter('Join',  $srm,{
+	recint	=> $recint,
+	debug	=> $debug,
+}) if $join;
+
+$srm = Workout::filter('Resample', $srm, {
+	recint	=> $recint,
+	debug	=> $debug,
+}) if $recint;
 	
 
 # read gpx
-my $gpx = Workout::filter('Join',
-	Workout::file_read( $gfname, 
-	{
-		debug	=> $debug,
-	}),
-	{
-		debug	=> $debug,
-	});
+my $gpx = Workout::file_read( $gfname, {
+	debug	=> $debug,
+});
+
+$gpx = Workout::filter('Join', $gpx, {
+	debug	=> $debug,
+});
 
 
 # fill dst
 my $merge = Workout::filter('Merge', $gpx, {
 	master	=> $srm, 
-	fields	=> [qw( ele )],
+	fields	=> \@fields,
 	debug	=> $debug,
 });
-my $dst = Workout::file_new( { 
-	debug	=> $debug,
-	ftype	=> $otype,
-	recint	=> $recint, 
-	athlete	=> $ath,
-} );
 $dst->from( $merge );
 
 # write dst

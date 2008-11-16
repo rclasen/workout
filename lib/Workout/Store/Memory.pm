@@ -63,7 +63,11 @@ our $VERSION = '0.01';
 sub new {
 	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
+	$a ||= {};
+	my $self = $class->SUPER::new({
+		cap_block	=> 1,
+		%$a,
+	});
 	$self->{data} = [[]];
 
 	$self;
@@ -98,20 +102,13 @@ add data chunk to last data block.
 
 =cut
 
-sub chunk_add {
-	my( $self, $i ) = @_;
-
-	$self->chunk_check( $i, $self->{last} );
-	$self->_chunk_add( $i->clone({
-		prev	=> $self->{last},
-	}));
-}
-
 sub _chunk_add {
 	my( $self, $n ) = @_;
 
-	$self->{last} = $n;
-	push @{$self->{data}[-1]}, $n;
+	my $block = $self->{data}[-1];
+	$self->chunk_check( $n, scalar @$block );
+	$self->{last_add} = $n;
+	push @{$block}, $n;
 }
 
 1;

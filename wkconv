@@ -6,12 +6,12 @@ use Workout;
 use Workout::Athlete;
 use Getopt::Long;
 
-# TODO: make filter Join + Resample optional
 # TODO: optional filter Smooth 
 # TODO: optional filter Pwr calc
 my $itype;
 my $otype;
-my $recint = 5;
+my $recint;
+my $join;
 my $opt_verbose;
 my $debug;
 
@@ -23,6 +23,7 @@ if( ! GetOptions(
 	"input|i=s"	=> \$itype,
 	"output|o=s"	=> \$otype,
 	"recint|r=i"	=> \$recint,
+	"join|j"	=> \$join,
 	"verbose|v!"	=> \$opt_verbose,
 	"debug!"	=> \$debug,
 )){
@@ -37,7 +38,8 @@ convert workout files between formats
 --help              this help
 --input|-i=<type>   input file type
 --output|-o=<type>  input file type
---recint|-r=<int>   sampling interval (default=5)
+--join              join blocks
+--recint|-r=<int>   sampling interval
 --debug             enable debuging output
 
 for now only conversion from .srm to .hrm is supported
@@ -66,24 +68,43 @@ my $src = Workout::file_read( $ifile, {
 	ftype	=> $itype,
 	debug	=> $debug,
 } );
-my $join = Workout::filter('Join', $src, {
-	recint	=> $recint,
-	debug	=> $debug,
-});
-my $res = Workout::filter('Resample', $join, { 
-	recint => $recint,
-	debug	=> $debug,
-} );
 my $dst = Workout::file_new( { 
 	ftype	=> $otype,
-	recint	=> $recint, 
 	athlete	=> $ath,
 	debug	=> $debug,
 } );
-$dst->from( $res );
+
+if( $recint ){
+	$dst->recint( $recint );
+
+} elsif( $recint = $dst->recint ){
+	$debug && print STDERR "auto-resampling to $recint\n";
+
+}
+
+if( ! $join && ! $dst->cap_block ){
+	$join++;
+	$debug && print STDERR "auto-join\n";
+}
+
+my $srci = $src->iterate;
+my $iter = $srci;
+
+my $joini = $iter = Workout::filter( 'Join', $iter, {
+	debug	=> $debug,
+	recint	=> $recint,
+} ) if $join;
+
+my $res = $iter = Workout::filter('Resample', $iter, { 
+	recint => $recint,
+	debug	=> $debug,
+} ) if $recint;
+
+$dst->from( $iter );
 $dst->write( $ofile );
 
-print 
-"input=", $join->cntin, " ",
-"joined=", $join->cntout, " ",
-"resampled=", $res->cntout, "\n" if $opt_verbose;
+if( $opt_verbose ){
+	print "input=", $srci->cntin, "\n";
+	print "joined=", $joini->cntout, "\n" if $join;
+	print "resampled=", $res->cntout, "\n" if $recint;
+}

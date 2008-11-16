@@ -163,6 +163,7 @@ sub new {
 		blkmin	=> 120, # min. block length/seconds
 		tz	=> 'local',
 		%$a,
+		cap_block	=> 1,
 	});
 
 	$self->{blocks} = [];

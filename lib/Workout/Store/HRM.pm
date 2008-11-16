@@ -62,6 +62,7 @@ sub new {
 		date	=> undef,
 		time	=> 0,
 		columns	=> [],
+		cap_block	=> 0,
 	});
 }
 
@@ -198,7 +199,7 @@ sub block_add {
 	my( $self ) = @_;
 	
 	if( @{$self->{data}} ){
-		croak "not supported";
+		croak "blocking is not supported";
 	}
 	# else: first block, no data -> do nothing;
 }
@@ -208,9 +209,9 @@ sub block_add {
 =cut
 
 sub chunk_check {
-	my( $self, $c, $l ) = @_;
+	my( $self, $c, $inblock ) = @_;
 
-	$self->SUPER::chunk_check( $c, $l );
+	$self->SUPER::chunk_check( $c, $inblock );
 
 	$self->{dist} += $c->dist||0;
 }
@@ -246,7 +247,7 @@ sub do_write {
 	my $athlete = $self->athlete
 		or croak "missing athlete info";
 
-	my $last = $data->[-1];
+	my $last = $self->last_add;
 	my $first = $data->[0];
 
 	my $stime = $first->stime;

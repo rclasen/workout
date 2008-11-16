@@ -111,7 +111,7 @@ sub filetypes {
 	return "gpx";
 }
 
-__PACKAGE__->mk_ro_accessors(qw( track gpx last ));
+__PACKAGE__->mk_ro_accessors(qw( track gpx ));
 
 # TODO: Geo::Gpx doesn't support subsecond timestamps
 
@@ -128,6 +128,7 @@ sub new {
 				points	=> [],
 			}],
 		},
+		cap_block	=> 1,
 	});
 	$self->gpx->tracks( [ $self->track ] );
 
@@ -169,17 +170,24 @@ sub block_add {
 	};
 }
 
-sub chunk_add {
-	my( $self, $c ) = @_;
+sub chunk_check {
+	my( $self, $c, $inblock ) = @_;
 
 	unless( $c->lon && $c->lat ){
 		croak "missing lon/lat at ". $c->time;
 	}
+	$self->SUPER::chunk_check( $c, $inblock );
+}
 
-	$self->chunk_check( $c, $self->last );
-	$self->{last} = $c;
+sub _chunk_add {
+	my( $self, $c ) = @_;
 
-	push @{$self->track->{segments}[-1]{points}}, {
+	my $seg = $self->track->{segments}[-1]{points};
+	$self->chunk_check( $c, scalar @$seg );
+
+	$self->{last_add} = $c;
+
+	push @$seg, {
 		lon	=> $c->lon,
 		lat	=> $c->lat,
 		ele	=> $c->ele,

@@ -55,13 +55,15 @@ sub filetypes {
 }
 
 __PACKAGE__->mk_accessors(qw(
+	cap_block
 	fields
 	recint
 	temperature
 	note
+	last_add
 ));
 
-sub do_read { croak "not suported"; };
+sub do_read { croak "reading is not suported"; };
 
 sub read {
 	my( $class, $fname, $a ) = @_;
@@ -97,13 +99,11 @@ sub from { # TODO: make this a constructor
 	$iter->isa( 'Workout::Iterator' )
 		or $iter = $iter->iterate;
 
-	my $last;
 	while( defined( my $chunk = $iter->next )){
 		if( $chunk->isblockfirst ){
 			$self->block_add;
 		}
 		$self->chunk_add( $chunk );
-		$last = $chunk;
 	}
 }
 
@@ -139,19 +139,28 @@ add data chunk to last data block.
 =cut
 
 sub chunk_add {
+	my( $self, $i ) = @_;
+
+	$self->_chunk_add( $i->clone({
+		prev	=> $self->last_add,
+	}));
+}
+
+sub _chunk_add {
 	my( $self, $chunk ) = @_;
 
 	croak "not implemented";
+	#$self->chunk_check( $chunk, 1 );
 }
 
-=head2 chunk_check( $chunk )
+=head2 chunk_check( $chunk, $inblock )
 
 check chunk data validity. For use in chunk_add().
 
 =cut
 
 sub chunk_check {
-	my( $self, $c, $l  ) = @_;
+	my( $self, $c, $inblock  ) = @_;
 
 	$c->dur
 		or croak "missing duration";
@@ -162,21 +171,22 @@ sub chunk_check {
 		croak "duration doesn't match recint";
 	}
 
-	return unless $l;
+	my $l = $self->last_add
+		or return;
 
 	if( $l->time > $c->stime ){
 		croak "nolinear time step: l=".  $l->time 
 			." c=". $c->time
 			." d=". $c->dur;
 	}
-	if( $c->isblockfirst( $l ) ){
+	if( $inblock && $c->isblockfirst( $l ) ){
 		croak "found unexpected gap without block start: l=". $l->time 
 			." c=". $c->time
 			." d=". $c->dur;
 	}
 }
 
-sub do_write { croak "not suported"; };
+sub do_write { croak "writing is not suported"; };
 
 sub write {
 	my( $self, $fname, $a ) = @_;

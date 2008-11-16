@@ -37,6 +37,16 @@ our $VERSION = '0.01';
 
 =cut
 
+sub new {
+	my( $class, $a ) = @_;
+
+	$a ||={};
+	$class->SUPER::new({
+		%$a,
+		cap_block	=> 1,
+	});
+}
+
 sub iterate {
 	my( $self ) = @_;
 	Workout::Store::Null::Iterator->new( $self );
@@ -66,6 +76,8 @@ add data chunk to last data block.
 =cut
 
 sub chunk_add { }
+
+sub _chunk_add { }
 
 
 1;

@@ -119,16 +119,12 @@ sub parse_chunks {
 	# TODO: be more paranoid about input
 
 	my %a = (
-		prev	=> $self->{last},
+		prev	=> $self->last_add,
 		map {
 			$_ => shift @row;
 		} @{$self->{columns}},
 	);
 	my $ck = Workout::Chunk->new( \%a );
-
-	if( $self->{last} && $self->{last}->time > $ck->stime ){
-		croak "backward timestep not allowed";
-	}
 
 	if( $ck->isblockfirst ){
 		$self->block_add;
@@ -147,7 +143,7 @@ write data to disk.
 sub do_write {
 	my( $self, $fh ) = @_;
 
-	$self->{last} or croak "no data";
+	$self->last_add or croak "no data";
 
 	my @fields = &Workout::Chunk::core_fields();
 
