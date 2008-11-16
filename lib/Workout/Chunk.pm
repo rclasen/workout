@@ -56,7 +56,6 @@ temp	abs	-		temperature °C
 =cut
 
 our @core_fields = qw( 
-	prev
 	time
 	dur
 	ele
@@ -68,7 +67,7 @@ our @core_fields = qw(
 	work
 	temp
 );
-__PACKAGE__->mk_accessors(@core_fields);
+__PACKAGE__->mk_accessors('prev', @core_fields);
 
 
 =head2 new( { <args> } )
@@ -86,6 +85,10 @@ sub clone {
 		%$self,
 		%$a,
 	});
+}
+
+sub core_fields {
+	@core_fields;
 }
 
 # caluclate data for time between two chunks
