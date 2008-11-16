@@ -71,9 +71,13 @@ sub process {
 			if( $self->{nck} == 0 ){
 				if( $self->{ctime} > $blk->{stime} ){
 					my $b = DateTime->from_epoch( 
-						epoch => $blk->{stime} );
+						epoch => $blk->{stime},
+						time_zone => $self->{tz},
+					);
 					my $t = DateTime->from_epoch( 
-						epoch => $self->{ctime} );
+						epoch => $self->{ctime},
+						time_zone => $self->{tz},
+					);
 
 					warn "fixing time of block "
 						. $self->{nbk} 
@@ -143,7 +147,6 @@ sub filetypes {
 __PACKAGE__->mk_accessors(qw(
 	tz
 	blkmin
-	date
 	circum
 	zeropos
 	gradient
@@ -175,7 +178,133 @@ sub new {
 
 # TODO: block_add
 # TODO: chunk_add
-# TODO: write
+
+sub do_write {
+	my( $self, $fh ) = @_;
+
+	my $buf;
+
+	############################################################
+	# file header
+
+	my $stime = $self->{blocks}[0]{stime};
+
+	my $dateref = DateTime->new( 
+		year		=> 1880, 
+		month		=> 1, 
+		day		=> 1,
+		time_zone	=> $self->{tz},
+	);
+
+	my $sdate = DateTime->from_epoch(
+		epoch		=> $stime,
+		time_zone	=> $self->{tz},
+	);
+
+	my $days = int( $sdate->subtract_datetime_absolute( $dateref )
+		->seconds / (24*3600) );
+
+	my $wtime = $dateref->clone->add(days=>$days)->hires_epoch;
+
+	# TODO: less hackish recint 
+	my( $r1, $r2 );
+	if( $self->recint >= 1 ){
+		(abs($self->recint - int($self->recint)) < 0.1 )
+			or croak "cannot find apropriate recint";
+
+		$r1 = int($self->recint);
+		$r2 = 1;
+	
+	} else {
+		$r2 = 10;
+		$r1 = $self->recint * $r2;
+		(abs($r1 - int($r1)) < 0.1 )
+			or croak "cannot find apropriate recint";
+
+	}
+	my $note = $self->note || ( $self->temperature 
+		? $self->temperature ."øC"
+		: "");
+
+	print $fh pack( "A4vvCCvvxxA70", 
+		'SRM6',
+		$days,
+		$self->circum,
+		$r1,
+		$r2,
+		scalar @{$self->{blocks}},
+		scalar @{$self->{marker}} -1,
+		$note,
+	) or croak "failed to write file header";
+
+	############################################################
+	# marker
+
+	foreach my $m ( @{$self->{marker}} ){
+		print $fh pack( "A255Cvvvvvvv", 
+			$m->{comment},
+			$m->{active},
+			$m->{ckstart} + 1,
+			$m->{ckend} + 1,
+			$m->{apwr} * 8,
+			$m->{ahr} * 64,
+			$m->{hcad} * 32,
+			$m->{aspd} * 2500 / 9,
+			$m->{pwc},
+		) or croak "failed to write marker";
+	}
+
+	############################################
+	# blocks
+
+	foreach my $b ( @{$self->{blocks}} ){
+		print $fh pack( "Vv", 
+			($b->{stime} - $wtime) * 100,
+			$b->{ckcnt},
+		) or croak "failed to write data block";
+	}
+
+	############################################################
+	# calibration data, ff
+
+	print $fh pack( "vvvx", 
+		$self->zeropos,
+		$self->gradient,
+		scalar @{$self->{chunks}},
+	) or croak "failed to write calibration data";
+
+	############################################################
+	# chunks 
+
+	foreach my $c ( @{$self->{chunks}} ){
+
+		# lsb byte order...
+		#
+		# c0       c1       c2
+		# 11111111 11111111 11111111 bits
+		#
+		# -------- ----3210 -a987654 pwr
+		#              0x0f     0x7f
+		#
+		# -6543210 a987---- -------- speed
+		#     0x7f 0xf0
+
+		my $spd = int($c->{spd} * 26/3);
+		my $pwr = int($c->{pwr});
+
+		my $c0 = $spd & 0x7f;
+		my $c1 = ( ($spd >>3) & 0xf0) | ($pwr & 0x0f);
+		my $c2 = ($pwr >> 4) & 0x7f;
+
+		print $fh pack( "CCCCC", 
+			$c0,
+			$c1,
+			$c2,
+			$c->{cad},	# $_[3],
+			$c->{hr},	# $_[4],
+		) or croak "failed to write chunks";
+	}
+}
 
 sub do_read {
 	my( $self, $fh ) = @_;
@@ -200,14 +329,13 @@ sub do_read {
 		croak "unsupported file version: $version";
 	}
 
-	
-	$self->date( DateTime->new( 
+	my $date = DateTime->new( 
 		year		=> 1880, 
 		month		=> 1, 
 		day		=> 1,
 		time_zone	=> $self->{tz},
-	)->add( days => $_[1] ));
-	my $wtime = $self->date->hires_epoch;
+	)->add( days => $_[1] );
+	my $wtime = $date->hires_epoch;
 
 	$self->circum( $_[2] );
 	$self->recint( $_[3] / $_[4] );
@@ -218,10 +346,13 @@ sub do_read {
 	if( $_[7] =~ /^(\d+)øC/ ){
 		$self->temperature( $1 );
 	}
-	$self->debug( "date: ". $self->date->ymd 
+	$self->debug( "date: ". $date->ymd 
+		." days: ". $_[1] .","
+		." wtime: $wtime,"
 		." blocks: $blockcnt,"
 		." marker: $markcnt,"
-		." recint: ". $self->recint );
+		." recint: ". $self->recint
+		."=". $_[3] ."/". $_[4] );
 
 	############################################################
 	# read marker
@@ -247,7 +378,7 @@ sub do_read {
 	}
 
 	############################################################
-	# data blocks
+	# blocks
 
 	my $blockcks = 0;
 	while( $blockcnt-- > 0 ){
@@ -267,9 +398,15 @@ sub do_read {
 		push @{$self->{blocks}}, $blk;
 
 		if( $self->{debug} ){
-			my $sdate = DateTime->from_epoch( epoch => $stime);
+			my $sdate = DateTime->from_epoch( 
+				epoch		=> $stime, 
+				time_zone	=> $self->{tz},
+			);
 			my $etime = $stime + $ckcnt * $self->recint;
-			my $edate = DateTime->from_epoch( epoch => $etime);
+			my $edate = DateTime->from_epoch(
+				epoch		=> $etime,
+				time_zone	=> $self->{tz}),
+			;
 
 			$self->debug( "block ". $#{$self->{blocks}} .": "
 				. sprintf( '%5d+%5d=%5d', 
@@ -282,6 +419,7 @@ sub do_read {
 
 		$blockcks += $ckcnt;
 	}
+
 	############################################################
 	# calibration data, ff
 
