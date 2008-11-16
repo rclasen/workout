@@ -102,13 +102,14 @@ sub chunk_add {
 	my( $self, $i ) = @_;
 
 	$self->chunk_check( $i, $self->{last} );
-	$self->_chunk_add( $i->clone );
+	$self->_chunk_add( $i->clone({
+		prev	=> $self->{last},
+	}));
 }
 
 sub _chunk_add {
 	my( $self, $n ) = @_;
 
-	$n->prev( $self->{last} );
 	$self->{last} = $n;
 	push @{$self->{data}[-1]}, $n;
 }

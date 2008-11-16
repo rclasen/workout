@@ -180,6 +180,7 @@ sub parse_hrdata {
 
 	$self->{time} += $self->recint;
 	my %a = (
+		prev	=> $self->{prev},
 		time	=> $self->{time},
 		dur	=> $self->recint,
 		map {
