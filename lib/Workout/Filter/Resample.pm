@@ -159,7 +159,7 @@ sub _fetch_range {
 	while( my $i = $self->_fetch ){
 		return $i unless $wtime;
 
-		if( $i->time < $wtime - $wdur ){
+		if( $i->time <= $wtime - $wdur ){
 			$self->debug( "skipping chunk ". $i->stime 
 				." to ". $i->time  );
 			next;
