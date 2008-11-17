@@ -121,7 +121,7 @@ sub new {
 	$a ||= {};
 	my $self = $class->SUPER::new( {
 		%$a,
-		last	=> undef,
+		chunk_last	=> undef,	# last added chunk
 		gpx	=> Geo::Gpx->new,
 		track	=> {
 			segments	=> [{
@@ -161,33 +161,43 @@ sub iterate {
 	});
 }
 
-sub block_add {
-	my( $self ) = @_;
-
-	return unless @{$self->track->{segments}};
-	push @{$self->track->{segments}}, {
-		points	=> [],
-	};
-}
-
 sub chunk_check {
-	my( $self, $c, $inblock ) = @_;
+	my( $self, $c ) = @_;
 
 	unless( $c->lon && $c->lat ){
 		croak "missing lon/lat at ". $c->time;
 	}
-	$self->SUPER::chunk_check( $c, $inblock );
+	$self->SUPER::chunk_check( $c );
 }
+
+sub time_start { 
+	my $p =$_[0]->track->{segments}[0]{points}[0]
+		or return;
+	$p->{time};
+}
+
+sub time_end { 
+	my $p = $_[0]->track->{segments}[-1]{points}[-1]
+		or return;
+	$p->{time};
+}
+
+sub chunk_last { $_[0]{chunk_last}; }
 
 sub _chunk_add {
 	my( $self, $c ) = @_;
 
-	my $seg = $self->track->{segments}[-1]{points};
-	$self->chunk_check( $c, scalar @$seg );
+	$self->chunk_check( $c );
 
-	$self->{last_add} = $c;
+	if( $c->isblockfirst 
+		&& @{$self->track->{segments}[-1]{points}} ){
 
-	push @$seg, {
+		push @{$self->track->{segments}}, {
+			points	=> [],
+		}
+	}
+
+	push @{$self->track->{segments}[-1]{points}}, {
 		lon	=> $c->lon,
 		lat	=> $c->lat,
 		ele	=> $c->ele,

@@ -176,7 +176,6 @@ sub new {
 	$self;
 }
 
-# TODO: block_add
 # TODO: chunk_add
 
 sub do_write {

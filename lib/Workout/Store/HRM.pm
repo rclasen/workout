@@ -59,9 +59,9 @@ sub new {
 	$class->SUPER::new({
 		%defaults,
 		%$a,
-		date	=> undef,
-		time	=> 0,
-		columns	=> [],
+		date	=> undef,	# tmp read
+		time	=> 0,		# tmp read
+		columns	=> [],		# tmp read
 		cap_block	=> 0,
 	});
 }
@@ -73,6 +73,7 @@ sub do_read {
 	my $gotparams;
 
 	while( defined(my $l = <$fh>) ){
+		$l =~ s/\r//g;
 
 		if( $l =~/^\s*$/ ){
 			next;
@@ -191,27 +192,15 @@ sub parse_hrdata {
 	$self->_chunk_add( Workout::Chunk->new( \%a ));
 }
 
-=head2 block_add
-
-=cut
-
-sub block_add {
-	my( $self ) = @_;
-	
-	if( @{$self->{data}} ){
-		croak "blocking is not supported";
-	}
-	# else: first block, no data -> do nothing;
-}
 
 =head2 chunk_check( $chunk )
 
 =cut
 
 sub chunk_check {
-	my( $self, $c, $inblock ) = @_;
+	my( $self, $c ) = @_;
 
-	$self->SUPER::chunk_check( $c, $inblock );
+	$self->SUPER::chunk_check( $c );
 
 	$self->{dist} += $c->dist||0;
 }
@@ -241,22 +230,16 @@ write data to disk.
 sub do_write {
 	my( $self, $fh ) = @_;
 
-	my $data = $self->{data}[0];
+	my $data = $self->{data};
 	@$data or croak "no data";
 
 	my $athlete = $self->athlete
 		or croak "missing athlete info";
 
-	my $last = $self->last_add;
-	my $first = $data->[0];
-
-	my $stime = $first->stime;
 	my $sdate = DateTime->from_epoch( 
-		epoch		=> $stime,
+		epoch		=> $self->time_start,
 		time_zone	=> $self->tz,
 	); 
-
-	my $dur = $last->time - $stime;
 
 	print $fh 
 "[Params]
@@ -265,7 +248,7 @@ Monitor=12
 SMode=11111110
 Date=", $sdate->strftime( '%Y%m%d' ), "
 StartTime=", $sdate->strftime( '%H:%M:%S.%1N' ), "
-Length=", $self->fmtdur( $dur ), "
+Length=", $self->fmtdur( $self->dur ), "
 Interval=", $self->recint, "
 Upper1=0
 Lower1=0

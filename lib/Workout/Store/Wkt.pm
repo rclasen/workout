@@ -119,17 +119,13 @@ sub parse_chunks {
 	# TODO: be more paranoid about input
 
 	my %a = (
-		prev	=> $self->last_add,
+		prev	=> $self->chunk_last,
 		map {
 			$_ => shift @row;
 		} @{$self->{columns}},
 	);
 	my $ck = Workout::Chunk->new( \%a );
 
-	if( $ck->isblockfirst ){
-		$self->block_add;
-		$self->debug( "block end at ". $ck->time );
-	}
 	$self->_chunk_add( $ck );
 }
 
@@ -143,7 +139,7 @@ write data to disk.
 sub do_write {
 	my( $self, $fh ) = @_;
 
-	$self->last_add or croak "no data";
+	$self->chunk_last or croak "no data";
 
 	my @fields = &Workout::Chunk::core_fields();
 
@@ -153,12 +149,10 @@ sub do_write {
 
 
 	print $fh "[Chunks]\n";
-	foreach my $block ( @{$self->{data}} ){
-		foreach my $ck ( @$block ){
-			print $fh join( "\t", map { 
-				$_ || 0;
-			} @$ck{@fields}), "\n";
-		}
+	foreach my $ck ( @{$self->{data}} ){
+		print $fh join( "\t", map { 
+			$_ || 0;
+		} @$ck{@fields}), "\n";
 	}
 }
 

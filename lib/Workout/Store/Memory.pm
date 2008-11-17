@@ -21,29 +21,13 @@ use warnings;
 use Carp;
 use base 'Workout::Iterator';
 
-sub new {
-	my( $class, $store, $a ) = @_;
-
-	my $self = $class->SUPER::new( $store, $a );
-	$self->{cblk} = 0;
-	$self->{cchk} = 0;
-	$self;
-}
-
 sub process {
 	my( $self ) = @_;
 
 	my $dat = $self->store->{data};
-	while( $self->{cblk} < @$dat ){
-		my $blk = $dat->[$self->{cblk}];
-		if( $self->{cchk} < @$blk ){
-			$self->{cntin}++;
-			return $blk->[$self->{cchk}++];
-		}
-		$self->{cblk}++;
-		$self->{cchk} = 0;
-	};
-	return;
+	return unless $self->{cntin} < @$dat;
+
+	$dat->[$self->{cntin}++];
 }
 
 
@@ -68,7 +52,7 @@ sub new {
 		cap_block	=> 1,
 		%$a,
 	});
-	$self->{data} = [[]];
+	$self->{data} = [];
 
 	$self;
 }
@@ -83,18 +67,22 @@ sub iterate {
 	});
 }
 
-=head2 block_add
-
-open new data block.
-
-=cut
-
-sub block_add {
-	my( $self ) = @_;
-	return unless @{$self->{data}};
-	push @{$self->{data}}, [];
+sub time_start {
+	my $self = shift;
+	my $c = $self->chunk_first
+		or return;
+	$c->stime;
 }
 
+sub time_end {
+	my $self = shift;
+	my $c = $self->chunk_last
+		or return;
+	$c->time;
+}
+
+sub chunk_first { $_[0]{data}[0]; }
+sub chunk_last { $_[0]{data}[-1]; }
 
 =head2 chunk_add( $chunk )
 
@@ -105,10 +93,8 @@ add data chunk to last data block.
 sub _chunk_add {
 	my( $self, $n ) = @_;
 
-	my $block = $self->{data}[-1];
-	$self->chunk_check( $n, scalar @$block );
-	$self->{last_add} = $n;
-	push @{$block}, $n;
+	$self->chunk_check( $n );
+	push @{$self->{data}}, $n;
 }
 
 1;

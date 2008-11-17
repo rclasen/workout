@@ -61,14 +61,6 @@ sub from {
 	while( defined( $iter->next )){1};
 }
 
-=head2 block_add
-
-open new data block.
-
-=cut
-
-sub block_add { }
-
 =head2 chunk_add( $chunk )
 
 add data chunk to last data block.

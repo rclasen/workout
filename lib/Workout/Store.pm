@@ -60,7 +60,6 @@ __PACKAGE__->mk_accessors(qw(
 	recint
 	temperature
 	note
-	last_add
 ));
 
 sub do_read { croak "reading is not suported"; };
@@ -100,9 +99,6 @@ sub from { # TODO: make this a constructor
 		or $iter = $iter->iterate;
 
 	while( defined( my $chunk = $iter->next )){
-		if( $chunk->isblockfirst ){
-			$self->block_add;
-		}
 		$self->chunk_add( $chunk );
 	}
 }
@@ -119,16 +115,14 @@ sub iterate { croak "not implemented"; };
 
 # TODO: marker / lap data
 
+sub chunk_last { croak "not implemented"; };
 
-=head2 block_add
+sub time_start { croak "not implemented"; };
+sub time_end { croak "not implemented"; };
 
-open new data block.
-
-=cut
-
-sub block_add {
-	my( $self ) = @_;
-	croak "not implemented";
+sub dur {
+	my $self = shift;
+	$self->time_end - $self->time_start;
 }
 
 
@@ -142,7 +136,7 @@ sub chunk_add {
 	my( $self, $i ) = @_;
 
 	$self->_chunk_add( $i->clone({
-		prev	=> $self->last_add,
+		prev	=> $self->chunk_last,
 	}));
 }
 
@@ -160,7 +154,7 @@ check chunk data validity. For use in chunk_add().
 =cut
 
 sub chunk_check {
-	my( $self, $c, $inblock  ) = @_;
+	my( $self, $c ) = @_;
 
 	$c->dur
 		or croak "missing duration";
@@ -171,16 +165,11 @@ sub chunk_check {
 		croak "duration doesn't match recint";
 	}
 
-	my $l = $self->last_add
+	my $l = $self->chunk_last
 		or return;
 
-	if( $c->stime - $l->time > 0.1 ){
-		croak "nolinear time step: l=".  $l->time 
-			." c=". $c->time
-			." d=". $c->dur;
-	}
-	if( $inblock && $c->isblockfirst( $l ) ){
-		croak "found unexpected gap without block start: l=". $l->time 
+	if( $c->stime - $l->time < -0.1 ){
+		croak "nonlinear time step: l=".  $l->time 
 			." c=". $c->time
 			." d=". $c->dur;
 	}
