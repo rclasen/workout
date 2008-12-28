@@ -1,3 +1,11 @@
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
 package Workout::Filter::Join;
 
 =head1 NAME
@@ -100,14 +108,5 @@ Workout::Filter::Base
 =head1 AUTHOR
 
 Rainer Clasen
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2008 by Rainer Clasen
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
-
 
 =cut

@@ -1,4 +1,11 @@
+.cvsignore
 Changes
+debian/.cvsignore
+debian/changelog
+debian/compat
+debian/control
+debian/copyright
+debian/rules
 lib/Workout.pm
 lib/Workout/Athlete.pm
 lib/Workout/Base.pm
@@ -18,8 +25,12 @@ lib/Workout/Store/HRM.pm
 lib/Workout/Store/Memory.pm
 lib/Workout/Store/Null.pm
 lib/Workout/Store/SRM.pm
+lib/Workout/Store/Wkt.pm
+LICENSE
 Makefile.PL
+MANIFEST			This list of files
 README
+t/Workout-Store.t
 wkconv
 wkdelta
 wkdump
@@ -27,4 +38,5 @@ wkendure
 wkinfo
 wkmerge
 wkplot
+wkplot2
 wksend

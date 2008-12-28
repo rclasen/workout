@@ -1,3 +1,11 @@
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
 =head1 NAME
 
 Workout::Store::HRM - read/write polar HRM files
@@ -73,7 +81,7 @@ sub do_read {
 	my $gotparams;
 
 	while( defined(my $l = <$fh>) ){
-		$l =~ s/\r//g;
+		#$l =~ s/\r//g;
 
 		if( $l =~/^\s*$/ ){
 			next;
@@ -104,7 +112,7 @@ sub do_read {
 sub parse_params {
 	my( $self, $l ) = @_;
 
-	my( $k, $v ) = ($l =~ /^\s*(\S+)\s*=\s*(.*)\s*$/)
+	my( $k, $v ) = ($l =~ /^\s*(\S+)\s*=\s*(\S*)\s*$/)
 		or croak "misformed input: $l";
 
 	$k = lc $k;
@@ -297,14 +305,5 @@ Workout::Store
 =head1 AUTHOR
 
 Rainer Clasen
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2008 by Rainer Clasen
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
-
 
 =cut

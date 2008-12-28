@@ -1,3 +1,11 @@
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
 =head1 NAME
 
 Workout::Filter::Info - collect info about the workout
@@ -76,7 +84,8 @@ our %init = (
 __PACKAGE__->mk_accessors( keys %default );
 __PACKAGE__->mk_ro_accessors( keys %init );
 
-
+# TODO: normalized Power
+# TODO: intensity factor
 
 =head2 new( $iter, $arg )
 
