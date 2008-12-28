@@ -1,16 +1,13 @@
-Workout version 0.01
-======================
+Workout
+=======
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
+this module provides a unique interface to data files used for recording
+cycling workouts (especially wattage based).
 
-A README file is required for CPAN modules since CPAN extracts the
-README file from a module distribution so that people browsing the
-archive can use it get an idea of the modules uses. It is usually a
-good idea to provide version information here so that people can
-decide whether fixes for the module are worth downloading.
+These import/-export modules are "chained" together with filters for
+merging, converting and/or analyzing the data. 
+
+Please take a look at the examples executables (wk*) to see what's possible.
 
 INSTALLATION
 
@@ -25,11 +22,12 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  blah blah blah
+    Geo::Distance
+    Geo::Gpx
+    Class::Accessor::Fast
+    Module::Pluggable
 
 COPYRIGHT AND LICENCE
-
-Put the correct copyright and licence information here.
 
 Copyright (C) 2008 by Rainer Clasen
 
@@ -37,4 +35,9 @@ This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.8 or,
 at your option, any later version of Perl 5 you may have available.
 
+The SRM module is based on Stephan Mantlers SRM description from
+http://www.stephanmantler.com/wordpress/srm-file-format/en/
+
+The Polar HRM module is based on
+http://www.polar.fi/files/Polar_HRM_file%20format.pdf 
 

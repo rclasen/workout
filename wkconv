@@ -7,12 +7,13 @@
 # distribution.
 #
 
-
 use strict;
 use warnings;
 use Workout;
 use Workout::Athlete;
 use Getopt::Long;
+
+# TODO: pod
 
 # TODO: optional filter Smooth 
 # TODO: optional filter Pwr calc

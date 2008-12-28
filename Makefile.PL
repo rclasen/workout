@@ -5,7 +5,12 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME              => 'Workout',
     VERSION      => '0.04',
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
+    PREREQ_PM         => {
+	    'Geo::Distance'	=> undef,
+	    'Geo::Gpx'	=> undef,
+	    'Class::Accessor::Fast'	=> undef,
+	    'Module::Pluggable'	=> undef,
+    }, # e.g., Module::Name => 1.1
     'EXE_FILES'       => [qw(
 	wkconv
 	wkdelta
@@ -17,7 +22,7 @@ WriteMakefile(
 	wksend
     )],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Workout/Store.pm', # retrieve abstract from module
+      (ABSTRACT_FROM  => 'lib/Workout.pm', # retrieve abstract from module
        AUTHOR         => 'Rainer Clasen') : ()),
 	# Un-comment this if you add C files to link with later:
     # OBJECT            => '$(O_FILES)', # link all the C files too

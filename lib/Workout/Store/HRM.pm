@@ -6,6 +6,8 @@
 # distribution.
 #
 
+# based on http://www.polar.fi/files/Polar_HRM_file%20format.pdf 
+
 =head1 NAME
 
 Workout::Store::HRM - read/write polar HRM files

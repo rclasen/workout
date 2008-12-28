@@ -6,6 +6,9 @@
 # distribution.
 #
 
+# based upon: Stephan Mantlers SRM format description:
+# http://www.stephanmantler.com/wordpress/srm-file-format/en/
+
 
 =head1 NAME
 
@@ -123,6 +126,7 @@ sub process {
 
 
 
+# TODO: convert to subclass Workout::Store::Memory
 
 package Workout::Store::SRM;
 use 5.008008;
@@ -132,7 +136,6 @@ use base 'Workout::Store';
 use Carp;
 use DateTime;
 
-# http://www.stephanmantler.com/?page_id=86
 
 our $VERSION = '0.01';
 

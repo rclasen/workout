@@ -7,12 +7,12 @@
 # distribution.
 #
 
-
 # convert srm to hrm
 # ... merge gpx ele into hrm when available
 # get summary info
 # generate body
 
+# TODO: pod
 
 use strict;
 use warnings;
@@ -23,7 +23,7 @@ use Workout::Athlete;
 
 my $delta = 0;
 my $recint = 5;
-my $mailto = "medico-sport";
+my $mailto;
 
 my $wanthelp;
 my $needhelp;
@@ -49,6 +49,11 @@ Options:
 --help              this cruft
 EOF
 	exit 0;
+}
+
+if( ! $mailto ){
+	print STDERR "missing mail address\n";
+	$needhelp++;
 }
 
 my $sfname = shift;

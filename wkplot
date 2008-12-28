@@ -7,8 +7,9 @@
 # distribution.
 #
 
-
 # plot diagram with merged data of srm + gpx recordings
+
+# TODO: pod
 
 use strict;
 use warnings;
