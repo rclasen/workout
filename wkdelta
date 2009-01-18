@@ -19,11 +19,15 @@ use File::Temp qw/tempfile/;
 use Workout;
 
 my $delta = 0;
+my $f1 = 'spd';
+my $f2 = 'spd';
 
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
+	"lfield|l=s"	=> \$f1,
+	"rfield|r=s"	=> \$f2,
 	"delta|d=i"	=> \$delta,
 	"help|h!"	=> \$wanthelp,
 )){
@@ -32,11 +36,13 @@ if( ! GetOptions(
 
 if( $wanthelp ){
 	print <<EOF;
-$0 [opt] <srm-fname> <gpx-fname>
+$0 [opt] <fname1> <fname2>
 interactively determine time delta between multiple recordings for one workout
 
 Options:
 --delta|-d=<d>      initial delta
+--lfield|-l=<f>     first file's field to plot
+--rfield|-r=<f>     second file's field to plot
 --help              this cruft
 EOF
 	exit 0;
@@ -44,7 +50,7 @@ EOF
 
 my $sfname = shift;
 if( ! $sfname ){
-	print STDERR "missing srm file\n";
+	print STDERR "missing left file\n";
 	$needhelp++;
 }
 
@@ -65,7 +71,7 @@ my $srm = Workout::file_read( $sfname );
 my( $sdfh, $sdfname ) = tempfile( TMPDIR => 1 );
 my $srmi = $srm->iterate;
 while( defined(my $c = $srmi->next)){
-	print $sdfh $c->time, ' ', $c->spd||0, "\n";
+	print $sdfh $c->time, ' ', $c->$f1||0, "\n";
 }
 close($sdfh);
 
@@ -75,7 +81,7 @@ my( $gdfh, $gdfname ) = tempfile( TMPDIR => 1 );
 my $gpxi = $gpx->iterate;
 my $l;
 while( defined(my $c = $gpxi->next)){
-	print $gdfh $c->time, ' ', $c->spd||0, "\n";
+	print $gdfh $c->time, ' ', $c->$f2||0, "\n";
 }
 close($gdfh);
 
@@ -85,7 +91,7 @@ print $pfh
 kp=0
 
 set mouse
-set title 'spd'
+set title 'l=$sfname,r=$gfname'
 set xdata time
 bind PageDown 'delta=delta-3600; kp=1; replot'
 bind Down     'delta=delta-60;   kp=1; replot'
@@ -99,9 +105,9 @@ set xtics rotate
 set timefmt '\%s'
 plot \\
 	'$sdfname' using (\$1-946684800+delta):2 \\
-		title 'srm' with lines , \\
+		title 'l=$f1' axes x1y1 with lines , \\
 	'$gdfname' using 1:2 \\
-		title 'gpx' with lines 
+		title 'r=$f2' axes x1y2 with lines 
 pause mouse
 if ( kp || ( defined(MOUSE_BUTTON) && MOUSE_BUTTON != 1 )) reread
 print delta
