@@ -83,7 +83,7 @@ sub do_read {
 	my $gotparams;
 
 	while( defined(my $l = <$fh>) ){
-		#$l =~ s/\r//g;
+		$l =~ s/[\r\n]+$//g;
 
 		if( $l =~/^\s*$/ ){
 			next;
