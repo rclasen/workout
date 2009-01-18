@@ -47,13 +47,14 @@ if( ! GetOptions(
 
 if( $wanthelp ){
 	print <<EOF;
-$0 [opt] <srm-fname> <gpx-fname> <dst-fname>
+$0 [opt] <fname1> <fname2> <dst-fname>
 prepare workout data for mailing it to the trainer
 
 Options:
 --debug             enable debuging output
---recint|-r=<int>   sampling interval (default=5)
---fields|-f=<n,n..> dump specified fields
+--recint|-r=<int>   output sampling interval (default=fname1's)
+--fields|-f=<n,n..> fields to pick from fname2
+--delta|-d=<d>      time difference of fname2
 --join              join blocks
 --help              this cruft
 EOF
