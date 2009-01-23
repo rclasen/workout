@@ -123,15 +123,11 @@ sub parse_params {
 sub parse_chunks {
 	my( $self, $l ) = @_;
 
-	my @row = split( /\t/, $l );
 	# TODO: be more paranoid about input
+	my %a;
+	@a{@{$self->{columns}}} = split( /\t/, $l );
+	$a{prev}= $self->chunk_last;
 
-	my %a = (
-		prev	=> $self->chunk_last,
-		map {
-			$_ => shift @row;
-		} @{$self->{columns}},
-	);
 	my $ck = Workout::Chunk->new( \%a );
 
 	$self->_chunk_add( $ck );
