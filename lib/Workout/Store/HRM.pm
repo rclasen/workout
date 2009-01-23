@@ -71,7 +71,7 @@ sub new {
 		%$a,
 		date	=> undef,	# tmp read
 		time	=> 0,		# tmp read
-		columns	=> [],		# tmp read
+		colfunc	=> [],		# tmp read
 		cap_block	=> 0,
 	});
 }
@@ -170,17 +170,17 @@ sub parse_params {
 		}
 
 		# add parser for each column
-		my @cols = ( sub { 'hr'	=> $_[0] } );
-		push @cols, sub { 'dist' => $_[0] * $mdist * $self->recint } if $1;
-		push @cols, sub { 'cad' => $_[0] } if $2;
-		push @cols, sub { 'ele' => $_[0] * $mele } if $3;
-		push @cols, sub { 'work' => $_[0] * $self->recint } if $4;
+		my @colfunc = ( sub { 'hr'	=> $_[0] } );
+		push @colfunc, sub { 'dist' => $_[0] * $mdist * $self->recint } if $1;
+		push @colfunc, sub { 'cad' => $_[0] } if $2;
+		push @colfunc, sub { 'ele' => $_[0] * $mele } if $3;
+		push @colfunc, sub { 'work' => $_[0] * $self->recint } if $4;
 
 		# not supported, ignore:
-		#push @cols, sub { 'pbal' => $_[0] } if ($5||$6) && $9;
-		#push @cols, sub { 'air' => $_[0] } if $9;
+		#push @colfunc, sub { 'pbal' => $_[0] } if ($5||$6) && $9;
+		#push @colfunc, sub { 'air' => $_[0] } if $9;
 
-		$self->{columns} = \@cols;
+		$self->{colfunc} = \@colfunc;
 	}
 	
 }
@@ -197,7 +197,7 @@ sub parse_hrdata {
 		dur	=> $self->recint,
 		map {
 			$_->( shift @row );
-		} @{$self->{columns}},
+		} @{$self->{colfunc}},
 	);
 	$self->_chunk_add( Workout::Chunk->new( \%a ));
 }
