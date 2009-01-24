@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     NAME              => 'Workout',
-    VERSION      => '0.04',
+    VERSION      => '0.05',
     PREREQ_PM         => {
 	    'Geo::Distance'	=> undef,
 	    'Geo::Gpx'	=> undef,
