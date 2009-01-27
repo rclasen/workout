@@ -34,9 +34,7 @@ t/Workout-Store.t
 wkconv
 wkdelta
 wkdump
-wkendure
 wkinfo
 wkmerge
 wkplot
 wkplot2
-wksend

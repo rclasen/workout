@@ -1,3 +1,11 @@
+workout (0.06) unstable; urgency=low
+
+  * moved wkendure + wksend to wkdb package
+  * wkdelta: display use info on startup
+  * wkdelta: properly print delta to stdout
+
+ -- Rainer Clasen <bj@zuto.de>  Tue, 27 Jan 2009 13:51:49 +0100
+
 workout (0.05) unstable; urgency=low
 
   * added licence info

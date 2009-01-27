@@ -82,13 +82,14 @@ sub do_read {
 	my $parser;
 	my $gotparams;
 
+	# TODO: use qr// to precompile pattern
 	while( defined(my $l = <$fh>) ){
-		$l =~ s/[\r\n]+$//g;
+		$l =~ s/[\r\n]+$//g; # TODO: qr//
 
-		if( $l =~/^\s*$/ ){
+		if( $l =~/^\s*$/ ){ # TODO: qr//
 			next;
 
-		} elsif( $l =~ /^\[(\w+)\]/ ){
+		} elsif( $l =~ /^\[(\w+)\]/ ){ # TODO: qr//
 			my $blockname = lc $1;
 
 			if( $blockname eq 'params' ){
@@ -188,7 +189,7 @@ sub parse_params {
 sub parse_hrdata {
 	my( $self, $l ) = @_;
 
-	my @row = split( /\t/, $l );
+	my @row = split( /\t/, $l ); # TODO: qr//
 
 	$self->{time} += $self->recint;
 	my %a = (

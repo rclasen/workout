@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     NAME              => 'Workout',
-    VERSION      => '0.05',
+    VERSION      => '0.06',
     PREREQ_PM         => {
 	    'Geo::Distance'	=> undef,
 	    'Geo::Gpx'	=> undef,
@@ -15,11 +15,9 @@ WriteMakefile(
 	wkconv
 	wkdelta
 	wkdump
-	wkendure
 	wkinfo
 	wkmerge
 	wkplot
-	wksend
     )],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Workout.pm', # retrieve abstract from module

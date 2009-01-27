@@ -71,10 +71,10 @@ sub do_read {
 
 	while( defined(my $l = <$fh>) ){
 
-		if( $l =~/^\s*$/ ){
+		if( $l =~/^\s*$/ ){ # TODO: qr//
 			next;
 
-		} elsif( $l =~ /^\[(\w+)\]/ ){
+		} elsif( $l =~ /^\[(\w+)\]/ ){ # TODO: qr//
 			my $blockname = lc $1;
 
 			if( $blockname eq 'params' ){
@@ -125,7 +125,7 @@ sub parse_chunks {
 
 	# TODO: be more paranoid about input
 	my %a;
-	@a{@{$self->{columns}}} = split( /\t/, $l );
+	@a{@{$self->{columns}}} = split( /\t/, $l ); # TODO: qr//
 	$a{prev}= $self->chunk_last;
 
 	my $ck = Workout::Chunk->new( \%a );
