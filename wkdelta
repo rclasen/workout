@@ -20,6 +20,7 @@ use warnings;
 use Getopt::Long;
 use File::Temp qw/tempfile/;
 use Workout;
+# TODO: use Workout::GtkChart;
 
 my $delta = 0;
 my $f1 = 'spd';
@@ -132,7 +133,7 @@ EOF
 open( GP, "gnuplot '$pfname' 2>&1 |" )
 	or die "cannot run gnuplot: $!";
 
-my $matchdelta = qr/^\s*(\d+)\s*$/;
+my $matchdelta = qr/^\s*(-?\d+)\s*$/;
 while( <GP> ){
 	if( /$matchdelta/ ){
 		$delta = $1;
