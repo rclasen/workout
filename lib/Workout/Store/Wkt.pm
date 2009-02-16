@@ -47,6 +47,8 @@ sub filetypes {
 	return "wkt";
 }
 
+our $re_fieldsep = qr/\t/;
+
 =head2 new( $file, $args )
 
 constructor
@@ -69,12 +71,15 @@ sub do_read {
 	my $parser;
 	my $gotparams;
 
+	my $re_empty = qr/^\s*$/;
+	my $re_block = qr/^\[(\w+)\]/;
+
 	while( defined(my $l = <$fh>) ){
 
-		if( $l =~/^\s*$/ ){ # TODO: qr//
+		if( $l =~/$re_empty/ ){
 			next;
 
-		} elsif( $l =~ /^\[(\w+)\]/ ){ # TODO: qr//
+		} elsif( $l =~ /$re_block/ ){
 			my $blockname = lc $1;
 
 			if( $blockname eq 'params' ){
@@ -120,12 +125,13 @@ sub parse_params {
 	
 }
 
+
 sub parse_chunks {
 	my( $self, $l ) = @_;
 
 	# TODO: be more paranoid about input
 	my %a;
-	@a{@{$self->{columns}}} = split( /\t/, $l ); # TODO: qr//
+	@a{@{$self->{columns}}} = split( /$re_fieldsep/, $l );
 	$a{prev}= $self->chunk_last;
 
 	my $ck = Workout::Chunk->new( \%a );

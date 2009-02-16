@@ -54,6 +54,8 @@ our %defaults = (
 	dist	=> 0,
 );
 
+our $re_fieldsep = qr/\t/;
+
 __PACKAGE__->mk_accessors( keys %defaults );
 
 =head2 new( $file, $args )
@@ -82,14 +84,18 @@ sub do_read {
 	my $parser;
 	my $gotparams;
 
-	# TODO: use qr// to precompile pattern
-	while( defined(my $l = <$fh>) ){
-		$l =~ s/[\r\n]+$//g; # TODO: qr//
+	# precompile pattern
+	my $re_stripnl = qr/[\r\n]+$/;
+	my $re_empty = qr/^\s*$/;
+	my $re_block = qr/^\[(\w+)\]/;
 
-		if( $l =~/^\s*$/ ){ # TODO: qr//
+	while( defined(my $l = <$fh>) ){
+		$l =~ s/$re_stripnl//g;
+
+		if( $l =~/$re_empty/ ){
 			next;
 
-		} elsif( $l =~ /^\[(\w+)\]/ ){ # TODO: qr//
+		} elsif( $l =~ /$re_block/ ){
 			my $blockname = lc $1;
 
 			if( $blockname eq 'params' ){
@@ -189,7 +195,7 @@ sub parse_params {
 sub parse_hrdata {
 	my( $self, $l ) = @_;
 
-	my @row = split( /\t/, $l ); # TODO: qr//
+	my @row = split( /$re_fieldsep/, $l );
 
 	$self->{time} += $self->recint;
 	my %a = (
