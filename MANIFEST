@@ -10,6 +10,8 @@ lib/Workout.pm
 lib/Workout/Athlete.pm
 lib/Workout/Base.pm
 lib/Workout/Chunk.pm
+lib/Workout/Chart.pm
+lib/Workout/GtkChart.pm
 lib/Workout/Filter/Base.pm
 lib/Workout/Filter/Info.pm
 lib/Workout/Filter/Join.pm
@@ -37,4 +39,5 @@ wkdump
 wkinfo
 wkmerge
 wkplot
-wkplot2
+wkplot-gd
+wkplot-gnuplot

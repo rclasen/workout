@@ -27,13 +27,16 @@ This module requires these other modules and libraries:
     Class::Accessor::Fast
     Module::Pluggable
 
+Optional (for wkplot and interactive wkdelta):
+
+    MyChart	- my local Chart plotting library
+    Gtk2	- as Perl module
+
+
 COPYRIGHT AND LICENCE
 
 Copyright (C) 2008 by Rainer Clasen
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
+please find the details in the file "LICENSE".
 
 The SRM module is based on Stephan Mantlers SRM description from
 http://www.stephanmantler.com/wordpress/srm-file-format/en/

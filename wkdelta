@@ -13,27 +13,32 @@
 # TODO: pod
 
 # TODO: update file to use selected delta
-# TODO: not portable
 
 use strict;
 use warnings;
 use Getopt::Long;
-use File::Temp qw/tempfile/;
 use Workout;
-# TODO: use Workout::GtkChart;
+use Workout::GtkChartDelta;
+
+use Gtk2;
+use Glib qw/ TRUE FALSE /;
 
 my $delta = 0;
-my $f1 = 'spd';
-my $f2 = 'spd';
+my $recint;
+my $field = 'spd';
+#my $opt_save; # TODO
+my $opt_gui;
 
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
-	"lfield|l=s"	=> \$f1,
-	"rfield|r=s"	=> \$f2,
-	"delta|d=i"	=> \$delta,
 	"help|h!"	=> \$wanthelp,
+	"recint|r=i"	=> \$recint,
+	"delta|d=i"	=> \$delta,
+	"gui|g!"	=> \$opt_gui,
+	"field|f=s"	=> \$field,
+	#"save|s!"	=> \$opt_save, # TODO
 )){
 	$needhelp++;
 }
@@ -44,25 +49,44 @@ $0 [opt] <fname1> <fname2>
 interactively determine time delta between multiple recordings for one workout
 
 Options:
---delta|-d=<d>      initial delta
---lfield|-l=<f>     first file's field to plot
---rfield|-r=<f>     second file's field to plot
+--delta|-d=<d>      initial delta for first file
+#--save|-s           save delta to first file # TODO
+
+--gui|-g            interactively determine delta between two files
+--recint|-r=<s>     smoothen input data (speeds up gui, too)
+--field|-f=<f>      field to plot
+
 --help              this cruft
 EOF
 	exit 0;
 }
+$opt_gui = exists $ENV{DISPLAY} unless defined $opt_gui;
 
-my $sfname = shift;
-if( ! $sfname ){
-	print STDERR "missing left file\n";
+if( $field !~ /^(?:ele|spd|cad|hr|pwr)$/ ){
+	print STDERR "invalid field: $field\n";
 	$needhelp++;
 }
 
-my $gfname = shift;
-if( ! $gfname ){
-	print STDERR "missing right file\n";
+my $f1 = shift;
+if( ! $f1 ){
+	print STDERR "missing filename\n";
 	$needhelp++;
 }
+
+my $f2;
+if( $opt_gui ){
+	$f2 = shift;
+	if( ! $f2 ){
+		print STDERR "missing second filename\n";
+		$needhelp++;
+	}
+}
+
+if( @ARGV ){
+	print STDERR "too many files\n";
+	$needhelp++;
+}
+
 
 if( $needhelp ){
 	print STDERR "please use $0 --help for usage info\n";
@@ -70,78 +94,113 @@ if( $needhelp ){
 }
 
 
-# read left file
-my $srm = Workout::file_read( $sfname );
-my( $sdfh, $sdfname ) = tempfile( TMPDIR => 1 );
-my $srmi = $srm->iterate;
-while( defined(my $c = $srmi->next)){
-	print $sdfh $c->time, ' ', $c->$f1||0, "\n";
+my $wk1 = get_wk( $f1 );
+
+my $gui_canceled;
+if( $opt_gui ) {
+	my $wk2 = get_wk( $f2 );
+	Gtk2->init;
+	&show_chart( $wk1, $wk2 );
 }
-close($sdfh);
 
-# read right file
-my $gpx = Workout::file_read( $gfname );
-my( $gdfh, $gdfname ) = tempfile( TMPDIR => 1 );
-my $gpxi = $gpx->iterate;
-my $l;
-while( defined(my $c = $gpxi->next)){
-	print $gdfh $c->time, ' ', $c->$f2||0, "\n";
+if( $gui_canceled ){
+	exit 1;
 }
-close($gdfh);
 
-my( $pfh, $pfname ) = tempfile( TMPDIR => 1 );
-print $pfh
-"if( ! defined(delta) ) delta=$delta
-kp=0
+print "$delta\n";
 
-set mouse
-set title 'l=$sfname,r=$gfname'
-set xdata time
-bind PageDown 'delta=delta-3600; kp=1; replot'
-bind Down     'delta=delta-60;   kp=1; replot'
-bind Left     'delta=delta-1;    kp=1; replot'
-bind Right    'delta=delta+1;    kp=1; replot'
-bind Up       'delta=delta+60;   kp=1; replot'
-bind PageUp   'delta=delta+3600; kp=1; replot'
-bind d        'replot'
-set format x '\%H:\%M'
-set xtics rotate
-set timefmt '\%s'
-plot \\
-	'$sdfname' using (\$1-946684800+delta):2 \\
-		title 'l=$f1' axes x1y1 with lines , \\
-	'$gdfname' using 1:2 \\
-		title 'r=$f2' axes x1y2 with lines 
-pause mouse
-if ( kp || ( defined(MOUSE_BUTTON) && MOUSE_BUTTON != 1 )) reread
-print delta
-";
-close($pfh);
 
-print STDERR <<EOF;
-plotting graphs of both files to $ENV{DISPLAY}.
+sub get_wk {
+	my( $fname ) = @_;
 
-please move "left" graph with cursor keys to match.
- left/right:  1s steps
- up/down:     1m steps
- pgup/pgdown: 1h steps
-click left when done.
+	my $wk = Workout::file_read( $fname );
+	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
+	$wk;
+}
 
-you can zoom an area by right-clicking two corners. 'u' unzooms.
-EOF
 
-open( GP, "gnuplot '$pfname' 2>&1 |" )
-	or die "cannot run gnuplot: $!";
+# TODO: move this to seperate package
+sub show_chart {
+	
 
-my $matchdelta = qr/^\s*(-?\d+)\s*$/;
-while( <GP> ){
-	if( /$matchdelta/ ){
-		$delta = $1;
+	my $win = Gtk2::Window->new;
+	$win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
+	$win->signal_connect( 'size-request' => sub {
+		my( $self, $req ) = @_;
+
+		$req->width( 600 );
+		$req->height( 300 );
+
+		1;
+	} );
+
+
+
+	my $box = Gtk2::VBox->new;
+	$win->add( $box );
+
+	# graph
+	my $graph = Workout::GtkChartDelta->new({
+		field	=> $field,
+	});
+
+	foreach my $wk ( @_ ){
+		$graph->add_workout( $wk );
 	}
+	$box->pack_start( $graph, 1, 1, 0 );
+
+
+
+	my $hbox = Gtk2::HBox->new;
+	$box->pack_start( $hbox, 0, 0, 0 );
+
+	# TODO: zoom controls
+
+	# delta adjustment
+	my $label = Gtk2::Label->new( 'delta:' );
+	$hbox->pack_start( $label, 0, 0, 0 );
+
+	my $dadjust = Gtk2::Adjustment->new(
+		$delta, -2000000000, 2000000000,
+		1, 60, 3600 );
+
+	my $spin = Gtk2::SpinButton->new( $dadjust, 1, 0 );
+	$spin->set_activates_default( 1 );
+	$hbox->pack_start( $spin, 0, 0, 0 );
+
+	my $set = Gtk2::Button->new( 'show' );
+	$set->signal_connect( clicked => sub {
+		my( $button, $window ) = @_;
+		$graph->set_delta( 0, $dadjust->get_value );
+	}, $win );
+	$hbox->pack_start( $set, 0, 0, 0 );
+	$set->can_default( 1 );
+	$win->set_default( $set );
+
+
+	# Ok 
+	my $but_ok = Gtk2::Button->new( 'Ok' );
+	$but_ok->signal_connect( clicked => sub {
+		my( $button, $window ) = @_;
+		$window->destroy;
+	}, $win );
+	$hbox->pack_start( $but_ok, 1, 0, 0 );
+
+
+	# Cancel 
+	my $but_cancel = Gtk2::Button->new( 'Cancel' );
+	$but_cancel->signal_connect( clicked => sub {
+		my( $button, $window ) = @_;
+		$gui_canceled++;
+		$window->destroy;
+	}, $win );
+	$hbox->pack_start( $but_cancel, 1, 0, 0 );
+
+
+
+	$win->show_all;
+	Gtk2->main;
+
+	$delta = $dadjust->get_value;
 }
-close( GP );
-
-print $delta,"\n";
-
-unlink($sdfname, $gdfname, $pfname);
 

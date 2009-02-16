@@ -1,3 +1,10 @@
+workout (0.07) unstable; urgency=low
+
+  * Store::HRM, Store::Wkt: use cached regexp for speedup
+  * use MyChart instead of gnuplot
+
+ -- Rainer Clasen <bj@zuto.de>  Mon, 16 Feb 2009 13:35:39 +0100
+
 workout (0.06) unstable; urgency=low
 
   * moved wkendure + wksend to wkdb package

@@ -1,0 +1,348 @@
+#!/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+# TODO: pod
+
+# http://gtk2-perl.sourceforge.net/doc/examples/histogramplot.pl.html
+package WkPlot::Graph;
+use warnings;
+use strict;
+
+use Glib qw/ TRUE FALSE /;
+use Gtk2;
+use GD::Graph::mixed;
+use GD::Graph::Data;
+
+# TODO: find something more apropriate than GD::Graph
+
+# GD::Graph (cons)
+# - is slow
+# - looks ugly
+# - supports only 2 y-axes
+# - is stupid about copying data (copies GD::Graph::Data without need)
+# - cannot resize + zoom
+# - cannot adjust x-delta for certain graphs
+# - requires png+pixbuf detour to get output into widget
+# - claims that it's hotspot support is bad
+
+# though GD::Graph (pros)
+# - supports numeric x-axes
+# - supports callbacks for label formating
+# - supports mixed line+area graphs
+# - doesn't completely fail with a lot of data
+# - doesn't enforce writing generated image to a file
+
+
+use constant MIN_GRAPH_WIDTH	=> 600;
+use constant MIN_GRAPH_HEIGHT	=> 300;
+
+sub _fmt_time {
+	DateTime->from_epoch(
+		epoch		=> shift,
+		time_zone	=> 'local',
+	)->hms;
+}
+
+
+our %xaxis_styles = (
+	time	=> {
+		x_tick_number	=> 'auto',
+		x_number_format	=> \&_fmt_time,
+	},
+);
+
+
+use Glib::Object::Subclass
+	'Gtk2::DrawingArea',
+	signals => {
+		size_request => \&size_request,
+		expose_event => \&expose_event,
+		configure_event => \&configure_event,
+	},
+	properties => [
+		Glib::ParamSpec->string( 'xaxis',
+			'X-Axis',
+			'blurb',
+			'time',
+			[qw/ readable writable /],
+		),
+	],
+;
+
+
+sub INIT_INSTANCE {
+	my $self = shift;
+
+	# config:
+	$self->{xaxis_styles} = \%xaxis_styles;
+
+	# paramter:
+	$self->{xaxis} = 'time';
+	# TODO: y-axis, workouts
+
+	# internal data:
+	$self->{pixmap} = undef;
+	$self->{gddata} = undef;
+
+        $self->set_events( [qw/
+		exposure-mask
+		leave-notify-mask
+	/]);
+
+}
+
+sub GET_PROPERTY {
+	my( $self, $pspec ) = @_;
+
+	if( $pspec->get_name eq 'xaxis' ){
+		return $self->{xaxis};
+	}
+}
+
+sub SET_PROPERTY {
+	my( $self, $pspec, $newval ) = @_;
+
+	if( $pspec->get_name eq 'xaxis' ){
+		$self->set_xaxis( $newval );
+	}
+}
+
+
+sub set_xaxis {
+	my( $self, $style ) = @_;
+
+	warn "set_xaxis";
+	if( exists $self->{xaxis_styles}{$style} ){
+		$self->{xaxis} = $style;
+	}
+	# TODO: error reporting
+
+	$self->queue_draw;
+}
+
+sub set_workout {
+	my( $self, $wk ) = @_;
+
+	warn "set_workout";
+	$self->{gddata} = GD::Graph::Data->new;
+	my $iter = $wk->isa( 'Workout::Iterator' )
+		? $wk
+		: $wk->iterate;
+
+	while( defined( my $c = $iter->next )){
+		$self->{gddata}->add_point( $c->time, $c->spd, $c->ele,
+		$c->pwr );
+	}
+
+	warn "set_workout done";
+	$self->queue_draw;
+}
+
+sub size_request {
+	my( $self, $req ) = @_;
+
+	warn "size";
+	$req->width( MIN_GRAPH_WIDTH );
+	$req->height( MIN_GRAPH_HEIGHT );
+
+	shift->signal_chain_from_overridden (@_);
+}
+
+sub expose_event {
+	my( $self, $event ) = @_;
+
+	warn "expose";
+	$self->window->draw_drawable( 
+		$self->style->fg_gc( $self->state ),
+		$self->{pixmap},
+		$event->area->x, $event->area->y,
+		$event->area->x, $event->area->y,
+		$event->area->width, $event->area->height );
+
+	FALSE; # propagate
+}
+
+sub configure_event {
+	my( $self, $event ) = @_;
+
+	warn "configure";
+	$self->{pixmap} = Gtk2::Gdk::Pixmap->new( $self->window,
+		$self->allocation->width,
+		$self->allocation->height,
+		-1 );
+
+	$self->graph_draw;
+
+	TRUE; # stop other
+}
+
+
+sub graph_gd {
+	my $self = shift;
+
+	warn "graph_gd";
+	my $xs = $self->{xaxis_styles}{$self->{xaxis}};
+
+	# build GD::Graph
+	my $graph = GD::Graph::mixed->new( 
+		$self->allocation->width,
+		$self->allocation->height );
+
+
+	$graph->set(
+		transparent	=> 0,
+		bgclr           => 'white',
+		fgclr           => 'black',
+                boxclr          => 'white',
+                labelclr        => 'black',
+                axislabelclr    => 'black',
+                line_width      => 1,
+                x_labels_vertical       => 1,
+		x_label_position	=> 1/2,
+		#line_types	=> [ 2,3,4 ],
+		
+		%$xs,
+	);
+
+# TODO: setup x-axes
+#		x_min_value	=> ,
+#		x_max_value	=> ,
+
+# TODO: setup y-axes
+#		y_label		=> 'label'
+#		# or:
+#		two_axes	=> 1,
+#		use_axis	=> [1,2,1,1...],
+#		types		=> [qw/ lines area lines lines /],
+#		y1_label	=> '',
+#		y2_label	=> '',
+
+#		y_min_value	=> undef,
+
+	#$graph->set_legend(); # TODO
+
+	$graph->plot( $self->{gddata} )
+		or warn $graph->error; # TODO: error reporting
+
+	warn "graph_gd done";
+	$graph->gd;
+}
+
+sub graph_draw {
+	my $self = shift;
+
+	warn "graph_draw";
+
+	my $gc = $self->style->fg_gc( $self->state );
+
+	if( $self->{gddata} ){
+
+		my $gd = $self->graph_gd;
+
+		# build + set pixbuf
+		my $loader = Gtk2::Gdk::PixbufLoader->new;
+		$loader->write( $gd->png );
+		$loader->close;
+		my $pixbuf = $loader->get_pixbuf;
+
+
+
+#def expose (da, event, pixbuf):
+#  ctx = da.window.cairo_create()
+#  # You can put ctx.scale(..) or ctx.rotate(..) here, if you need some
+#  ctx.set_source_pixbuf(pixbuf,0,0)
+#  ctx.paint()
+#  ctx.stroke()
+
+		$self->{pixmap}->draw_pixbuf( $gc, $pixbuf,
+			0, 0, # src x,y
+			0, 0, # dst x,y
+			$self->allocation->width,
+			$self->allocation->height,
+			'normal', 0, 0
+			);
+
+	} else {
+		$self->{pixmap}->draw_rectangle( $gc, TRUE,
+			0, 0, # x,y
+			$self->allocation->width,
+			$self->allocation->height,
+		);
+	}
+
+}
+
+package WkPlot;
+use strict;
+use warnings;
+
+use base 'Gtk2::Window';
+use Glib qw/ TRUE FALSE /;
+use Carp;
+
+sub new {
+	my( $class, $a ) = @_;
+	my $self = $class->SUPER::new
+		or croak;
+
+	my $box = Gtk2::VBox->new;
+	$self->add( $box );
+
+	my $graph = WkPlot::Graph->new;
+	$graph->set_xaxis( 'time' ); # dist, elapsed, ...
+
+# TODO:
+#	$graph->set_yaxis( 
+#		1	=> 'spd',
+#		2	=> 'pwr',
+#		3	=> 'hr',
+#		4	=> 'ele',
+#	);
+	$graph->set_workout( $a->{workout} );
+	$box->pack_start( $graph, TRUE, TRUE, 0 );
+
+	my $quit = Gtk2::Button->new( 'Quit' );
+	$quit->signal_connect( clicked => sub {
+		my( $button, $window ) = @_;
+		$window->destroy;
+
+	}, $self );
+	$box->pack_start( $quit, FALSE, FALSE, 0 );
+
+
+
+	return $self;
+}
+
+
+package MAIN;
+use strict;
+use warnings;
+
+use Gtk2 '-init';
+
+use Workout;
+use Workout::Athlete;
+use Workout::Store::Memory;
+
+my $itype;
+my $fname = shift;
+
+my $src = Workout::file_read( $fname, { ftype => $itype } );
+#my $resamp = Workout::filter( 'Resample', $src, {
+#	recint	=> $src->dur / 2000, # max number of chunks
+#});
+
+
+my $plot = WkPlot->new({ 
+	workout => $src,
+});
+$plot->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
+$plot->show_all;
+Gtk2->main;

@@ -1,0 +1,118 @@
+#!/usr/bin/perl
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+# plot diagram with merged data of srm + gpx recordings
+
+# TODO: pod
+# TODO: allow plotting any number of files
+# TODO: allow selection of fields per file to plot
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp qw/tempfile/;
+use Workout;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <fname>
+submit workout data to endure database
+
+Options:
+--help              this cruft
+EOF
+	exit 0;
+}
+
+my $sfname = shift;
+if( ! $sfname ){
+	print STDERR "missing input file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+
+
+# read srm
+my $srm = Workout::file_read( $sfname );
+my( $sdfh, $sdfname ) = tempfile( TMPDIR => 1 );
+my $srmi = $srm->iterate;
+while( defined(my $c = $srmi->next)){
+	print $sdfh join(' ', map { $c->$_ || 0 } 
+		qw( time spd cad hr pwr ele) ), "\n";
+}
+close($sdfh);
+
+my( $pfh, $pfname ) = tempfile( TMPDIR => 1 );
+print $pfh
+"
+set mouse
+#set title 'spd'
+set xdata time
+set format x '\%H:\%M'
+#set xtics rotate
+set timefmt '\%s'
+set autoscale yfixmax
+set autoscale y2fixmax
+set yrange [ 0:* ]
+set size 1, 1
+set origin 0, 0
+set multiplot
+set lmargin 5
+set rmargin 5
+set size 1, 1
+set origin 0, 0
+set xtics nomirror 
+unset y2tics
+set ytics nomirror textcolor lt 9
+unset key
+#plot \\
+#	'$sdfname' using 1:6 \\
+#		title 'ele' with filledcurve y1=0 lt 9 axis x1y1, \\
+#	'$sdfname' using 1:(0) \\
+#		title '' with lines lt 0 axes x1y1 smooth bezier
+plot \\
+	'$sdfname' using 1:6 \\
+		title 'ele' with filledcurve y1=0 lt 9 axis x1y1, \\
+	0 title '' with lines lt 0 axes x1y1 smooth bezier
+set ytics nomirror textcolor lt 5
+set yrange [0:300]
+set y2range [ 0:* ]
+set y2tics
+set key
+plot \\
+	'$sdfname' using (\$1-946684800):(\$2*3.6) \\
+		title 'spd' with lines lt 2 axes x1y2 smooth bezier, \\
+	'$sdfname' using (\$1-946684800):3 \\
+		title 'cad' with lines lt 3 axes x1y2 smooth bezier, \\
+	'$sdfname' using (\$1-946684800):4 \\
+		title 'hr' with lines lt 4 axes x1y2 smooth bezier, \\
+	'$sdfname' using (\$1-946684800):5 \\
+		title 'pwr' with lines lt 5 axes x1y1 smooth bezier
+unset multiplot
+pause mouse
+";
+close($pfh);
+system( "gnuplot", $pfname );
+
+unlink($sdfname, $pfname);
+
