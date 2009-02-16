@@ -109,22 +109,22 @@ sub _intersect {
 	my $ma = $dur / ($next->time - $self->time);
 
 	if( defined($self->temp) && defined($next->temp) ){ 
-		$new->{temp} = $self->temp + ($next->temp - $self->temp) * $ma;
+		$new->temp( $self->temp + ($next->temp - $self->temp) * $ma );
 	} else {
-		$new->{temp} = $next->temp;
+		$new->temp( $next->temp );
 	}
 
 	if( defined($self->ele) && defined($next->ele) ){ 
-		$new->{ele} = $self->ele + ($next->ele - $self->ele) * $ma;
+		$new->ele( $self->ele + ($next->ele - $self->ele) * $ma );
 	} else {
-		$new->{ele} = $next->ele;
+		$new->ele( $next->ele );
 	}
 
 	if( defined($self->lon) && defined($self->lat) &&
 		defined($next->lon) && defined($next->lat) ){
 
-		$new->{lon} = $self->lon + ($next->lon - $self->lon) * $ma;
-		$new->{lat} = $self->lat + ($next->lat - $self->lat) * $ma;
+		$new->lon( $self->lon + ($next->lon - $self->lon) * $ma );
+		$new->lat( $self->lat + ($next->lat - $self->lat) * $ma );
 	}
 
 	$new;
