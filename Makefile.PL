@@ -10,6 +10,7 @@ WriteMakefile(
 	    'Geo::Gpx'	=> undef,
 	    'Class::Accessor::Fast'	=> undef,
 	    'Module::Pluggable'	=> undef,
+	    'DateTime'		=> undef,
     }, # e.g., Module::Name => 1.1
     'EXE_FILES'       => [qw(
 	wkconv
