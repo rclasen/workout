@@ -140,9 +140,9 @@ sub show_chart {
 	$win->add( $box );
 
 	# graph
-	my $graph = Workout::GtkChartDelta->new({
-		field	=> $field,
-	});
+	my $graph = Workout::GtkChartDelta->new(
+#		field	=> $field, # TODO
+	);
 
 	foreach my $wk ( @_ ){
 		$graph->add_workout( $wk );
