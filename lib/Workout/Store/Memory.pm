@@ -59,8 +59,8 @@ sub new {
 	my $self = $class->SUPER::new({
 		cap_block	=> 1,
 		%$a,
+		data		=> [],
 	});
-	$self->{data} = [];
 
 	$self;
 }
@@ -73,20 +73,6 @@ sub iterate {
 		%$a,
 		debug	=> $self->{debug},
 	});
-}
-
-sub time_start {
-	my $self = shift;
-	my $c = $self->chunk_first
-		or return;
-	$c->stime;
-}
-
-sub time_end {
-	my $self = shift;
-	my $c = $self->chunk_last
-		or return;
-	$c->time;
 }
 
 sub chunk_first { $_[0]{data}[0]; }
@@ -104,6 +90,22 @@ sub _chunk_add {
 	$self->chunk_check( $n );
 	push @{$self->{data}}, $n;
 }
+
+
+sub time_start {
+	my $self = shift;
+	my $c = $self->chunk_first
+		or return;
+	$c->stime;
+}
+
+sub time_end {
+	my $self = shift;
+	my $c = $self->chunk_last
+		or return;
+	$c->time;
+}
+
 
 1;
 __END__

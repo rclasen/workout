@@ -70,6 +70,26 @@ __PACKAGE__->mk_accessors(qw(
 	note
 ));
 
+=head2 from( $iter )
+
+copy workout data from specified source (other Workout::Store or
+Workout::Iterator).
+
+=cut
+
+sub from { # TODO: make this a constructor
+	my( $self, $iter ) = @_;
+
+	# TODO: copy marker/laps/athlete/workout-/trip data
+
+	$iter->isa( 'Workout::Iterator' )
+		or $iter = $iter->iterate;
+
+	while( defined( my $chunk = $iter->next )){
+		$self->chunk_add( $chunk );
+	}
+}
+
 sub do_read { croak "reading is not suported"; };
 
 sub read {
@@ -91,24 +111,25 @@ sub read {
 }
 
 
-=head2 from( $iter )
+sub do_write { croak "writing is not suported"; };
 
-copy workout data from specified source (other Workout::Store or
-Workout::Iterator).
+sub write {
+	my( $self, $fname, $a ) = @_;
 
-=cut
-
-sub from { # TODO: make this a constructor
-	my( $self, $iter ) = @_;
-
-	# TODO: copy marker/laps/athlete/workout-/trip data
-
-	$iter->isa( 'Workout::Iterator' )
-		or $iter = $iter->iterate;
-
-	while( defined( my $chunk = $iter->next )){
-		$self->chunk_add( $chunk );
+	my $fh;
+	if( ref $fname ){
+		$fh = $fname;
+	} else {
+		open( $fh, '>', $fname )
+			or croak "open '$fname': $!";
 	}
+
+	$self->do_write( $fh );
+
+	close($fh)
+		or return;
+
+	1;
 }
 
 =head2 iterate
@@ -120,18 +141,7 @@ return iterator to retrieve all chunks.
 sub iterate { croak "not implemented"; }; 
 
 
-
-# TODO: marker / lap data
-
 sub chunk_last { croak "not implemented"; };
-
-sub time_start { croak "not implemented"; };
-sub time_end { croak "not implemented"; };
-
-sub dur {
-	my $self = shift;
-	$self->time_end - $self->time_start;
-}
 
 
 =head2 chunk_add( $chunk )
@@ -183,25 +193,17 @@ sub chunk_check {
 	}
 }
 
-sub do_write { croak "writing is not suported"; };
 
-sub write {
-	my( $self, $fname, $a ) = @_;
+# TODO: marker / lap data
 
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
-	} else {
-		open( $fh, '>', $fname )
-			or croak "open '$fname': $!";
-	}
 
-	$self->do_write( $fh );
 
-	close($fh)
-		or return;
+sub time_start { croak "not implemented"; };
+sub time_end { croak "not implemented"; };
 
-	1;
+sub dur {
+	my $self = shift;
+	$self->time_end - $self->time_start;
 }
 
 
