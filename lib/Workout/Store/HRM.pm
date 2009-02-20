@@ -51,7 +51,6 @@ our %defaults = (
 	athlete	=> undef,
 	tz	=> 'local',
 	recint	=> 5,
-	dist	=> 0,
 );
 
 our $re_fieldsep = qr/\t/;
@@ -106,6 +105,8 @@ sub do_read {
 				$gotparams or croak "missing parameter block";
 				$self->{time} = $self->{date}->hires_epoch;
 				$parser = \&parse_hrdata;
+
+			# TODO: read laps / Marker
 
 			} else {
 				$parser = undef;
@@ -218,8 +219,6 @@ sub chunk_check {
 	my( $self, $c ) = @_;
 
 	$self->SUPER::chunk_check( $c );
-
-	$self->{dist} += $c->dist||0;
 }
 
 
@@ -284,6 +283,8 @@ VO2max=", int($athlete->vo2max), "
 Weight=", int($athlete->weight), "
 
 ";
+
+	# TODO: write laps / Marker
 
 	print $fh 
 "[Note]
