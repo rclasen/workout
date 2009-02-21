@@ -102,19 +102,6 @@ my $dst = Workout::file_new( {
 	athlete	=> $ath,
 } );
 
-if( $recint ){
-	$dst->recint( $recint );
-
-} elsif( $dst->recint ){
-	if( $src->recint ){
-		$dst->recint( $src->recint );
-
-	} else {
-		$recint = $dst->recint;
-		$debug && print STDERR "auto-resampling to $recint\n";
-	}
-}
-
 if( ! $join and $join = ! $dst->cap_block ){
 	$debug && print STDERR "auto-join\n";
 }
@@ -125,6 +112,19 @@ if( ! $join and $join = ! $dst->cap_block ){
 my $srm = Workout::file_read( $sfname, {
 	debug	=> $debug,
 })->iterate;
+
+if( $recint ){
+	$dst->recint( $recint );
+
+} elsif( $dst->recint ){
+	if( $srm->recint ){
+		$dst->recint( $srm->recint );
+
+	} else {
+		$recint = $dst->recint;
+		$debug && print STDERR "auto-resampling to $recint\n";
+	}
+}
 
 $srm = Workout::filter('Timeshift', $srm, { 
 	delta	=> $delta,
