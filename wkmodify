@@ -90,11 +90,11 @@ my $src = Workout::file_read( $file, {
 
 if( $start ){
 	if( my( $year,$mon,$day, $hour, $min, $sec ) = 
-		($start =~ /^(?:(\d\d\d\d)-(\d+)-(\d+)\s+)(\d+):(\d+):(\d+(?:\.\d+))$/ )
+		($start =~ /^(?:(\d\d\d\d)-(\d+)-(\d+)\s+)?(\d+):(\d+)(?::(\d+(?:\.\d+)?))?$/ )
 		){
 
 		my $fdate = DateTime->from_epoch(
-			time_zone	=> $tz||'local',
+			time_zone	=> 'local',
 			epoch		=> $src->time_start,
 		);
 		my $sdate = DateTime->new(
@@ -103,13 +103,13 @@ if( $start ){
 			day	=> $day || $fdate->day,
 			hour	=> $hour,
 			minute	=> $min,
-			second	=> $sec,
+			second	=> $sec || $fdate->fractional_second,
 		);
 
-		$delta = $src->time_start - $sdate->hires_epoch;
+		$delta = $sdate->hires_epoch - $src->time_start;
 
-	} elsif( my( $stime ) = ($start =~ /^\d+$/ ) ){
-		$delta = $src->time_start - $stime;
+	} elsif( my( $stime ) = ($start =~ /^(\d+)$/ ) ){
+		$delta = $stime - $src->time_start;
 
 	} else {
 		print STDERR "invalid start time\n";
