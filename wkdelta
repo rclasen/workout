@@ -26,7 +26,7 @@ use Glib qw/ TRUE FALSE /;
 my $delta = 0;
 my $recint;
 my $field = 'spd';
-#my $opt_save; # TODO
+my $opt_save;
 my $opt_gui;
 
 my $wanthelp;
@@ -38,19 +38,19 @@ if( ! GetOptions(
 	"delta|d=i"	=> \$delta,
 	"gui|g!"	=> \$opt_gui,
 	"field|f=s"	=> \$field,
-	#"save|s!"	=> \$opt_save, # TODO
+	"save|s!"	=> \$opt_save,
 )){
 	$needhelp++;
 }
 
 if( $wanthelp ){
 	print <<EOF;
-$0 [opt] <fname1> <fname2>
+$0 [opt] <fname1> [<fname2>]
 interactively determine time delta between multiple recordings for one workout
 
 Options:
 --delta|-d=<d>      initial delta for first file
-#--save|-s           save delta to first file # TODO
+--save|-s           save delta to first file
 
 --gui|-g            interactively determine delta between two files
 --recint|-r=<s>     smoothen input data (speeds up gui, too)
@@ -109,6 +109,13 @@ if( $gui_canceled ){
 
 print "$delta\n";
 
+if( $delta && $opt_save ){
+	$wk1->time_add_delta( $delta );
+	$wk1->write( "$f1.wkdelta" );
+	unlink $f1 or die "unlink $f1 failed: $!";
+	rename "$f1.wkdelta", $f1;
+}
+
 
 sub get_wk {
 	my( $fname ) = @_;
@@ -163,6 +170,7 @@ sub show_chart {
 	my $dadjust = Gtk2::Adjustment->new(
 		$delta, -2000000000, 2000000000,
 		1, 60, 3600 );
+	$graph->set_delta( 0, $delta ) if $delta;
 
 	my $spin = Gtk2::SpinButton->new( $dadjust, 1, 0 );
 	$spin->set_activates_default( 1 );
