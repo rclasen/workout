@@ -35,5 +35,10 @@ sub info {
 	$i;
 }
 
+sub time_add_delta {
+	my( $self, $delta ) = @_;
+	$self->{start} += $delta;
+	$self->{end} += $delta;
+}
 
 1;
