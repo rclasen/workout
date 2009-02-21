@@ -38,6 +38,7 @@ wkdelta
 wkdump
 wkinfo
 wkmerge
+wkmodify
 wkplot
 wkplot-gd
 wkplot-gnuplot

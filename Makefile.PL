@@ -18,6 +18,7 @@ WriteMakefile(
 	wkdump
 	wkinfo
 	wkmerge
+	wkmodify
 	wkplot
     )],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005

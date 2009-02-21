@@ -12,6 +12,7 @@ use MyChart::Gtk;
 use Glib::Object::Subclass
 	'MyChart::Gtk',
 #	properties => [ # TODO
+#		field	=>,
 #	],
 ;
 

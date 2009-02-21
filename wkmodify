@@ -1,0 +1,131 @@
+#!/usr/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+# TODO: pod
+
+use strict;
+use warnings;
+use Workout;
+use Getopt::Long;
+
+
+my $itype;
+
+my $start;
+
+my $delta;
+my $note;
+
+my $slope;
+my $circum;
+my $zeropos;
+my $athletename;
+
+my $debug;
+my $needhelp;
+my $wanthelp;
+
+if( ! GetOptions(
+	'input|i=s'	=> \$itype,
+
+	'start=s'	=> \$start,
+	'delta=i'	=> \$delta,
+	'note=s'	=> \$note,
+
+	'slope=i'	=> \$slope,
+	'circum=i'	=> \$circum,
+	'zeropos=i'	=> \$zeropos,
+	'athlete=s'	=> \$athletename,
+
+	'debug!'	=> \$debug,
+	'help|h!'	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <input file>
+modify workout attributes
+
+ --start=<yyyy-mm-dd h:m:s> set new start time
+ --delta=<sec>       add delta to start time
+
+ --note=<n>          set note
+
+ --slope=<x>         set slope (SRM)
+ --circum=<x>        set wheel circumference (SRM)
+ --zeropos=<x>       set zero offset (SRM)
+ --athlete=<name>    set athlete name (SRM)
+
+ --debug             enable debuging output
+ --help              this help
+
+EOF
+	exit 0;
+}
+
+if( @ARGV != 1 ){
+	print STDERR "you need to specify a single input file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "use --help for usage info\n";
+	exit 1;
+}
+
+my $file = shift;
+
+my $src = Workout::file_read( $file, {
+	ftype	=> $itype,
+	debug	=> $debug,
+} );
+
+if( $start ){
+	if( my( $year,$mon,$day, $hour, $min, $sec ) = 
+		($start =~ /^(?:(\d\d\d\d)-(\d+)-(\d+)\s+)(\d+):(\d+):(\d+(?:\.\d+))$/ )
+		){
+
+		my $fdate = DateTime->from_epoch(
+			time_zone	=> $tz||'local',
+			epoch		=> $src->time_start,
+		);
+		my $sdate = DateTime->new(
+			year	=> $year || $fdate->year,
+			month	=> $mon || $fdate->month,
+			day	=> $day || $fdate->day,
+			hour	=> $hour,
+			minute	=> $min,
+			second	=> $sec,
+		);
+
+		$delta = $src->time_start - $sdate->hires_epoch;
+
+	} elsif( my( $stime ) = ($start =~ /^\d+$/ ) ){
+		$delta = $src->time_start - $stime;
+
+	} else {
+		print STDERR "invalid start time\n";
+		exit 1;
+	}
+}
+
+
+$delta && $src->time_add_delta( $delta );
+foreach my $attr ( qw( note slope circum zeropos athletename )){
+	my $v = eval "\$$attr";
+	next unless defined $v;
+	next unless $src->can( $attr );
+	$src->$attr( $v );
+}
+
+$src->write( "$file.wkmodify" );
+unlink $file or die "unlink $file failed: $!"; 
+rename "$file.wkmodify", $file;
