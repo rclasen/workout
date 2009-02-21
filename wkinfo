@@ -91,9 +91,21 @@ my $edate = DateTime->from_epoch(
 	time_zone	=> 'local',
 );
 
-# TODO: zones/inzone, temperature
+# TODO: zones/inzone
+
+foreach my $attr (qw( athletename note circum slope zeropos )){
+	next unless $src->can( $attr );
+	my $v = $src->$attr or next;
+
+	printf "%-17s%s\n", $attr.':', $v;
+}
+
 print 
-"comment:         ", ($src->note||""), "\n",
+"chunks:          ", $src->chunk_count, " (", 
+	sprintf('%.2f',$info->dur/$src->chunk_count), "s/chunk recint=", 
+	$src->recint||0, ")\n",
+"marker:          ", $src->mark_count, "\n",
+
 # TODO: filter Smooth
 #"chunks:          ", $smth->cntin, " (spdcut=", $smth->cntspd, " elecut=",
 #	$smth->cntele,")\n",
