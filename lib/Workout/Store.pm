@@ -90,14 +90,17 @@ sub from { # TODO: make this a constructor
 	}
 
 	my $store = $iter->store;
+	$self->from_store( $store );
+}
+
+sub from_store {
+	my( $self, $store ) = @_;
+
 	foreach my $mark ( @{$store->marks} ){
 		$self->mark_new( $mark );
 	}
 
-	# TODO: copy workout data known by inherited classes
-	foreach my $f ( qw/ note / ){
-		$self->$f( $store->$f );
-	}
+	$self->note( $store->note );
 }
 
 sub do_read { croak "reading is not suported"; };

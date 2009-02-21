@@ -63,6 +63,7 @@ our %defaults = (
 	circum		=> 2000,
 	zeropos		=> 100,
 	slope		=> 1,
+	athletename	=> 'srm',
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -84,6 +85,16 @@ sub new {
 	});
 
 	$self;
+}
+
+sub from_store {
+	my( $self, $store ) = @_;
+
+	$self->SUPER::from_store( $store );
+
+	foreach my $f (qw( tz circum zeropos slope athletename )){
+		$self->$f( $store->$f ) if $store->can( $f );
+	}
 }
 
 sub do_write {
@@ -301,8 +312,9 @@ sub do_read {
 				"$_=$mark{$_}";
 			} keys %mark ) );
 	}
+
 	# throw away whole-file marker:
-	shift @marker; # TODO: get athlete from ->note
+	$self->athletename( (shift @marker)->{note} );
 
 	############################################################
 	# read recording block info
@@ -496,6 +508,16 @@ sub do_read {
 			note	=> $mark->{note},
 		});
 	}
+}
+
+sub mark_workout {
+	my( $self ) = @_;
+	Workout::Marker->new( {
+		store	=> $self, 
+		start	=> $self->time_start, 
+		end	=> $self->time_end,
+		note	=> substr( $self->athletename. '    ', 0, 4 ),
+	});
 }
 
 
