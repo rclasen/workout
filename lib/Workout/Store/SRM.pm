@@ -147,7 +147,7 @@ sub do_write {
 
 	$self->debug( "writing ". @$blocks ." blocks, ".
 		$self->mark_count ." marker" );
-	print $fh pack( "A4vvCCvvxxA70", 
+	print $fh pack( 'A4vvCCvvx(C/A*@71)', 
 		'SRM6',
 		$days,
 		$self->circum,
@@ -155,7 +155,7 @@ sub do_write {
 		$r2,
 		scalar @$blocks,
 		$self->mark_count,
-		$note,
+		substr($note||'', 0, 70),
 	) or croak "failed to write file header";
 
 	############################################################
@@ -169,7 +169,7 @@ sub do_write {
 		my $first = $self->chunk_time2idx( $m->start );
 		my $last = $self->chunk_time2idx( $m->end );
 
-		print $fh pack( "A255Cvvvvvvv", 
+		print $fh pack( 'Z255Cvvvvvvv', 
 			($m->note||''),
 			1,			# active
 			$first + 1,
@@ -187,7 +187,7 @@ sub do_write {
 
 	foreach my $b ( @$blocks ){
 		$self->debug( "write block ". $b->[0]->stime ." ". @$b );
-		print $fh pack( "Vv", 
+		print $fh pack( 'Vv', 
 			($b->[0]->stime - $wtime) * 100,
 			scalar @$b,
 		) or croak "failed to write recording block";
@@ -196,7 +196,7 @@ sub do_write {
 	############################################################
 	# calibration data, ff
 
-	print $fh pack( "vvvx", 
+	print $fh pack( 'vvvx', 
 		$self->zeropos,
 		$self->slope * 42781 / 140,
 		$self->chunk_count,
@@ -226,7 +226,7 @@ sub do_write {
 		my $c1 = ( ($spd >>3) & 0xf0) | ($pwr & 0x0f);
 		my $c2 = ($pwr >> 4) & 0x7f;
 
-		print $fh pack( "CCCCC", 
+		print $fh pack( 'CCCCC', 
 			$c0,
 			$c1,
 			$c2,
@@ -246,7 +246,7 @@ sub do_read {
 
 	CORE::read( $fh, $buf, 86 ) == 86
 		or croak "failed to read file header";
-	@_ = unpack( "A4vvCCvvxxA70", $buf );
+	@_ = unpack( 'A4vvCCvvx(C/A*@71)', $buf );
 		
 	exists $magic_tag{$_[0]}
 		or croak "unrecognized file format";
@@ -294,7 +294,7 @@ sub do_read {
 	while( $markcnt-- >= 0 ){
 		CORE::read( $fh, $buf, $clen + 15 ) == $clen + 15
 			or croak "failed to read marker";
-		@_ = unpack( "A[$clen]Cvvvvvvv", $buf );
+		@_ = unpack( "Z[$clen]Cvvvvvvv", $buf );
 		my %mark = (
 			note	=> $_[0],
 			active	=> $_[1],
@@ -325,7 +325,7 @@ sub do_read {
 		CORE::read( $fh, $buf, 6 ) == 6
 			or croak "failed to read data block";
 
-		@_ = unpack( "Vv", $buf );
+		@_ = unpack( 'Vv', $buf );
 
 		my %blk = (
 			stime	=> $wtime + $_[0] / 100,
@@ -364,7 +364,7 @@ sub do_read {
 
 	CORE::read( $fh, $buf, 7 ) == 7
 		or croak "failed to read calibration data";
-	@_ = unpack( "vvvx", $buf );
+	@_ = unpack( 'vvvx', $buf );
 	$self->zeropos( $_[0] );
 	$self->slope( $_[1] * 140 / 42781 );
 	my $ckcnt = $_[2];
@@ -454,7 +454,7 @@ sub do_read {
 		}
 		$ckread++;
 
-		@_ = unpack( "CCCCC", $buf );
+		@_ = unpack( 'CCCCC', $buf );
 		my $spd	= 3.0 / 26 * ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
 		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
 
