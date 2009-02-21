@@ -31,110 +31,14 @@ Interface to read/write SRM power meter files
 =cut
 
 
-package Workout::Store::SRM::Iterator;
-use 5.008008;
-use strict;
-use warnings;
-use base 'Workout::Iterator';
-use Carp;
-
-
-sub new {
-	my $class = shift;
-	my $self = $class->SUPER::new( @_ );
-
-	$self->{nbk} = 0;
-	$self->{nck} = 0;
-	$self->{ctime} = undef;
-	$self;
-}
-
-=head2 next
-
-=cut
-
-sub process {
-	my( $self ) = @_;
-
-	my $store = $self->store;
-
-	# find next chunk
-	while( $self->{nbk} <= $#{$store->{blocks}} ){
-		my $blk = $store->{blocks}[$self->{nbk}];
-
-		if( $blk->{skip} ){
-			$self->debug( "skipping junk block ". $self->{nbk} );
-			$self->{nbk}++;
-			next;
-		}
-
-		if( $self->{nck} >= $blk->{ckcnt} ){
-			$self->debug( "end of block ". $self->{nbk} );
-			$self->{nck} = 0;
-			$self->{nbk}++;
-			next;
-		}
-
-		# fix time to avoid overlapping
-		if( defined $self->{ctime} ){
-			$self->{ctime} += $store->recint;
-
-			if( $self->{nck} == 0 ){
-				if( $self->{ctime} > $blk->{stime} ){
-					my $b = DateTime->from_epoch( 
-						epoch => $blk->{stime},
-						time_zone => $self->{tz},
-					);
-					my $t = DateTime->from_epoch( 
-						epoch => $self->{ctime},
-						time_zone => $self->{tz},
-					);
-
-					warn "fixing time of block "
-						. $self->{nbk} 
-						. " from ".  $b->hms
-						. " to ". $t->hms;
-				} else {
-					$self->{ctime} = $blk->{stime};
-				}
-			}
-
-		} else {
-			$self->{ctime} = $blk->{stime};
-		}
-
-		my $idx = $blk->{ckstart} + $self->{nck}++;
-		my $ick = $store->{chunks}[$idx];
-		my $ock = Workout::Chunk->new( {
-			%$ick,
-			prev	=> $self->last,
-			time	=> $self->{ctime},
-			dur	=> $store->recint,
-			temp	=> $store->temperature,
-			dist	=> $ick->{spd}/3.6 * $store->recint,
-			work	=> $ick->{pwr} * $store->recint,
-		});
-
-		$self->{cntin}++;
-
-		return $ock;
-	}
-
-	# no chunk found, return nothing
-	return;
-}
-
-
-
-# TODO: convert to subclass Workout::Store::Memory
-
 package Workout::Store::SRM;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store';
+use base 'Workout::Store::Memory';
 use Carp;
 use DateTime;
+use Workout::Filter::Info;
 
 
 our $VERSION = '0.01';
@@ -153,15 +57,14 @@ sub filetypes {
 	return "srm";
 }
 
-# TODO: move blkmin + junk skipping to Filter
-
-__PACKAGE__->mk_accessors(qw(
-	tz
-	blkmin
-	circum
-	zeropos
-	gradient
-));
+our %defaults = (
+	recint		=> 1,
+	tz		=> 'local',
+	circum		=> 2000,
+	zeropos		=> 100,
+	slope		=> 1,
+);
+__PACKAGE__->mk_accessors( keys %defaults );
 
 =head2 new( $file, $args )
 
@@ -174,41 +77,34 @@ sub new {
 
 	$a||={};
 	my $self = $class->SUPER::new( {
-		blkmin	=> 120, # min. block length/seconds
-		tz	=> 'local',
+		%defaults,
 		%$a,
 		cap_block	=> 1,
+		cap_note	=> 1,
 	});
-
-	$self->{blocks} = [];
-	$self->{marker} = [];
-	$self->{chunks} = [];
 
 	$self;
 }
 
-# TODO: chunk_add
-
 sub do_write {
 	my( $self, $fh ) = @_;
-
-	my $buf;
 
 	############################################################
 	# file header
 
-	my $stime = $self->{blocks}[0]{stime};
+	my $stime = $self->time_start;
+	my $info = $self->info;
 
 	my $dateref = DateTime->new( 
 		year		=> 1880, 
 		month		=> 1, 
 		day		=> 1,
-		time_zone	=> $self->{tz},
+		time_zone	=> $self->tz,
 	);
 
 	my $sdate = DateTime->from_epoch(
 		epoch		=> $stime,
-		time_zone	=> $self->{tz},
+		time_zone	=> $self->tz,
 	);
 
 	my $days = int( $sdate->subtract_datetime_absolute( $dateref )
@@ -232,46 +128,57 @@ sub do_write {
 			or croak "cannot find apropriate recint";
 
 	}
-	my $note = $self->note || ( $self->temperature 
-		? $self->temperature ."øC"
+	my $note = $self->note || ( $info->temp_avg 
+		? $info->temp_avg ."øC"
 		: "");
+	my $blocks = $self->blocks;
 
+	$self->debug( "writing ". @$blocks ." blocks, ".
+		$self->mark_count ." marker" );
 	print $fh pack( "A4vvCCvvxxA70", 
 		'SRM6',
 		$days,
 		$self->circum,
 		$r1,
 		$r2,
-		scalar @{$self->{blocks}},
-		scalar @{$self->{marker}} -1,
+		scalar @$blocks,
+		$self->mark_count,
 		$note,
 	) or croak "failed to write file header";
 
 	############################################################
 	# marker
 
-	foreach my $m ( @{$self->{marker}} ){
+	# TODO: sort marker by ->start
+	foreach my $m ( $self->mark_workout, @{$self->marks} ){
+
+		my $info = $m->info;
+
+		my $first = $self->chunk_time2idx( $m->start );
+		my $last = $self->chunk_time2idx( $m->end );
+
 		print $fh pack( "A255Cvvvvvvv", 
-			$m->{comment},
-			$m->{active},
-			$m->{ckstart} + 1,
-			$m->{ckend} + 1,
-			$m->{apwr} * 8,
-			$m->{ahr} * 64,
-			$m->{hcad} * 32,
-			$m->{aspd} * 2500 / 9,
-			$m->{pwc},
+			($m->note||''),
+			1,			# active
+			$first + 1,
+			$last + 1,
+			($info->pwr_avg||0) * 8,
+			($info->hr_avg||0) * 64,
+			($info->cad_avg||0) * 32, # TODO: unused / 0?
+			($info->spd_avg||0) * 2500 / 9 * 3.6,
+			0,			# pwc150
 		) or croak "failed to write marker";
 	}
 
 	############################################
 	# blocks
 
-	foreach my $b ( @{$self->{blocks}} ){
+	foreach my $b ( @$blocks ){
+		$self->debug( "write block ". $b->[0]->stime ." ". @$b );
 		print $fh pack( "Vv", 
-			($b->{stime} - $wtime) * 100,
-			$b->{ckcnt},
-		) or croak "failed to write data block";
+			($b->[0]->stime - $wtime) * 100,
+			scalar @$b,
+		) or croak "failed to write recording block";
 	}
 
 	############################################################
@@ -279,14 +186,15 @@ sub do_write {
 
 	print $fh pack( "vvvx", 
 		$self->zeropos,
-		$self->gradient,
-		scalar @{$self->{chunks}},
+		$self->slope * 42781 / 140,
+		$self->chunk_count,
 	) or croak "failed to write calibration data";
 
 	############################################################
 	# chunks 
 
-	foreach my $c ( @{$self->{chunks}} ){
+	my $it = $self->iterate;
+	while( my $c = $it->next ){
 
 		# lsb byte order...
 		#
@@ -299,8 +207,8 @@ sub do_write {
 		# -6543210 a987---- -------- speed
 		#     0x7f 0xf0
 
-		my $spd = int($c->{spd} * 26/3);
-		my $pwr = int($c->{pwr});
+		my $spd = int($c->spd * 26/3 * 3.6);
+		my $pwr = int($c->pwr);
 
 		my $c0 = $spd & 0x7f;
 		my $c1 = ( ($spd >>3) & 0xf0) | ($pwr & 0x0f);
@@ -310,8 +218,8 @@ sub do_write {
 			$c0,
 			$c1,
 			$c2,
-			$c->{cad},	# $_[3],
-			$c->{hr},	# $_[4],
+			$c->cad,	# $_[3],
+			$c->hr,	# $_[4],
 		) or croak "failed to write chunks";
 	}
 }
@@ -323,6 +231,7 @@ sub do_read {
 
 	############################################################
 	# file header
+
 	CORE::read( $fh, $buf, 86 ) == 86
 		or croak "failed to read file header";
 	@_ = unpack( "A4vvCCvvxxA70", $buf );
@@ -343,7 +252,7 @@ sub do_read {
 		year		=> 1880, 
 		month		=> 1, 
 		day		=> 1,
-		time_zone	=> $self->{tz},
+		time_zone	=> $self->tz,
 	)->add( days => $_[1] );
 	my $wtime = $date->hires_epoch;
 
@@ -353,8 +262,10 @@ sub do_read {
 	my $markcnt = $_[6];
 
 	$self->note( $_[7] );
+	my $temperature;
+
 	if( $_[7] =~ /^(\d+)øC/ ){
-		$self->temperature( $1 );
+		$temperature = $1;
 	}
 	$self->debug( "date: ". $date->ymd 
 		." days: ". $_[1] .","
@@ -366,68 +277,73 @@ sub do_read {
 
 	############################################################
 	# read marker
+
+	my @marker;
 	while( $markcnt-- >= 0 ){
 		CORE::read( $fh, $buf, $clen + 15 ) == $clen + 15
 			or croak "failed to read marker";
 		@_ = unpack( "A[$clen]Cvvvvvvv", $buf );
-		push @{$self->{marker}}, {
-			comment	=> $_[0],
+		my %mark = (
+			note	=> $_[0],
 			active	=> $_[1],
-			ckstart	=> $_[2] -1, # 1..
-			ckend	=> $_[3] -1, # 1..
+			ckfirst	=> $_[2] -1, # 1..
+			cklast	=> $_[3] -1, # 1..
 			apwr	=> $_[4] / 8,
 			ahr	=> $_[5] / 64,
-			hcad	=> $_[6] / 32,
-			aspd	=> $_[7] / 2500 * 9,
-			pwc	=> $_[8],
-		};
-		$self->debug( "marker ". @{$self->{marker}}. ": " 
-			. '"'. $_[0] .'"'
-			. ", first: $_[2]"
-			. ", last: $_[3]");
+			acad	=> $_[6] / 32, # unused? always=0
+			aspd	=> $_[7] / 2500 * 9 / 3.6,
+			pwc	=> $_[8], # unused? always=0
+		);
+		push @marker, \%mark;
+		$self->debug( "marker ". $#marker. ": " 
+			. join(', ', map {
+				"$_=$mark{$_}";
+			} keys %mark ) );
 	}
+	# throw away whole-file marker:
+	shift @marker; # TODO: get athlete from ->note
 
 	############################################################
-	# blocks
+	# read recording block info
 
-	my $blockcks = 0;
+	my $block_cknext = 0;
+	my @blocks;
 	while( $blockcnt-- > 0 ){
 		CORE::read( $fh, $buf, 6 ) == 6
 			or croak "failed to read data block";
 
 		@_ = unpack( "Vv", $buf );
-		my $stime = $wtime + $_[0] / 100;
 
-		my $ckcnt = $_[1];
-		my $blk = {
-			stime	=> $stime,
-			ckcnt	=> $ckcnt,
-			ckstart => $blockcks,
-			skip	=> 0,
-		};
-		push @{$self->{blocks}}, $blk;
+		my %blk = (
+			stime	=> $wtime + $_[0] / 100,
+			ckcnt	=> $_[1],
+			ckfirst	=> $block_cknext,
+			cklast	=> $block_cknext + $_[1] -1,
+		);
+		$blk{etime} = $blk{stime} + $blk{ckcnt} * $self->recint;
+
+		push @blocks, \%blk;
 
 		if( $self->{debug} ){
 			my $sdate = DateTime->from_epoch( 
-				epoch		=> $stime, 
-				time_zone	=> $self->{tz},
+				epoch		=> $blk{stime}, 
+				time_zone	=> $self->tz,
 			);
-			my $etime = $stime + $ckcnt * $self->recint;
 			my $edate = DateTime->from_epoch(
-				epoch		=> $etime,
-				time_zone	=> $self->{tz}),
-			;
+				epoch		=> $blk{etime},
+				time_zone	=> $self->tz,
+			);
 
-			$self->debug( "block ". $#{$self->{blocks}} .": "
+			$self->debug( "block ". $#blocks .": "
 				. sprintf( '%5d+%5d=%5d', 
-					$blockcks, $ckcnt, ($blockcks + $ckcnt) )
+					$blk{ckfirst}, $blk{ckcnt}, $blk{cklast} )
 				." @". $_[0]
-				." ".  $sdate->hms . " (".  $stime .")"
-				." to ". $edate->hms . " (".  $etime .")"
+				." ".  $sdate->hms . " (".  $blk{stime} .")"
+				." to ". $edate->hms . " (".  $blk{etime} .")"
 				);
 		}
 
-		$blockcks += $ckcnt;
+		$block_cknext += $blk{ckcnt};
 	}
 
 	############################################################
@@ -437,19 +353,28 @@ sub do_read {
 		or croak "failed to read calibration data";
 	@_ = unpack( "vvvx", $buf );
 	$self->zeropos( $_[0] );
-	$self->gradient( $_[1] );
+	$self->slope( $_[1] * 140 / 42781 );
 	my $ckcnt = $_[2];
 
-	$self->debug( "chunks: $ckcnt, blockchunks: $blockcks" );
+	$self->debug( "slope=". $self->slope
+		." zero=". $self->zeropos
+		." circum=". $self->circum
+		);
+	$self->debug( "chunks: $ckcnt, blockchunks: $block_cknext" );
 
-	if( $blockcks < $ckcnt ){
+
+	############################################################
+	# consistency check, error correction
+
+	if( $block_cknext < $ckcnt ){
 		warn "inconsistency: block chunks < total";
 
-	} elsif( $blockcks > $ckcnt ){
+	} elsif( $block_cknext > $ckcnt ){
 		warn "inconsistency: block chunks > total, truncating last blocks";
 
-		my $extra = $blockcks - $ckcnt;
-		foreach my $blk ( reverse @{$self->{blocks}} ){
+		my $extra = $block_cknext - $ckcnt;
+		foreach my $blk ( reverse @blocks ){
+
 			if( $extra <= $blk->{ckcnt} ){
 				$self->debug( "truncating block "
 					. $blk->{stime}
@@ -468,54 +393,108 @@ sub do_read {
 		}
 	}
 
-	# mark too short leading blocks to be skipped
-	foreach my $blk ( @{$self->{blocks}} ){
-		last if $blk->{ckcnt} * $self->recint > $self->blkmin;
-		$self->debug( "leading junk block ". $blk->{stime}
-			." (< ".  $self->blkmin ."sec)" );
-		$blk->{skip}++;
-	}
-	# mark too short trailing blocks to be skipped
-	foreach my $blk ( reverse @{$self->{blocks}} ){
-		last if $blk->{ckcnt} * $self->recint > $self->blkmin;
-		$self->debug( "trailing junk block ". $blk->{stime}
-			." (< ".  $self->blkmin ."sec)" );
-		$blk->{skip}++;
+	my $prev_block;
+	foreach my $blk ( reverse @blocks ){
+
+		if( $prev_block && $blk->{etime} > $prev_block->{stime} ){
+			my $stime = $prev_block->{stime} 
+				- $blk->{ckcnt} * ( $self->recint + 1);
+
+			$self->debug( "fixing block "
+				. $blk->{stime}
+				. " start time to "
+				. $stime
+				. " ("
+				. ($blk->{stime} - $stime)
+				. ")" );
+
+			$blk->{etime} = $prev_block->{stime};
+			$blk->{stime} = $stime;
+		}
+
+		$prev_block = $blk;
 	}
 
 	############################################################
 	# read data chunks 
 
+	my $ckread = 0;
+	my $prev_chunk;
+
+	my $blk;
+	my $cktime;
+
 	while( CORE::read( $fh, $buf, 5 ) == 5 ){
 
-		@_ = unpack( "CCCCC", $buf );
+		if( ! $ckread || $ckread > $blk->{cklast} ){
+			if( @blocks  ){
+				$blk = shift @blocks;
+				$cktime = $blk->{stime};
 
-		push @{$self->{chunks}}, {
-			spd	=> 3.0 / 26 * 
-				( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) ),
-			pwr	=> ( $_[1] & 0x0f) | ( $_[2] << 4 ),
+			} else {
+				warn "found extra chunk";
+				$cktime += $self->recint;
+			}
+
+		} else {
+			$cktime += $self->recint;
+		}
+		$ckread++;
+
+		@_ = unpack( "CCCCC", $buf );
+		my $spd	= 3.0 / 26 * ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
+		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
+
+		my $chunk = Workout::Chunk->new( {
+			prev	=> $prev_chunk,
+			time	=> $cktime,
+			dur	=> $self->recint,
+			temp	=> $temperature,
 			cad	=> $_[3],
 			hr	=> $_[4],
-		};
+			dist	=> $spd/3.6 * $self->recint,
+			work	=> $pwr * $self->recint,
+		});
+
+		$self->_chunk_add( $chunk );
+		$prev_chunk = $chunk;
 	}
-	@{$self->{chunks}} < $ckcnt && warn "cannot read all data chunks";
-	$self->debug( "read ". @{$self->{chunks}} ." chunks" );
-}
 
-=head2 iterate
+	$ckread < $ckcnt && warn "cannot read all data chunks";
+	$ckread > $ckcnt && warn "found more data chunks as expeced";
 
-read header (ie. non-chunk data) from file and return iterator
+	############################################################
+	# add marker
 
-=cut
+	foreach my $mark ( @marker ){
+		my $first = $self->chunk_get_idx( $mark->{ckfirst} )
+			or next;
+		my $last = $self->chunk_get_idx( $mark->{cklast} )
+			or next;
 
-sub iterate {
-	my( $self, $a ) = @_;
+		if( $self->{debug} ){
+			my $sdate = DateTime->from_epoch( 
+				epoch		=> $first->stime,
+				time_zone	=> $self->tz,
+			);
+			my $edate = DateTime->from_epoch(
+				epoch		=> $last->time,
+				time_zone	=> $self->tz,
+			);
 
-	$a ||= {};
-	Workout::Store::SRM::Iterator->new( $self, {
-		%$a,
-		debug	=> $self->{debug},
-	});
+			$self->debug( "mark"
+				." ".  $sdate->hms . " (".  $first->stime .")"
+				." to ". $edate->hms . " (".  $last->time .")"
+				." ". $mark->{note}
+			);
+		}
+
+		$self->mark_new({
+			start	=> $first->stime,
+			end	=> $last->time,
+			note	=> $mark->{note},
+		});
+	}
 }
 
 
