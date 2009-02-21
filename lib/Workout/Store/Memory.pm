@@ -32,7 +32,7 @@ use base 'Workout::Iterator';
 sub process {
 	my( $self ) = @_;
 
-	my $dat = $self->store->{data};
+	my $dat = $self->store->{chunk};
 	return unless $self->{cntin} < @$dat;
 
 	$dat->[$self->{cntin}++];
@@ -58,8 +58,10 @@ sub new {
 	$a ||= {};
 	my $self = $class->SUPER::new({
 		cap_block	=> 1,
+		cap_note	=> 1,
 		%$a,
-		data		=> [],
+		chunk		=> [],
+		mark		=> [],
 	});
 
 	$self;
@@ -75,8 +77,100 @@ sub iterate {
 	});
 }
 
-sub chunk_first { $_[0]{data}[0]; }
-sub chunk_last { $_[0]{data}[-1]; }
+sub chunk_time2idx {
+	my( $self, $time ) = @_;
+
+	my $last = $#{$self->{chunk}};
+
+	# no data
+	return unless $last >= 0;
+
+	# after data
+	return $last if $time > $self->{chunk}[$last]->stime;
+
+	# perform quicksearch
+	$self->_chunk_time2idx( $time, 0, $last );
+}
+
+# quicksearch
+sub _chunk_time2idx {
+	my( $self, $time, $idx1, $idx2 ) = @_;
+
+	return $idx1 if $time <= $self->{chunk}[$idx1]->time;
+	return $idx2 if $idx1 + 1 == $idx2;
+
+	my $split = int( ($idx1 + $idx2) / 2);
+	#$self->debug( "qsrch $idx1 $split $idx2" );
+
+	if( $time <= $self->{chunk}[$split]->time ){
+		return $self->_chunk_time2idx( $time, $idx1, $split );
+	}
+	return $self->_chunk_time2idx( $time, $split, $idx2 );
+}
+
+sub chunk_idx2time {
+	my( $self, $idx ) = @_;
+	if( $idx >= $self->chunk_count 
+		|| $idx < 0 ){
+
+		croak "index is out of range";
+	}
+	$self->{chunk}[$idx]->time;
+}
+
+sub chunks { $_[0]{chunk}; }
+sub chunk_count { scalar @{$_[0]{chunk}}; }
+sub chunk_first { $_[0]{chunk}[0]; }
+sub chunk_last { $_[0]{chunk}[-1]; }
+
+sub chunk_get_idx {
+	my( $self, $idx1, $idx2 ) = @_;
+
+	$idx2 ||= $idx1;
+	$idx1 <= $idx2
+		or croak "inverse index span";
+
+
+	@{$self->{chunk}}[$idx1 .. $idx2];
+}
+
+sub chunk_get_time {
+	my( $self, $time1, $time2 ) = @_;
+
+	$time2 ||= $time1;
+	$time1 <= $time2
+		or croak "inverse time span";
+
+	$self->chunk_get_idx( 
+		$self->chunk_idx( $time1 ),
+		$self->chunk_idx( $time2 ),
+	);
+
+}
+
+sub chunk_del_idx {
+	my( $self, $idx1, $idx2 ) = @_;
+
+	$idx2 ||= $idx1;
+	$idx1 <= $idx2
+		or croak "inverse index span";
+
+	# TODO: nuke marker outside the resulting time span
+	splice @{$self->{chunk}}, $idx1, $idx2-$idx1;
+}
+
+sub chunk_del_time {
+	my( $self, $time1, $time2 ) = @_;
+
+	$time2 ||= $time1;
+	$time1 <= $time2
+		or croak "inverse time span";
+
+	$self->chunk_del_idx( 
+		$self->chunk_idx( $time1 ),
+		$self->chunk_idx( $time2 ),
+	);
+}
 
 =head2 chunk_add( $chunk )
 
@@ -88,8 +182,29 @@ sub _chunk_add {
 	my( $self, $n ) = @_;
 
 	$self->chunk_check( $n );
-	push @{$self->{data}}, $n;
+	push @{$self->{chunk}}, $n;
 }
+
+sub marks {
+	my( $self ) = @_;
+	$self->{mark};
+}
+
+sub mark_count {
+	my( $self ) = @_;
+	scalar @{$self->{mark}};
+}
+
+sub _mark_add {
+	my( $self, $mark ) = @_;
+	push @{$self->{mark}}, $mark;
+}
+
+sub mark_del {
+	my( $self, $idx ) = @_;
+	splice @{$self->{mark}}, $idx, 1;
+}
+
 
 
 sub time_start {
@@ -105,7 +220,6 @@ sub time_end {
 		or return;
 	$c->time;
 }
-
 
 1;
 __END__

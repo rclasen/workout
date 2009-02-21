@@ -48,6 +48,7 @@ sub filetypes {
 }
 
 our $re_fieldsep = qr/\t/;
+our $re_mark = qr/^(\d*)\t(\d*)\t(.*)/;
 
 =head2 new( $file, $args )
 
@@ -61,7 +62,9 @@ sub new {
 	$a||={};
 	$class->SUPER::new({
 		%$a,
-		columns	=> [],
+		columns		=> [],
+		cap_block	=> 1,
+		cap_note	=> 1,
 	});
 }
 
@@ -70,6 +73,7 @@ sub do_read {
 
 	my $parser;
 	my $gotparams;
+	my $gotchunks;
 
 	my $re_empty = qr/^\s*$/;
 	my $re_block = qr/^\[(\w+)\]/;
@@ -89,6 +93,11 @@ sub do_read {
 			} elsif( $blockname eq 'chunks' ){
 				$gotparams or croak "missing parameter block";
 				$parser = \&parse_chunks;
+				$gotchunks++;
+
+			} elsif( $blockname eq 'markers' ){
+				$gotchunks or croak "missing chunk block";
+				$parser = \&parse_markers;
 
 			} else {
 				$parser = undef;
@@ -113,6 +122,9 @@ sub parse_params {
 		($v == 1)
 			or croak "unsupported version: $v";
 	
+	} elsif( $k eq 'note' ){
+		$self->note( $v );
+
 	} elsif( $k eq 'columns' ){
 		my @cols = split( /\s*,\s*/, lc $v);
 		grep { /^time$/ } @cols
@@ -125,7 +137,6 @@ sub parse_params {
 	
 }
 
-
 sub parse_chunks {
 	my( $self, $l ) = @_;
 
@@ -137,6 +148,19 @@ sub parse_chunks {
 	my $ck = Workout::Chunk->new( \%a );
 
 	$self->_chunk_add( $ck );
+}
+
+sub parse_markers {
+	my( $self, $l ) = @_;
+
+	$l =~ /$re_mark/
+		or croak "invalid marker syntax: $l";
+	# TODO: skip marker outside the chunk range
+	$self->mark_new( {
+		start	=> $1,
+		end	=> $2,
+		note	=> $3,
+	});
 }
 
 =head2 write
@@ -156,13 +180,24 @@ sub do_write {
 	print $fh "[Params]\n";
 	print $fh "Version=1\n";
 	print $fh "Columns=", join(",", @fields), "\n";
+	print $fh "Note=", $self->note, "\n" if $self->note;
 
 
 	print $fh "[Chunks]\n";
-	foreach my $ck ( @{$self->{data}} ){
+	my $it = $self->iterate;
+	while( my $ck = $it->next ){
 		print $fh join( "\t", map { 
 			$_ || 0;
 		} @$ck{@fields}), "\n";
+	}
+
+	print $fh "[Markers]\n";
+	foreach my $mk ( @{$self->marks} ){
+		print $fh join( "\t", 
+			$mk->start	|| 0,
+			$mk->end	|| '',
+			$mk->note	|| '',
+		), "\n";
 	}
 }
 

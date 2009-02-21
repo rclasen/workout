@@ -53,6 +53,8 @@ use 5.008008;
 use strict;
 use warnings;
 use base 'Workout::Base';
+use Workout::Marker;
+use Workout::Filter::Info;
 use Carp;
 
 our $VERSION = '0.01';
@@ -64,9 +66,9 @@ sub filetypes {
 
 __PACKAGE__->mk_accessors(qw(
 	cap_block
-	fields
+	cap_note
 	recint
-	temperature
+
 	note
 ));
 
@@ -80,13 +82,21 @@ Workout::Iterator).
 sub from { # TODO: make this a constructor
 	my( $self, $iter ) = @_;
 
-	# TODO: copy marker/laps/athlete/workout-/trip data
-
 	$iter->isa( 'Workout::Iterator' )
 		or $iter = $iter->iterate;
 
 	while( defined( my $chunk = $iter->next )){
 		$self->chunk_add( $chunk );
+	}
+
+	my $store = $iter->store;
+	foreach my $mark ( @{$store->marks} ){
+		$self->mark_new( $mark );
+	}
+
+	# TODO: copy workout data known by inherited classes
+	foreach my $f ( qw/ note / ){
+		$self->$f( $store->$f );
 	}
 }
 
@@ -105,8 +115,13 @@ sub read {
 	}
 
 	$self->do_read( $fh );
-
 	close($fh);
+
+	if( $self->{debug} ){
+		$self->debug( "read ". $self->chunk_count ." chunks ".
+			$self->mark_count ." marker");
+	}
+
 	$self;
 }
 
@@ -138,10 +153,47 @@ return iterator to retrieve all chunks.
 
 =cut
 
-sub iterate { croak "not implemented"; }; 
+sub iterate { 
+	my( $self, $a ) = @_;
+	croak "not implemented"; 
+}
 
+sub chunks { 
+	my( $self ) = @_;
 
+	my @chunks;
+	my $iter = $self->iterate;
+	while( my $c = $iter->next ){
+		push @chunks, $c;
+	}
+
+	\@chunks;
+}
+
+sub chunk_first { croak "not implemented"; };
 sub chunk_last { croak "not implemented"; };
+sub chunk_count { croak "not implemented"; };
+
+sub chunk_get_idx {
+	my( $self, $idx1, $idx2 ) = @_;
+	croak "not implemented";
+}
+
+sub chunk_get_time {
+	my( $self, $from, $to ) = @_;
+	croak "not implemented";
+}
+
+sub chunk_del_idx {
+	my( $self, $from, $to ) = @_;
+	croak "not implemented";
+}
+
+sub chunk_del_time {
+	my( $self, $from, $to ) = @_;
+	croak "not implemented";
+}
+
 
 
 =head2 chunk_add( $chunk )
@@ -194,9 +246,69 @@ sub chunk_check {
 }
 
 
-# TODO: marker / lap data
+sub blocks { 
+	my( $self ) = @_;
+
+	my @blocks;
+	my $iter = $self->iterate;
+	while( my $c = $iter->next ){
+		if( $c->isfirst || $c->isblockfirst ){
+			push @blocks, [];
+		}
+		push @{$blocks[-1]}, $c;
+	}
+
+	\@blocks;
+}
 
 
+sub marks { croak "not implemented"; };
+sub mark_count { croak "not implemented"; };
+
+sub mark_workout {
+	my( $self ) = @_;
+	Workout::Marker->new( {
+		store	=> $self, 
+		start	=> $self->time_start, 
+		end	=> $self->time_end,
+		note	=> $self->note,
+	});
+}
+
+sub mark_new {
+	my( $self, $a ) = @_;
+	# TODO: ensure that marker time span is within chunk timespan
+	$self->_mark_add( Workout::Marker->new({
+		%$a,
+		store	=> $self,
+	}) );	
+}
+
+sub _mark_add {
+	my( $self, $mark ) = @_;
+	croak "not implemented";
+}
+
+sub mark_del {
+	my( $self, $idx ) = @_;
+	croak "not implemented";
+}
+
+
+
+
+sub time_add_delta {
+	my( $self, $delta ) = @_;
+
+	my $iter = $self->iterate;
+	while( my $c = $iter->next ){
+		$c->time( $c->time + $delta );
+	}
+
+	foreach my $m ( @{ $self->marks } ){
+		$m->time_add_delta( $delta );
+	}
+}
 
 sub time_start { croak "not implemented"; };
 sub time_end { croak "not implemented"; };
@@ -206,6 +318,12 @@ sub dur {
 	$self->time_end - $self->time_start;
 }
 
+sub info {
+	my $self = shift;
+	my $i = Workout::Filter::Info->new( $self->iterate, @_ );
+	while( $i->next ){ 1; };
+	$i;
+}
 
 1;
 __END__

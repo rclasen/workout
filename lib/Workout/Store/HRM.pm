@@ -74,6 +74,7 @@ sub new {
 		time	=> 0,		# tmp read
 		colfunc	=> [],		# tmp read
 		cap_block	=> 0,
+		cap_note	=> 1,
 	});
 }
 
@@ -246,8 +247,8 @@ write data to disk.
 sub do_write {
 	my( $self, $fh ) = @_;
 
-	my $data = $self->{data};
-	@$data or croak "no data";
+	$self->chunk_count
+		or croak "no data";
 
 	my $athlete = $self->athlete
 		or croak "missing athlete info";
@@ -293,7 +294,8 @@ Weight=", int($athlete->weight), "
 " if $self->note;
 
 	print $fh "[HRData]\n";
-	foreach my $row ( @$data ){
+	my $it = $self->iterate;
+	while( my $row = $it->new ){
 		print $fh join( "\t", (
 			int(($row->hr || 0)+0.5),
 			int(($row->spd || 0) * 36+0.5),

@@ -52,6 +52,7 @@ sub new {
 	$class->SUPER::new({
 		%$a,
 		cap_block	=> 1,
+		cap_note	=> 1,
 	});
 }
 
@@ -79,6 +80,7 @@ sub chunk_add { }
 
 sub _chunk_add { }
 
+sub _mark_add {}
 
 1;
 __END__
