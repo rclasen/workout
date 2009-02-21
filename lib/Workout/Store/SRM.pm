@@ -113,6 +113,7 @@ sub do_write {
 	my $wtime = $dateref->clone->add(days=>$days)->hires_epoch;
 
 	# TODO: less hackish recint 
+	# TODO: handle recint > 255
 	my( $r1, $r2 );
 	if( $self->recint >= 1 ){
 		(abs($self->recint - int($self->recint)) < 0.1 )
@@ -207,8 +208,8 @@ sub do_write {
 		# -6543210 a987---- -------- speed
 		#     0x7f 0xf0
 
-		my $spd = int($c->spd * 26/3 * 3.6);
-		my $pwr = int($c->pwr);
+		my $spd = int(($c->spd||0) * 26/3 * 3.6);
+		my $pwr = int($c->pwr||0);
 
 		my $c0 = $spd & 0x7f;
 		my $c1 = ( ($spd >>3) & 0xf0) | ($pwr & 0x0f);
@@ -218,8 +219,8 @@ sub do_write {
 			$c0,
 			$c1,
 			$c2,
-			$c->cad,	# $_[3],
-			$c->hr,	# $_[4],
+			$c->cad||0,	# $_[3],
+			$c->hr||0,	# $_[4],
 		) or croak "failed to write chunks";
 	}
 }
