@@ -122,6 +122,7 @@ sub filetypes {
 __PACKAGE__->mk_ro_accessors(qw( track gpx ));
 
 # TODO: Geo::Gpx doesn't support subsecond timestamps
+# TODO: use Store::Memory as base class
 
 sub new {
 	my( $class, $a ) = @_;
@@ -137,6 +138,7 @@ sub new {
 			}],
 		},
 		cap_block	=> 1,
+		cap_note	=> 0,
 	});
 	$self->gpx->tracks( [ $self->track ] );
 
