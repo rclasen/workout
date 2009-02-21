@@ -295,7 +295,7 @@ Weight=", int($athlete->weight), "
 
 	print $fh "[HRData]\n";
 	my $it = $self->iterate;
-	while( my $row = $it->new ){
+	while( my $row = $it->next ){
 		print $fh join( "\t", (
 			int(($row->hr || 0)+0.5),
 			int(($row->spd || 0) * 36+0.5),
