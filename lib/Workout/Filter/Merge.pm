@@ -44,6 +44,23 @@ __PACKAGE__->mk_ro_accessors(qw(
 	fields
 ));
 
+# TODO: use ->{store} for master to avoid breaking ->from
+
+sub new {
+	my( $class, $iter, $a ) = @_;
+
+	$a ||= {};
+
+	my $master = $a->{master};
+	$master->isa( 'Workout::Iterator' )
+		or $master = $master->iterate( $a );
+
+	$class->SUPER::new( $iter, {
+		%$a,
+		master	=> $master,
+	});
+}
+
 sub _fetch_master {
 	my( $self ) = @_;
 
