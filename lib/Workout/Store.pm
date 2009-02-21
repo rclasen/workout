@@ -96,8 +96,11 @@ sub from { # TODO: make this a constructor
 sub from_store {
 	my( $self, $store ) = @_;
 
-	foreach my $mark ( @{$store->marks} ){
-		$self->mark_new( $mark );
+	my $marks = $store->marks;
+	if( $marks ){
+		foreach my $mark ( @{$store->marks} ){
+			$self->mark_new( $mark );
+		}
 	}
 
 	$self->note( $store->note );
@@ -158,7 +161,7 @@ return iterator to retrieve all chunks.
 
 sub iterate { 
 	my( $self, $a ) = @_;
-	croak "not implemented"; 
+	return; # not implemented
 }
 
 sub chunks { 
@@ -173,28 +176,36 @@ sub chunks {
 	\@chunks;
 }
 
-sub chunk_first { croak "not implemented"; };
-sub chunk_last { croak "not implemented"; };
-sub chunk_count { croak "not implemented"; };
+sub chunk_first { 
+	return; # "not implemented"; 
+}
+
+sub chunk_last { 
+	return; # "not implemented"; 
+}
+
+sub chunk_count { 
+	return 0; # "not implemented";
+};
 
 sub chunk_get_idx {
 	my( $self, $idx1, $idx2 ) = @_;
-	croak "not implemented";
+	return; # "not implemented";
 }
 
 sub chunk_get_time {
 	my( $self, $from, $to ) = @_;
-	croak "not implemented";
+	return; # "not implemented";
 }
 
 sub chunk_del_idx {
 	my( $self, $from, $to ) = @_;
-	croak "not implemented";
+	return; # "not implemented";
 }
 
 sub chunk_del_time {
 	my( $self, $from, $to ) = @_;
-	croak "not implemented";
+	return; # "not implemented";
 }
 
 
@@ -265,8 +276,13 @@ sub blocks {
 }
 
 
-sub marks { croak "not implemented"; };
-sub mark_count { croak "not implemented"; };
+sub marks { 
+	return; # "not implemented";
+}
+
+sub mark_count {
+	return; # "not implemented";
+}
 
 sub mark_workout {
 	my( $self ) = @_;
@@ -294,7 +310,7 @@ sub _mark_add {
 
 sub mark_del {
 	my( $self, $idx ) = @_;
-	croak "not implemented";
+	return; # "not implemented";
 }
 
 
@@ -313,8 +329,13 @@ sub time_add_delta {
 	}
 }
 
-sub time_start { croak "not implemented"; };
-sub time_end { croak "not implemented"; };
+sub time_start { 
+	return; # "not implemented";
+}
+
+sub time_end { 
+	return; # "not implemented";
+}
 
 sub dur {
 	my $self = shift;
