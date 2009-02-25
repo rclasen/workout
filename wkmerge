@@ -108,17 +108,18 @@ if( ! $join and $join = ! $dst->cap_block ){
 
 
 
-# read srm
-my $srm = Workout::file_read( $sfname, {
+# read wk1
+my $wk1 = Workout::file_read( $sfname, {
 	debug	=> $debug,
-})->iterate;
+});
+my $it1 = $wk1->iterate;
 
 if( $recint ){
 	$dst->recint( $recint );
 
 } elsif( $dst->recint ){
-	if( $srm->recint ){
-		$dst->recint( $srm->recint );
+	if( $wk1->recint ){
+		$dst->recint( $wk1->recint );
 		$recint = $dst->recint if $join;
 
 	} else {
@@ -127,39 +128,40 @@ if( $recint ){
 	}
 }
 
-$srm = Workout::filter('Timeshift', $srm, { 
+$it1 = Workout::filter('Timeshift', $it1, { 
 	delta	=> $delta,
 	debug	=> $debug,
-});
+}) if $delta;
 
-$srm = Workout::filter('Join',  $srm,{
+$it1 = Workout::filter('Join',  $it1,{
 	recint	=> $recint,
 	debug	=> $debug,
 }) if $join;
 
-$srm = Workout::filter('Resample', $srm, {
+$it1 = Workout::filter('Resample', $it1, {
 	recint	=> $recint,
 	debug	=> $debug,
 }) if $recint;
 	
 
-# read gpx
-my $gpx = Workout::file_read( $gfname, {
+# read wk2
+my $wk2 = Workout::file_read( $gfname, {
 	debug	=> $debug,
 });
 
-$gpx = Workout::filter('Join', $gpx, {
+my $it2 = Workout::filter('Join', $wk2, {
 	debug	=> $debug,
 });
 
 
 # fill dst
-my $merge = Workout::filter('Merge', $gpx, {
-	master	=> $srm, 
+my $merge = Workout::filter('Merge', $it2, {
+	master	=> $it1, 
 	fields	=> \@fields,
 	debug	=> $debug,
 });
 $dst->from( $merge );
+$dst->from_store( $wk1 );
 
 # write dst
 open( my $fh, '>', $ofname )
