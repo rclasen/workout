@@ -122,6 +122,7 @@ print
 "Temperature max: ", (int($info->temp_max||0) || '?'), " °C\n",
 "Temperature avg: ", (int($info->temp_avg||0) || '?'), " °C\n",
 
+"Heartrate min:   ", (int($info->hr_min||0) || '?'), " 1/min\n",
 "Heartrate avg:   ", (int($info->hr_avg||0) || '?'), " 1/min\n",
 "Heartrate max:   ", (int($info->hr_max||0) || '?'), " 1/min at ",
 	fmttime($info->hr_max_time), "\n",

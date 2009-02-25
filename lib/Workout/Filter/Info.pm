@@ -74,6 +74,8 @@ our %init = (
 	pwr_max	=> 0,
 	pwr_max_time	=> undef,
 	hr_sum	=> 0,
+	hr_min	=> undef,
+	hr_min_time	=> undef,
 	hr_max	=> 0,
 	hr_max_time	=> undef,
 	cad_sum	=> 0,
@@ -110,6 +112,21 @@ sub set_min {
 	foreach my $field (@_){
 		my $val = $ck->$field;
 		defined $val or next;
+
+		my $fn = $field .'_min';
+		if( ! defined $self->{$fn} || $self->{$fn} > $val ){
+			$self->{$fn} = $val;
+			$self->{$fn .'_time'} = $ck->time;
+		}
+	}
+}
+
+sub set_zmin {
+	my( $self, $ck ) = splice @_,0,2;
+
+	foreach my $field (@_){
+		my $val = $ck->$field;
+		$val or next;
 
 		my $fn = $field .'_min';
 		if( ! defined $self->{$fn} || $self->{$fn} > $val ){
@@ -189,6 +206,7 @@ sub process {
 	$self->set_asum( $d, qw( cad temp ));
 	$self->set_max( $d, qw( pwr hr cad spd vspd accel temp ele grad ));
 	$self->set_min( $d, qw( temp ele ));
+	$self->set_zmin( $d, qw( hr ));
 
 	$d;
 }
