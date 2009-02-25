@@ -232,9 +232,10 @@ format duration as required in HRM files
 sub fmtdur {
 	my( $self, $sec ) = @_;
 
+	# TODO: support fractional seconds ( %= doesn't )
 	my $min = int($sec / 60 ); $sec %= 60;
 	my $hrs = int($min / 60 ); $min %= 60;
-	sprintf( '%02i:%02i:%02.1f', $hrs, $min, $sec );
+	sprintf( '%02i:%02i:%02i.0', $hrs, $min, $sec );
 }
 
 =head2 write
@@ -252,6 +253,74 @@ sub do_write {
 
 	my $athlete = $self->athlete
 		or croak "missing athlete info";
+
+	# convert marker -> lap
+	my @tics = sort { 
+		$a->{time} <=> $b->{time}
+
+	} map {
+		{
+			isend	=> 1,
+			time	=> $_->start,
+			note	=> $_->note .' start',
+		}, ( $_->start +5 < $_->end ? {
+			isend	=> 0,
+			time	=> $_->end,
+			note	=> $_->note,
+		} : () ); 
+
+	} @{ $self->marks || [] };
+
+	if( ! @tics || $tics[0]->{time} > $self->time_start ){
+		unshift @tics, {
+			isend	=> 0,
+			time	=> $self->time_start,
+			note	=> '',
+		};
+	}
+	if( ! @tics || $tics[-1]->{time} < $self->time_end ){
+		push @tics, {
+			isend	=> 1,
+			time	=> $self->time_end,
+			note	=> '',
+		};
+	}
+
+	my @laps;
+	my $last;
+	foreach my $tic ( @tics ){
+		if( $tic->{time} < $self->time_start ){
+			$tic->{time} = $self->time_start;
+
+		} elsif( $tic->{time} > $self->time_end ){
+			$tic->{time} = $self->time_end;
+		}
+
+		if( $last ){
+			# TODO: minimum lap length?
+
+			if( $tic->{time} <= $last->{time} ){
+				# isend "overwrites" other entries
+				if( @laps && ! $laps[-1]->{isend} 
+					&& $tic->{isend} ){
+
+					pop @laps;
+
+				} else {
+					next;
+				}
+			}
+
+			push @laps, {
+				start	=> $last->{time}, 
+				end	=> $tic->{time},
+				note	=> $tic->{note},
+				isend	=> $tic->{isend},
+			};
+		}
+		$last = $tic;
+	}
+
 
 	my $sdate = DateTime->from_epoch( 
 		epoch		=> $self->time_start,
@@ -283,15 +352,77 @@ StartDelay=0
 VO2max=", int($athlete->vo2max), "
 Weight=", int($athlete->weight), "
 
-";
+[Note]
+", $self->note||'' ,"\n\n";
 
-	# TODO: write laps / Marker
 
-	print $fh 
-"[Note]
-", $self->note ,"
+	# write laps / Marker
+	print $fh "[IntTimes]\n";
+	foreach my $lap ( @laps ){
+		my $info = Workout::Filter::Info->new(
+			Workout::Filter::Timespan->new( $self->iterate, {
+				start	=> $lap->{start},
+				end	=> $lap->{end},
+			} )
+		);
 
-" if $self->note;
+		my $last_chunk;
+		while( my $chunk = $info->next ){
+			$last_chunk = $chunk;
+		}
+
+		print $fh 
+			# row 1
+			join("\t", 
+				$self->fmtdur( $info->time_end - $self->time_start ),
+				int($last_chunk->hr||0),
+				int($info->hr_min||0),
+				int($info->hr_avg||0),
+				int($info->hr_max||0),
+				),"\n",
+			# row 2
+			join("\t",
+				0,	# flags
+				0,	# rectime
+				0,	# rechr
+				int( ($last_chunk->spd||0) * 3.6),
+				int($last_chunk->cad||0),
+				int($last_chunk->ele||0),
+				),"\n",
+			# row 3
+			join("\t", 
+				0,	# extra1
+				0,	# extra2
+				0,	# extra3
+				int( ($info->incline||0) /10),	# ascend
+				int( ($info->dist||0) /100),	# dist
+				),"\n",
+			# row 4
+			join("\t", 
+				0,	# lap type
+				int($info->dist||0),
+				int($last_chunk->pwr||0),
+				int($last_chunk->temp||0),
+				0,	# phase lap
+				0,	# resrved
+				),"\n",
+			# row 5
+			join("\t", 
+				0,	# reserved
+				0,	# reserved
+				0,	# reserved
+				0,	# reserved
+				0,	# reserved
+				0,	# reserved
+				),"\n";
+	}
+	print $fh "\n";
+
+	print $fh "[IntNotes]\n";
+	foreach my $l ( 0 .. $#laps ){
+		print $fh $l+1, "\t", $laps[$l]->{note}, "\n" if $laps[$l]->{note};
+	}
+	print $fh "\n";
 
 	print $fh "[HRData]\n";
 	my $it = $self->iterate;
