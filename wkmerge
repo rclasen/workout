@@ -119,6 +119,7 @@ if( $recint ){
 } elsif( $dst->recint ){
 	if( $srm->recint ){
 		$dst->recint( $srm->recint );
+		$recint = $dst->recint if $join;
 
 	} else {
 		$recint = $dst->recint;
