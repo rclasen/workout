@@ -124,9 +124,11 @@ sub do_write {
 	my $wtime = $dateref->clone->add(days=>$days)->hires_epoch;
 
 	# TODO: less hackish recint 
-	# TODO: handle recint > 255
 	my( $r1, $r2 );
-	if( $self->recint >= 1 ){
+	if( $self->recint > 255 ){
+		croak "recint too large";
+	
+	} elsif( $self->recint >= 1 ){
 		(abs($self->recint - int($self->recint)) < 0.1 )
 			or croak "cannot find apropriate recint";
 
@@ -161,8 +163,10 @@ sub do_write {
 	############################################################
 	# marker
 
-	# TODO: sort marker by ->start
-	foreach my $m ( $self->mark_workout, @{$self->marks} ){
+	foreach my $m ( sort {
+		$a->start <=> $b->start;
+
+	} $self->mark_workout, @{$self->marks} ){
 
 		my $info = $m->info;
 
@@ -176,7 +180,7 @@ sub do_write {
 			$last + 1,
 			($info->pwr_avg||0) * 8,
 			($info->hr_avg||0) * 64,
-			($info->cad_avg||0) * 32, # TODO: unused / 0?
+			($info->cad_avg||0) * 32,
 			($info->spd_avg||0) * 2500 / 9 * 3.6,
 			0,			# pwc150
 		) or croak "failed to write marker";
@@ -413,7 +417,7 @@ sub do_read {
 			my $stime = $prev_block->{stime} 
 				- $blk->{ckcnt} * ( $self->recint + 1);
 
-			$self->debug( "fixing block "
+			warn( "fixing block "
 				. $blk->{stime}
 				. " start time to "
 				. $stime
