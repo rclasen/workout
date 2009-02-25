@@ -6,8 +6,6 @@
 # distribution.
 #
 
-use 5.008008;
-use warnings;
 =head1 NAME
 
 Workout::Store::Gpx - read/write GPS tracks in XML format
@@ -30,88 +28,14 @@ Interface to read/write GPS files
 
 =cut
 
-package Workout::Store::Gpx::Iterator;
-use strict;
-use base 'Workout::Iterator';
-use Geo::Distance;
-use Carp;
-
-sub new {
-	my( $class, $store, $a ) = @_;
-
-	my $self = $class->SUPER::new( $store, $a );
-	$self->{track} = $store->track;
-	$self->{cseg} = 0;
-	$self->{cpt} = 0;
-	$self;
-}
-
-sub _geocalc {
-	my( $self ) = @_;
-	$self->{geocalc} ||= new Geo::Distance;
-}
-
-=head2 next
-
-=cut
-
-sub process {
-	my( $self ) = @_;
-	
-	return unless $self->{track};
-
-	my $segs = $self->{track}{segments};
-	while( $self->{cseg} < @$segs ){
-		my $seg = $segs->[$self->{cseg}];
-
-		# next segment?
-		if( defined $seg->{points} 
-			&& @{$seg->{points}} <= $self->{cpt} ){
-
-			$self->debug( "next segment" );
-			$self->{cseg}++;
-			$self->{cpt} = 0;
-			next;
-		}
-
-		# next point!
-		my $ck = Workout::Chunk->new( {
-			%{$seg->{points}[$self->{cpt}++]},
-			prev	=> $self->last,
-		});
-		$self->{cntin}++;
-
-		# TODO: keep distance of time-less points? croak?
-		next unless $ck->time;
-
-		# remember first chunk for calculations
-		my $last = $self->last;
-		unless( $last ){
-			$self->{last} = $ck;
-			next;
-		}
-
-		$ck->dur( $ck->time - $last->time );
-		$ck->dist( $self->_geocalc->distance( 'meter', 
-			$last->lon, $last->lat,
-			$ck->lon, $ck->lat 
-		));
-
-		return $ck;
-
-	}
-	return;
-}
-
-
-
 package Workout::Store::Gpx;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store';
+use base 'Workout::Store::Memory';
 use Carp;
 use Geo::Gpx;
+use Geo::Distance;
 
 our $VERSION = '0.01';
 
@@ -119,10 +43,11 @@ sub filetypes {
 	return "gpx";
 }
 
-__PACKAGE__->mk_ro_accessors(qw( track gpx ));
+# TODO: Geo::Gpx doesn't support subsecond timestamps - only matters when
+# using something else but garmin as source: Garmin doesn't provide
+# subsecond time resolution, too.
 
-# TODO: Geo::Gpx doesn't support subsecond timestamps
-# TODO: use Store::Memory as base class
+# TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
 
 sub new {
 	my( $class, $a ) = @_;
@@ -130,46 +55,61 @@ sub new {
 	$a ||= {};
 	my $self = $class->SUPER::new( {
 		%$a,
-		chunk_last	=> undef,	# last added chunk
-		gpx	=> Geo::Gpx->new,
-		track	=> {
-			segments	=> [{
-				points	=> [],
-			}],
-		},
 		cap_block	=> 1,
-		cap_note	=> 0,
+		cap_note	=> 1,
 	});
-	$self->gpx->tracks( [ $self->track ] );
-
 	$self;
 }
 
 sub do_read {
 	my( $self, $fh ) = @_;
 
-	$self->{gpx} = Geo::Gpx->new( input => $fh )
+	my $gpx = Geo::Gpx->new( input => $fh )
 		or croak "cannot read file: $!";
 
-	@{$self->{gpx}->tracks} <= 1
+	my $tracks = $gpx->tracks
+		or croak "no tracks found";
+	@$tracks <= 1
 		or croak "cannot deal with multiple tracks per file";
-	$self->{track} = $self->gpx->tracks->[0];
+	$self->note( $tracks->[0]{cmt} );
+
+	my $gcalc = Geo::Distance->new;
+	my $lck;
+	foreach my $seg ( @{$tracks->[0]{segments}} ){
+		my $lpt;
+		foreach my $pt ( @{$seg->{points}} ){
+			next unless $pt->{time};
+
+			my $dur = 0.015;
+			my $dist = 0;
+
+			if( $lpt ){
+				$dur = $pt->{time} - $lpt->{time};
+				$dist = $gcalc->distance( 'meter',
+					$lpt->{lon}, $lpt->{lat},
+					$pt->{lon}, $pt->{lat},
+				);
+			}
+
+			if( $dur < 0.01 ){
+				$self->debug( "skipping zero time-step: ".  $pt->{time} );
+				next;
+			}
+
+			my $ck = Workout::Chunk->new({
+				%$pt,
+				prev	=> $lck,
+				dur	=> $dur,
+				dist	=> $dist,
+			});
+			$self->_chunk_add( $ck );
+
+			$lck = $ck;
+			$lpt = $pt;
+		}
+	}
 }
 
-
-=head2 iterate
-
-=cut
-
-sub iterate {
-	my( $self, $a ) = @_;
-
-	$a ||= {};
-	Workout::Store::Gpx::Iterator->new( $self, {
-		%$a,
-		debug	=> $self->{debug},
-	});
-}
 
 sub chunk_check {
 	my( $self, $c ) = @_;
@@ -180,48 +120,44 @@ sub chunk_check {
 	$self->SUPER::chunk_check( $c );
 }
 
-sub time_start { 
-	my $p =$_[0]->track->{segments}[0]{points}[0]
-		or return;
-	$p->{time};
-}
 
-sub time_end { 
-	my $p = $_[0]->track->{segments}[-1]{points}[-1]
-		or return;
-	$p->{time};
-}
-
-sub chunk_last { $_[0]{chunk_last}; }
-
-sub _chunk_add {
-	my( $self, $c ) = @_;
-
-	$self->chunk_check( $c );
-
-	if( $c->isblockfirst 
-		&& @{$self->track->{segments}[-1]{points}} ){
-
-		push @{$self->track->{segments}}, {
-			points	=> [],
-		}
-	}
-
-	push @{$self->track->{segments}[-1]{points}}, {
-		lon	=> $c->lon,
-		lat	=> $c->lat,
-		ele	=> $c->ele,
-		time	=> $c->time,
-	};
-}
 
 sub do_write {
 	my( $self, $fh ) = @_;
 
-	@{$self->{track}{segments}} 
+	$self->chunk_count
 		or croak "no data";
 
-	print $fh $self->gpx->xml;
+	my @segs = ( {
+		points	=> [],
+	});
+
+	my $it = $self->iterate;
+	while( my $c = $it->next ){
+	
+		if( $c->isblockfirst 
+			&& @{$segs[-1]{points}} ){
+
+			push @segs, {
+				points	=> [],
+			};
+		}
+
+		push @{$segs[-1]{points}}, {
+			lon	=> $c->lon,
+			lat	=> $c->lat,
+			ele	=> $c->ele,
+			time	=> $c->time,
+		};
+	}
+
+	my $gpx = Geo::Gpx->new;
+	$gpx->tracks( [ {
+		segments	=> \@segs,
+		( $self->note ? (cmt => $self->note) : () ),
+	} ] );
+
+	print $fh $gpx->xml;
 }
 
 1;
