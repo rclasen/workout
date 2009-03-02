@@ -46,6 +46,7 @@ monitors, Power meters, GPS receivers and so on.
 =cut
 
 # TODO: move documentation to Workout;
+# TODO: merge with Store::Memory, change Store::* to be input/output filter
 
 package Workout::Store;
 

@@ -21,11 +21,13 @@ use Workout::Athlete;
 
 my $itype;
 my $debug;
+my $ftp;
 
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
+	"ftp=i"		=> \$ftp,
 	"debug!"	=> \$debug,
 	"help|h!"	=> \$wanthelp,
 	"input|i=s"	=> \$itype,
@@ -74,8 +76,12 @@ my $pwr = Workout::filter( 'Pwr', $smth, {
 my $info = Workout::filter( 'Info', $pwr, {
 	debug	=> $debug,
 });
+my $finfo = Workout::filter( 'FTP', $info, {
+	debug	=> $debug,
+	ftp	=> $ftp||0,
+});
 my $null = Workout::Store::Null->new;
-$null->from( $info );
+$null->from( $finfo );
 
 if( $info->cntin == 0 ){
 	print "file seems empty\n";
@@ -151,6 +157,10 @@ print
 "avg Power:       ", sprintf( '%.2f', ($info->pwr_avg||0) ), " W\n", # TODO
 "max Power:       ", sprintf( '%.2f', ($info->pwr_max||0) ), " W at ", # TODO
 	fmttime($info->pwr_max_time), "\n",
+"norm. Power:     ", sprintf( '%.2f', ($finfo->npwr||0) ), " W (VI=",
+	sprintf( '%.2f', ($finfo->vi||0) ), ")\n",
+"TSS:             ", sprintf( '%.2f', ($finfo->tss||0) ), " (IF=",
+	sprintf( '%.2f', ($finfo->if||0) ), ")\n",
 "\n";
 
 1;

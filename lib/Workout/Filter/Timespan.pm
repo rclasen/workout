@@ -35,6 +35,8 @@ use warnings;
 use base 'Workout::Filter::Base';
 use Carp;
 
+# TODO: filter marker, too
+
 our $VERSION = '0.01';
 
 our %default = (
