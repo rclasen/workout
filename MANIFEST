@@ -9,10 +9,11 @@ debian/rules
 lib/Workout.pm
 lib/Workout/Athlete.pm
 lib/Workout/Base.pm
-lib/Workout/Chunk.pm
 lib/Workout/Chart.pm
-lib/Workout/GtkChart.pm
+lib/Workout/ChartDelta.pm
+lib/Workout/Chunk.pm
 lib/Workout/Filter/Base.pm
+lib/Workout/Filter/FTP.pm
 lib/Workout/Filter/Info.pm
 lib/Workout/Filter/Join.pm
 lib/Workout/Filter/Merge.pm
@@ -20,7 +21,11 @@ lib/Workout/Filter/Pwr.pm
 lib/Workout/Filter/Resample.pm
 lib/Workout/Filter/Smooth.pm
 lib/Workout/Filter/Timeshift.pm
+lib/Workout/Filter/Timespan.pm
+lib/Workout/GtkChart.pm
+lib/Workout/GtkChartDelta.pm
 lib/Workout/Iterator.pm
+lib/Workout/Marker.pm
 lib/Workout/Store.pm
 lib/Workout/Store/Gpx.pm
 lib/Workout/Store/HRM.pm
@@ -42,3 +47,4 @@ wkmodify
 wkplot
 wkplot-gd
 wkplot-gnuplot
+wkpmc
