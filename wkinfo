@@ -157,6 +157,8 @@ print
 "avg Power:       ", sprintf( '%.2f', ($info->pwr_avg||0) ), " W\n", # TODO
 "max Power:       ", sprintf( '%.2f', ($info->pwr_max||0) ), " W at ", # TODO
 	fmttime($info->pwr_max_time), "\n",
+
+"Zavg Power:      ", sprintf( '%.2f', ($finfo->apwr||0) ), " W\n",
 "norm. Power:     ", sprintf( '%.2f', ($finfo->npwr||0) ), " W (VI=",
 	sprintf( '%.2f', ($finfo->vi||0) ), ")\n",
 "TSS:             ", sprintf( '%.2f', ($finfo->tss||0) ), " (IF=",
