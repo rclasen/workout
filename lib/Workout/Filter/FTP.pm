@@ -30,6 +30,7 @@ use 5.008008;
 use strict;
 use warnings;
 use base 'Workout::Filter::Resample';
+use Workout::Filter::Join;
 use Carp;
 
 our $VERSION = '0.01';
@@ -50,6 +51,8 @@ sub new {
 	my( $class, $iter, $a ) = @_;
 
 	$a||={};
+	# WKO+ ignores gaps, so do *not* join, too.
+	#$iter = Workout::Filter::Join->new( $iter, $a );
 	$class->SUPER::new( $iter, { 
 		%default, 
 		%$a, 
