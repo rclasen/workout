@@ -1,0 +1,145 @@
+#!/usr/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+
+# TODO: merge into wkinfo
+
+use strict;
+use DateTime;
+use Getopt::Long;
+use Workout;
+use Workout::Store::Null;
+
+my $debug;
+my $ftp;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"ftp=i"		=> \$ftp,
+	"debug!"	=> \$debug,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <fname>
+calculate some fancy data from Workout data
+Options:
+--debug             enable debuging output
+--ftp=<w>           threshold power (W)
+--help              this cruft
+EOF
+	exit 0;
+}
+
+if( ! @ARGV ){
+	print STDERR "missing input files\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+my %info;
+foreach my $fname ( @ARGV ){
+	$debug && print STDERR "reading $fname...\n";
+	my $src = Workout::file_read( $fname, { 
+		debug	=> $debug, 
+	} );
+	my $if = Workout::filter( 'Info', $src, {
+		debug	=> $debug,
+	});
+	my $fi = Workout::filter( 'FTP', $if, {
+		debug	=> $debug,
+		ftp	=> $ftp||0,
+	});
+	my $null = Workout::Store::Null->new;
+	$null->from( $fi );
+
+	$info{files}++;
+	$info{dur} += ($if->dur || 0 );
+	$info{dur_creep} += ($if->dur_creep || 0 );
+	$info{dur_mov} += ($if->dur_mov || 0 );
+	$info{dist} += ($if->dist || 0 );
+	$info{work} += ( $if->work || 0 );
+	$info{incline} += ( $if->incline || 0 );
+	$info{tss} += ( $fi->tss || 0 );
+	&max( \%info, $if, qw( dur dist work incline ) );
+	&max( \%info, $fi, qw( tss ) );
+}
+
+print 
+"total:\n",
+"------\n",
+"files:     ", $info{files}, "\n",
+"duration:  ", fmtdur( $info{dur} ), " h (", int($info{dur}/60), "m)\n",
+"creeping:  ", fmtdur( $info{dur_creep} ), " h (",
+	int(($info{dur_creep}||0)/60), "m)\n",
+"moving:    ", fmtdur( $info{dur_mov} ), " h (",
+	int(($info{dur_mov}||0)/60), "m)\n",
+
+"incline:   ", (int($info{incline}||0) ||'?'), " m\n",
+
+"distance:  ", sprintf( '%.2f', ($info{dist}||0) / 1000), " km\n",
+
+"work:      ", sprintf( '%.2f', ($info{work}||0) / 1000 ), " kJ\n",
+
+"TSS:       ", sprintf( '%.2f', ($info{tss}||0) ), "\n",
+
+"\n",
+"max:\n",
+"----\n",
+"duration:  ", fmtdur( $info{dur_max} ), " h (", int($info{dur_max}/60), "m)\n",
+
+"incline:   ", (int($info{incline_max}||0) ||'?'), " m\n",
+
+"distance:  ", sprintf( '%.2f', ($info{dist_max}||0) / 1000), " km\n",
+
+"work:      ", sprintf( '%.2f', ($info{work_max}||0) / 1000 ), " kJ\n",
+
+"TSS:       ", sprintf( '%.2f', ($info{tss_max}||0) ), "\n",
+"\n";
+
+1;
+
+sub max {
+	my( $dst, $src, @fields ) = @_;
+
+	foreach my $f ( @fields ){
+		my $df = $f. '_max';
+		my $val = $src->$f
+			or next;
+		if( ! defined $dst->{$df} || $dst->{$df} < $val ){
+			$dst->{$df} = $val;
+		}
+	}
+}
+
+sub fmtdur {
+	my $s = shift;
+	my $m = int($s / 60); $s %= 60;
+	my $h = int($m / 60); $m %= 60;
+	sprintf('%d:%02d:%02d', $h, $m, $s);
+}
+
+sub fmttime {
+	my $t = shift;
+	return '?' unless $t;
+	my $date = DateTime->from_epoch(
+		epoch		=> $t,
+		time_zone	=> 'local',
+	);
+	$date->hms;
+}
