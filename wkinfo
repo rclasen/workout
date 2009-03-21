@@ -12,6 +12,8 @@
 # TODO: options for parameters (bike, user)
 # TODO: one-line output for tabular lists of several workouts
 
+# TODO: cumulate data from multiple files
+
 use strict;
 use DateTime;
 use Getopt::Long;
@@ -22,15 +24,17 @@ use Workout::Athlete;
 my $itype;
 my $debug;
 my $ftp;
+my $recint;
 
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
 	"ftp=i"		=> \$ftp,
+	"input|i=s"	=> \$itype,
+	"recint=i"	=> \$recint,
 	"debug!"	=> \$debug,
 	"help|h!"	=> \$wanthelp,
-	"input|i=s"	=> \$itype,
 )){
 	$needhelp++;
 }
@@ -42,6 +46,8 @@ calculate some fancy data from Workout data
 Options:
 --debug             enable debuging output
 --input|-i=<type>   input file type
+--ftp=<w>           threshold power (W)
+--recint=<sec>      resample before calculatin
 --help              this cruft
 EOF
 	exit 0;
@@ -64,12 +70,16 @@ my $src = Workout::file_read( $fname, {
 	debug	=> $debug, 
 	ftype	=> $itype, 
 } );
+my $iter = $src->iterate;
 # TODO: filter Smooth
-#my $smth = Workout::filter( 'Smooth', $src, {
+#$iter = Workout::filter( 'Smooth', $src, {
 #	debug	=> $debug,
 #});
-my $smth = $src;
-my $pwr = Workout::filter( 'Pwr', $smth, { 
+$iter = Workout::filter( 'Resample', $iter, {
+	debug	=> $debug,
+	recint	=> $recint,
+}) if $recint;
+my $pwr = Workout::filter( 'Pwr', $iter, { 
 	debug	=> $debug,
 	athlete => $ath,
 });
@@ -113,8 +123,8 @@ print
 "marker:          ", $src->mark_count, "\n",
 
 # TODO: filter Smooth
-#"chunks:          ", $smth->cntin, " (spdcut=", $smth->cntspd, " elecut=",
-#	$smth->cntele,")\n",
+#"chunks:          ", $iter->cntin, " (spdcut=", $iter->cntspd, " elecut=",
+#	$iter->cntele,")\n",
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
 
@@ -123,6 +133,9 @@ print
 	int(($info->dur_creep||0)/60), "m)\n",
 "moving:          ", fmtdur( $info->dur_mov ), " h (",
 	int(($info->dur_mov||0)/60), "m)\n",
+"pedaling:        ", fmtdur( $info->dur_ncad ), " h (",
+	int(($info->dur_ncad||0)/60), "m) (",
+	sprintf('%.2f', ($info->cad_percent||0) ), "%)\n",
 
 "Temperature min: ", (int($info->temp_min||0) || '?'), " °C\n",
 "Temperature max: ", (int($info->temp_max||0) || '?'), " °C\n",

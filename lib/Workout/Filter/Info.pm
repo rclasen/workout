@@ -49,6 +49,7 @@ our %init = (
 	lele	=> undef,
 	dur_mov	=> 0,
 	dur_cad	=> 0,
+	dur_ncad => 0,
 	dur_hr	=> 0,
 	dist	=> 0,
 	vspd_max	=> 0,
@@ -79,6 +80,7 @@ our %init = (
 	hr_max	=> 0,
 	hr_max_time	=> undef,
 	cad_sum	=> 0,
+	cad_nsum	=> 0,
 	cad_max	=> 0,
 	cad_max_time	=> undef,
 );
@@ -163,6 +165,18 @@ sub set_asum {
 	}
 }
 
+sub set_nsum {
+	my( $self, $ck ) = splice @_,0,2;
+
+	foreach my $field (@_){
+		my $val = $ck->$field;
+		defined $val && $val > 0 or next;
+
+		$self->{$field.'_nsum'} += $val * $ck->dur;
+		$self->{'dur_n'.$field} += $ck->dur;
+	}
+}
+
 sub process {
 	my( $self ) = @_;
 
@@ -203,6 +217,7 @@ sub process {
 		$self->set_asum( $d, 'hr' );
 	}
 
+	$self->set_nsum( $d, qw( cad ));
 	$self->set_asum( $d, qw( cad temp ));
 	$self->set_max( $d, qw( pwr hr cad spd vspd accel temp ele grad ));
 	$self->set_min( $d, qw( temp ele ));
@@ -247,6 +262,16 @@ sub dur_creep {
 	$t - $self->dur_mov;
 }
 
+sub dur_coast {
+	my( $self ) = @_;
+
+	my $m = $self->dur_mov
+		or return;
+
+	my $c = $self->dur_ncad;
+	return $c < $m ? $m - $c : 0;
+}
+
 sub hr_avg {
 	my( $self ) = @_;
 	my $d = $self->dur_hr ||$self->dur
@@ -259,6 +284,13 @@ sub cad_avg {
 	my $d = $self->dur_cad || $self->dur
 		or return;
 	$self->cad_sum / $d;
+}
+
+sub cad_percent {
+	my( $self ) = @_;
+	my $m = $self->dur_mov
+		or return;
+	100 * ($self->dur_ncad ||0) / $m;
 }
 
 sub temp_start {
