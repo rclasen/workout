@@ -134,6 +134,7 @@ sub show_chart {
 	
 
 	my $win = Gtk2::Window->new;
+	$win->set_title( 'wkdelta: '. $f1 .' - '. $f2 );
 	$win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
 	$win->signal_connect( 'size-request' => sub {
 		my( $self, $req ) = @_;
@@ -172,7 +173,7 @@ sub show_chart {
 
 	my $dadjust = Gtk2::Adjustment->new(
 		$delta, -2000000000, 2000000000,
-		1, 60, 3600 );
+		1, 60, 0 );
 	$graph->set_delta( 0, $delta ) if $delta;
 
 	my $spin = Gtk2::SpinButton->new( $dadjust, 1, 0 );

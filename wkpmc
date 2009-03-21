@@ -10,6 +10,7 @@
 
 # TODO: pod
 
+# TODO: adjust window title to include date range
 use strict;
 use DateTime;
 use Getopt::Long;
@@ -148,6 +149,7 @@ while( $first <= $last ){
 
 
 my $win = Gtk2::Window->new;
+$win->set_title( "wkpmc: ". $first->ymd ." - ". $last->ymd );
 $win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
 $win->signal_connect( 'size-request' => sub {
 	my( $self, $req ) = @_;
@@ -179,7 +181,7 @@ $graph->add_scale(
 				time_zone	=> 'local',
 			)->ymd;
 		},
-		label_rotate	=> 1,
+		#label_rotate	=> 1,
 	},
 	tsb	=> {
 		position	=> 1,

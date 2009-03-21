@@ -27,6 +27,8 @@ my $needhelp;
 # TODO: allow selection of graphs per file
 # TODO: write chart image to file
 
+# TODO: suppress plots during block gaps
+
 if( ! GetOptions(
 	"recint|r=i"	=> \$recint,
 	"fields|f=s"	=> \@fields,
@@ -74,7 +76,11 @@ if( $needhelp ){
 }
 
 
+my $title = "wkplot: ". $ARGV[0];
+$title .= ", ..." if @ARGV > 1;
+
 my $win = Gtk2::Window->new;
+$win->set_title( $title );
 $win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
 $win->signal_connect( 'size-request' => sub {
 	my( $self, $req ) = @_;
