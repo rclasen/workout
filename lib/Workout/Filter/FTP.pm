@@ -124,14 +124,14 @@ sub process {
 		or return;
 
 	$self->{dur} += $c->dur;
-	$self->{work} += $c->work;
+	$self->{work} += ($c->work)||0;
 
 	unshift @{$self->{chunks}}, $c;
 	splice @{$self->{chunks}}, 30 if @{$self->{chunks}} >= 30;
 
-	my $work;
+	my $work = 0;
 	foreach my $ac ( @{$self->{chunks}} ){
-		$work += $ac->work;
+		$work += ($ac->work||0);
 	}
 	$work /= @{$self->{chunks}};
 
