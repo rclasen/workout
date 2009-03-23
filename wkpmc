@@ -18,6 +18,9 @@ use Workout;
 use MyChart::Gtk;
 use Gtk2 '-init';
 
+my $ctlconst = 42;
+my $atlconst = 7;
+
 my $debug;
 my $ftp;
 
@@ -54,7 +57,7 @@ if( $needhelp ){
 	exit 1;
 }
 
-my( $first, $last );
+my( $first, $last ); # TODO: add option for this
 my %tss;
 foreach my $fname ( @ARGV ){
 	$debug && print STDERR "reading $fname...\n";
@@ -90,42 +93,26 @@ if( ! $first ){
 	exit;
 }
 
+my $atlf = exp(-1/$atlconst);
+my $ctlf = exp(-1/$ctlconst);
+
 $debug && print STDERR "building ctl, atl, tsb ", $first->ymd, " to ", $last->ymd, "...\n";
-my( @ctl, @atl,  @dat );
+my $ctl = 0; # TODO: option for initial value
+my $atl = 0; # TODO: option for initial value
+my @dat;
 my( %min, %max );
-while( $first <= $last ){
-	my $d = $first->ymd;
+my $day = $first->clone;
+while( $day <= $last ){
+	my $d = $day->ymd;
 	my $tss = $tss{$d}||0;
 
-	unshift @ctl, $tss;
-	if( @ctl > 42 ){
-		splice @ctl, 42;
-	}
-
-	unshift @atl, $tss;
-	if( @atl > 7 ){
-		splice @atl, 7;
-	}
-
-	my $ctl = 0;
-	foreach(@ctl){
-		$ctl += $_;
-	}
-	#$debug && print STDERR "ctl: ", scalar(@ctl), " ", $ctl, "\n";
-	$ctl /= 42;
-
-	my $atl = 0;
-	foreach(@atl){
-		$atl += $_;
-	}
-	#$debug && print STDERR "atl: ", scalar(@atl), " ", $atl, "\n";
-	$atl /= 7;
-
 	my $tsb = $ctl - $atl;
+	$atl = $tss * (1- $atlf) + $atl * $atlf;
+	$ctl = $tss * (1- $ctlf) + $ctl * $ctlf;
 
-	#$debug && print join("\t", $d, map { int($_) } ($tss, $atl, $ctl, $tsb) ),"\n";
+	$debug && print join("\t", $d, map { int($_) } ($tss, $atl, $ctl, $tsb) ),"\n";
 	my %r = (
-		time	=> $first->epoch,
+		time	=> $day->epoch,
 		date	=> $d,
 		tss	=> $tss,
 		ctl	=> $ctl,
@@ -144,7 +131,7 @@ while( $first <= $last ){
 		}
 
 	}
-	$first->add( days => 1 );
+	$day->add( days => 1 );
 }
 
 
