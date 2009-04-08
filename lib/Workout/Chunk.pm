@@ -313,8 +313,12 @@ sub isblockfirst {
 
 sub climb {
 	my $self = shift;
+	my $e = $self->ele;
+	defined $e or return;
 	my $p = $self->prev or return;
-	($self->ele||0) - ($p->ele||0);
+	my $pe = $p->ele;
+	defined $pe or return;
+	$e - $pe;
 }
 
 sub vspd {
@@ -328,7 +332,9 @@ sub vspd {
 sub xdist {
 	my $self = shift;
 
-	my $arg = ($self->dist||0)**2 - ($self->climb||0)**2; 
+	defined( my $c = $self->climb ) or return;
+	defined( my $d = $self->dist ) or return;
+	my $arg = $d**2 - $c**2; 
 	return if $arg <= 0;
 
 	sqrt( $arg )
@@ -336,34 +342,40 @@ sub xdist {
 
 sub grad {
 	my $self = shift;
+	defined( my $c = $self->climb ) or return;
 	my $xd = $self->xdist or return;
-	100 * ($self->climb||0) / $xd;
+	100 * $c / $xd;
 }
 
 sub angle {
 	my $self = shift;
+	defined( my $c = $self->climb ) or return;
 	my $xd = $self->xdist or return;
-	atan2( ($self->climb||0), $xd );
+	atan2( $c, $xd );
 }
 
 sub spd {
 	my $self = shift;
 	my $d = $self->dur or return;
-	($self->dist||0)/$d;
+	defined( my $i = $self->dist ) or return;
+	$i/$d;
 }
 
 sub accel {
 	my $self = shift;
 	my $d = $self->dur or return;
+	defined( my $s = $self->spd ) or return;
 	my $p = $self->prev or return;
-	( ($self->spd||0) - ($p->spd||0) ) / $d;
+	defined( my $ps = $p->spd ) or return;
+	( $s - $ps ) / $d;
 }
 
 
 sub pwr {
 	my $self = shift;
-	my $d = $self->dur or return;
-	($self->work||0)/$d;
+	my $d = $self->dur or return; # should be no-op
+	defined(my $w = $self->work) or return;
+	$w/$d;
 }
 
 1;
