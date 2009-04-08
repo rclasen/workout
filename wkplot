@@ -102,6 +102,7 @@ foreach my $fname ( @ARGV ){
 
 	my $wk = Workout::file_read( $fname );
 	$wk = Workout::filter( 'Timeshift', $wk, { delta => $d }) if $d;
+	$wk = Workout::filter( 'Join', $wk, { recint => $recint });
 	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
 
 	$graph->add_workout( $wk, \@fields );

@@ -124,6 +124,7 @@ sub get_wk {
 	my( $fname ) = @_;
 
 	my $wk = Workout::file_read( $fname );
+	$wk = Workout::filter( 'Join', $wk, { recint => $recint });
 	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
 	$wk;
 }
