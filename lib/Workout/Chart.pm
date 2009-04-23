@@ -19,10 +19,6 @@ sub new {
 	my( $proto, $a ) = @_;
 
 	my $self = $proto->SUPER::new({
-		margin_t	=> 8, # for testing
-		margin_l	=> 8, # for testing
-		margin_b	=> 8, # for testing
-		margin_r	=> 8, # for testing
 		plot_box	=> 0,
 
 		( $a ? %$a : ()),
@@ -34,15 +30,15 @@ sub new {
 
 	# TODO: make tics configurable
 	# TODO: make default min/max configurable
+	# TODO: alternative x-scales: time, time_mov, dist
+	# TODO: tooltips with values under mouse cursor
 
-	my @orient = (0,1); # for testing
-	#@orient = reverse @orient; # for testing
 	$self->add_scale(
 
 		# bottom axis
 		time	=> {
 			# bind to axis:
-			orientation	=> $orient[0],
+			orientation	=> 0,
 			position	=> 1, # 0, 1, 2, undef
 
 			# scaling
@@ -57,10 +53,6 @@ sub new {
 				)->strftime( '%H:%M' );
 			},
 			scale_label	=> 'Time (hh:mm)',
-
-			#invert		=> 1, # for testing
-			#label_rotate	=> 1, # for testing
-			#grid		=> 1, # for testing
 		},
 
 		# left axis
@@ -73,8 +65,6 @@ sub new {
 			label_fg	=> $self->{color}{pwr},
 			scale_label_fg	=> $self->{color}{pwr},
 			scale_label	=> 'Power (W)',
-
-			#grid		=> 1, # for testing
 		},
 		spd	=> {
 			position	=> 1,
@@ -89,8 +79,6 @@ sub new {
 
 		# right axis
 		hr	=> {
-			#invert		=> 1, # for testing
-			orientation	=> $orient[1], # for testing
 			position	=> 2,
 			min		=> 40,
 			max		=> 200,
@@ -111,11 +99,10 @@ sub new {
 			label_fg	=> $self->{color}{cad},
 			scale_label_fg	=> $self->{color}{cad},
 			scale_label	=> 'Cadence (1/min)',
-
-			#label_rotate	=> 1, # for testing
 		},
 
 		# hidden vertical axis
+		# TODO: change ele color based on slope in %
 		ele	=> {
 			position	=> undef,
 			label_fmt	=> '%.1f',
