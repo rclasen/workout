@@ -88,9 +88,6 @@ our %init = (
 __PACKAGE__->mk_accessors( keys %default );
 __PACKAGE__->mk_ro_accessors( keys %init );
 
-# TODO: normalized Power
-# TODO: intensity factor
-
 =head2 new( $iter, $arg )
 
 create empty Iterator.
