@@ -244,6 +244,8 @@ write data to disk.
 
 =cut
 
+our $minlap = 5;
+
 # TODO: specify what to write: hr, spd, cad, ele, pwr
 sub do_write {
 	my( $self, $fh ) = @_;
@@ -262,8 +264,8 @@ sub do_write {
 		{
 			isend	=> 1,
 			time	=> $_->start,
-			note	=> $_->note .' start',
-		}, ( $_->start +5 < $_->end ? {
+			note	=> $_->note,
+		}, ( $_->end - $_->start >= $minlap ? {
 			isend	=> 0,
 			time	=> $_->end,
 			note	=> $_->note,
@@ -297,9 +299,7 @@ sub do_write {
 		}
 
 		if( $last ){
-			# TODO: minimum lap length?
-
-			if( $tic->{time} <= $last->{time} ){
+			if( $tic->{time} - $last->{time} <= $minlap ){
 				# isend "overwrites" other entries
 				if( @laps && ! $laps[-1]->{isend} 
 					&& $tic->{isend} ){
@@ -311,6 +311,8 @@ sub do_write {
 				}
 			}
 
+			$self->debug( 'lap: '. $last->{time}. '-'.
+				$tic->{time}. ': '. $tic->{note} );
 			push @laps, {
 				start	=> $last->{time}, 
 				end	=> $tic->{time},
@@ -370,6 +372,7 @@ Weight=", int($athlete->weight), "
 		while( my $chunk = $info->next ){
 			$last_chunk = $chunk;
 		}
+		$last_chunk or next;
 
 		print $fh 
 			# row 1
