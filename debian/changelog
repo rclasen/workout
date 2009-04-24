@@ -1,12 +1,23 @@
+workout (0.08) unstable; urgency=low
+
+  * added Filter::FTP for calculating NP, VI, IF, and TSS
+  * set window titles in GTK apps
+  * added wkpmc for calculating and plotting CTL, ATL and TSB
+  * added Filter::Max 
+  * wkinfo: include 20min max power
+
+ -- Rainer Clasen <bj@zuto.de>  Thu, 24 Apr 2009 12:13:28 +0200
+
 workout (0.07) unstable; urgency=low
 
   * Store::HRM, Store::Wkt: use cached regexp for speedup
-  * use MyChart instead of gnuplot
-  * added support for marker/lap data
-  * wkdelta now supports updating the file
+  * wkplot/wkdelta: use MyChart instead of gnuplot
+  * Store::* added support for marker/lap data
+  * wkdelta now allows to update the file
   * rewrote Store::SRM to use Store::Memory
-  * added wkmodify
+  * added wkmodify for setting workout attributes
   * fixed SRM notes reading/writing
+  * tons of bugfixes
 
  -- Rainer Clasen <bj@zuto.de>  Sat, 21 Feb 2009 21:19:14 +0100
 
