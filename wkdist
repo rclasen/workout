@@ -1,0 +1,134 @@
+#!/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+use strict;
+use warnings;
+use Getopt::Long;
+use Workout;
+use Workout::GtkChartDistrib;
+
+use Gtk2 '-init';
+use Glib qw/ TRUE FALSE /;
+
+my $recint;
+my @delta;
+my @fields;
+
+my $wanthelp;
+my $needhelp;
+
+
+# TODO: allow selection of graphs per file
+# TODO: write chart image to file
+
+# TODO: suppress plots during block gaps
+
+if( ! GetOptions(
+	"recint|r=i"	=> \$recint,
+	"fields|f=s"	=> \@fields,
+	"delta|d=s"	=> \@delta,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <fname> ...
+display data distribution chart of workout(s)
+
+Options:
+--help                this cruft
+--recint=<sec>|-r     resample data to recint before plotting
+--fields=<f1>,...|-f  fields to plot: ele, spd, cad, hr, pwr
+--delta=<d1>,...      per file time-shift in seconds
+EOF
+	exit 0;
+}
+
+@fields = split( /,/, join(',',@fields));
+if( grep { ! /^(?:spd|cad|ele|pwr|hr)$/ } @fields ){
+	print STDERR "invalid field\n";
+	$needhelp++;
+}
+@fields = (qw/ spd cad hr pwr /) unless @fields;
+
+@delta = split( /,/, join(',',@delta));
+if( grep { ! /^-?\d+$/ } @delta ){
+	print STDERR "invalid delta\n";
+	$needhelp++;
+}
+
+if( ! @ARGV ){
+	print STDERR "missing input files\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+
+my $title = "wkdist: ". $ARGV[0];
+$title .= ", ..." if @ARGV > 1;
+
+my $win = Gtk2::Window->new;
+$win->set_title( $title );
+$win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
+$win->signal_connect( 'size-request' => sub {
+	my( $self, $req ) = @_;
+
+	$req->width( 600 );
+	$req->height( 300 );
+
+	1;
+} );
+
+
+my $box = Gtk2::VBox->new;
+$win->add( $box );
+
+# graph
+my $graph = Workout::GtkChartDistrib->new;
+
+foreach my $fname ( @ARGV ){
+	my $d = shift @delta;
+
+	my $wk = Workout::file_read( $fname );
+	$wk = Workout::filter( 'Timeshift', $wk, { delta => $d }) if $d;
+	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
+
+	$graph->add_workout( $wk, \@fields );
+}
+
+$box->pack_start( $graph, 1, 1, 0 );
+
+my $hbox = Gtk2::HBox->new;
+$box->pack_start( $hbox, 0, 0, 0 );
+
+# TODO: zoom controls
+
+
+# Quit 
+my $quit = Gtk2::Button->new( 'Quit' );
+$quit->signal_connect( clicked => sub {
+	my( $button, $window ) = @_;
+	$window->destroy;
+}, $win );
+$hbox->pack_start( $quit, 1, 0, 0 );
+
+
+
+
+$win->show_all;
+Gtk2->main;
+
+
+

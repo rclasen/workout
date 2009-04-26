@@ -165,16 +165,11 @@ sub iterate {
 	return; # not implemented
 }
 
-sub chunks { 
+sub all { 
 	my( $self ) = @_;
 
-	my @chunks;
-	my $iter = $self->iterate;
-	while( my $c = $iter->next ){
-		push @chunks, $c;
-	}
-
-	\@chunks;
+	my $iter = $self->iterate or return;
+	$iter->all;
 }
 
 sub chunk_first { 

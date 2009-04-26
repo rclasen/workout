@@ -1,3 +1,10 @@
+workout (0.09) unstable; urgency=low
+
+  * added wkdist
+  * TODO: release
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 26 Apr 2009 21:35:08 +0200
+
 workout (0.08) unstable; urgency=low
 
   * added Filter::FTP for calculating NP, VI, IF, and TSS
