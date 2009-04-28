@@ -1,0 +1,119 @@
+#!/usr/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+
+# TODO: pod
+# TODO: options for parameters (bike, user)
+# TODO: plot as bargraph
+
+use strict;
+use DateTime;
+use Getopt::Long;
+use Workout;
+use Workout::Store::Null;
+use Workout::Athlete;
+
+my %set = (
+	zone	=> [
+		{ field => 'pwr', min => 0, max => 100, zone => 'KB' },
+		{ field => 'pwr', min => 100, max => 157, zone => 'GA1' },
+		{ field => 'pwr', min => 157, max => 219, zone => 'GA2' },
+		{ field => 'pwr', min => 219, max => undef, zone => 'EB' },
+	],
+	histo	=> [
+		map {{
+			field => 'pwr', 
+			min => $_ * 10, 
+			max => ($_+1)*10,
+		}} 5..30,
+	],
+);
+$set{histo}[0]{min} = 0;
+$set{histo}[-1]{max} = undef;
+
+my $set = 'histo';
+my $itype;
+my $debug;
+
+my $wanthelp;
+my $needhelp;
+
+if( ! GetOptions(
+	"set=s"		=> \$set,
+	"input|i=s"	=> \$itype,
+	"debug!"	=> \$debug,
+	"help|h!"	=> \$wanthelp,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <fname>
+calculate some fancy data from Workout data
+Options:
+--debug             enable debuging output
+--input|-i=<type>   input file type
+--set=<set>         zone definition to use (histo|zone)
+--help              this cruft
+EOF
+	exit 0;
+}
+
+if( ! exists $set{$set} ){
+	print STDERR "invalid zone set: $set\n";
+	$needhelp++;
+}
+
+my $fname = shift;
+if( ! $fname ){
+	print STDERR "missing input file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "please use $0 --help for usage info\n";
+	exit 1;
+}
+
+my $src = Workout::file_read( $fname, { 
+	debug	=> $debug, 
+	ftype	=> $itype, 
+} );
+my $iter = $src->iterate;
+my $fz = Workout::filter( 'Zone', $iter, {
+	debug	=> $debug,
+	zones	=> $set{$set},
+} );
+my $null = Workout::Store::Null->new;
+$null->from( $fz );
+
+my $dur = $src->dur;
+foreach my $z ( @{$fz->zones} ){
+	my $l = $z->{zone} 
+		|| $z->{field}.'@'.$z->{min}.'-'.( $z->{max}||'-' );
+	print $l, ': ', fmtdur($z->{dur}), ' ', 
+		fmtper($z->{dur}, $dur), "%\n";
+}
+
+1;
+
+
+sub fmtper {
+	my( $p, $t ) = @_;
+	int( 100 * $p / $t );
+}
+
+sub fmtdur {
+	my $s = shift;
+	my $m = int($s / 60); $s %= 60;
+	my $h = int($m / 60); $m %= 60;
+	sprintf('%d:%02d:%02d', $h, $m, $s);
+}
+
