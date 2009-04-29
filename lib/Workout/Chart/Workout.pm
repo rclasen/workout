@@ -1,7 +1,7 @@
 package Workout::Chart::Workout;
 use strict;
 use warnings;
-use base 'MyChart';
+use base 'MyChart', 'Class::Accessor::Fast';
 use Carp;
 use Workout::Chart::Source;
 
@@ -13,7 +13,12 @@ our %color = (
 	pwr	=> [qw/ 0 1 0 /], # green
 );
 
-# TODO: marker
+our %default = (
+	xfield	=> 'time',
+	fields	=> [qw/ ele spd cad hr pwr /],
+);
+
+__PACKAGE__->mk_ro_accessors( keys %default );
 
 sub new {
 	my( $proto, $a ) = @_;
@@ -21,6 +26,7 @@ sub new {
 	my $self = $proto->SUPER::new({
 		plot_box	=> 0,
 
+		%default,
 		( $a ? %$a : ()),
 
 		source		=> [],		# workouts
@@ -28,17 +34,16 @@ sub new {
 		line_style	=> 0,		# per workout line_style
 	});
 
+	# TODO: marker
 	# TODO: make tics configurable
 	# TODO: make default min/max configurable
-	# TODO: alternative x-scales: time, dur_mov, odo, work
 	# TODO: tooltips with values under mouse cursor
-	# TODO: fields: temp, torque, deconv, vspd, grad, accel
 	# TODO: sum fields: odo, work
 
-	$self->add_scale(
-
-		# bottom axis
-		time	=> {
+	# bottom axis
+	# TODO: alternative x-scales: time, dur_mov, odo, work
+	if( $self->xfield eq 'time' ){
+		$self->add_scale( time	=> {
 			# bind to axis:
 			orientation	=> 0,
 			position	=> 1, # 0, 1, 2, undef
@@ -55,73 +60,93 @@ sub new {
 				)->strftime( '%H:%M' );
 			},
 			scale_label	=> 'Time (hh:mm)',
-		},
+		});
 
-		# left axis
-		pwr	=> {
-			position	=> 1,
-			min		=> 0,
-			max		=> 600,
-			#tic_step	=> 25,
-			label_fmt	=> '%d',
-			label_fg	=> $self->{color}{pwr},
-			scale_label_fg	=> $self->{color}{pwr},
-			scale_label	=> 'Power (W)',
-		},
-		spd	=> {
-			position	=> 1,
-			min		=> 0,
-			max		=> 60,
-			tic_step	=> 5,
-			label_fmt	=> '%d',
-			label_fg	=> $self->{color}{spd},
-			scale_label_fg	=> $self->{color}{spd},
-			scale_label	=> 'Speed (km/h)',
-		},
+	#} elsif( self->xfield eq 'dur' ){
 
-		# right axis
-		hr	=> {
-			position	=> 2,
-			min		=> 40,
-			max		=> 200,
-			#tic_at		=> [    0,  120,  135, 145, 165, 180, 220 ],
-			#label_fmt	=> [qw/ low rekom ga1  ga2  eb   sb   hai/],
-			#tic_step	=> 10,
-			label_fmt	=> '%d',
-			label_fg	=> $self->{color}{hr},
-			scale_label_fg	=> $self->{color}{hr},
-			scale_label	=> 'Heartrate (1/min)',
-		},
-		cad	=> {
-			position	=> 2,
-			min		=> 40,
-			max		=> 200,
-			tic_step	=> 10,
-			label_fmt	=> '%d',
-			label_fg	=> $self->{color}{cad},
-			scale_label_fg	=> $self->{color}{cad},
-			scale_label	=> 'Cadence (1/min)',
-		},
+	} else {
+		croak "ivalid xfield: ". $self->xfield;
+	}
 
-		# hidden vertical axis
-		# TODO: change ele color based on slope in %
-		ele	=> {
-			position	=> undef,
-			label_fmt	=> '%.1f',
-			label_fg	=> $self->{color}{ele},
-			scale_label_fg	=> $self->{color}{ele},
-			scale_label	=> 'Elevation (m)',
-		},
-	);
+	print  STDERR "fields: ", join(', ', @{$self->fields}),"\n";
 
+	# left axis
+
+	$self->add_scale( pwr	=> {
+		position	=> 1,
+		min		=> 0,
+		max		=> 600,
+		#tic_step	=> 25,
+		label_fmt	=> '%d',
+		label_fg	=> $self->{color}{pwr},
+		scale_label_fg	=> $self->{color}{pwr},
+		scale_label	=> 'Power (W)',
+	}) if grep { /^pwr$/ } @{$self->fields};
+
+	$self->add_scale( spd	=> {
+		position	=> 1,
+		min		=> 0,
+		max		=> 60,
+		tic_step	=> 5,
+		label_fmt	=> '%d',
+		label_fg	=> $self->{color}{spd},
+		scale_label_fg	=> $self->{color}{spd},
+		scale_label	=> 'Speed (km/h)',
+	}) if grep { /^spd$/ } @{$self->fields};
+
+	# right axis
+
+	$self->add_scale( hr	=> {
+		position	=> 2,
+		min		=> 40,
+		max		=> 200,
+		#tic_at		=> [    0,  120,  135, 145, 165, 180, 220 ],
+		#label_fmt	=> [qw/ low rekom ga1  ga2  eb   sb   hai/],
+		#tic_step	=> 10,
+		label_fmt	=> '%d',
+		label_fg	=> $self->{color}{hr},
+		scale_label_fg	=> $self->{color}{hr},
+		scale_label	=> 'Heartrate (1/min)',
+	}) if grep { /^hr$/ } @{$self->fields};
+
+	$self->add_scale( cad	=> {
+		position	=> 2,
+		min		=> 40,
+		max		=> 200,
+		tic_step	=> 10,
+		label_fmt	=> '%d',
+		label_fg	=> $self->{color}{cad},
+		scale_label_fg	=> $self->{color}{cad},
+		scale_label	=> 'Cadence (1/min)',
+	}) if grep { /^cad$/ } @{$self->fields};
+
+	# hidden vertical axis
+	# TODO: change ele color based on slope in %
+	$self->add_scale( ele	=> {
+		position	=> undef,
+		label_fmt	=> '%.1f',
+		label_fg	=> $self->{color}{ele},
+		scale_label_fg	=> $self->{color}{ele},
+		scale_label	=> 'Elevation (m)',
+	}) if grep { /^ele$/ } @{$self->fields};
+
+	# TODO: fields: temp, torque, deconv, vspd, grad, accel
+	foreach my $f ( @{ $self->fields} ){
+		next if $f =~ /^(?:ele|spd|hr|cad|pwr)$/;
+		print STDERR "addind non-default scale: $f\n";
+
+		$self->add_scale( $f	=> {
+			scale_label	=> $f,
+		});
+	};
 	$self;
 }
 
 sub add_workout {
 	my( $self, $wk, $fields ) = @_;
 
-	my $s = Workout::Chart::Source->new( $wk );
-	$fields ||= [qw/ ele spd cad hr pwr /];
+	$fields ||= $self->fields;
+	my $s = Workout::Chart::Source->new( $wk, $fields );
 
 	my $sourcecount = @{$self->{source}};
 	my $suffix = $sourcecount ? " $sourcecount" : '';
@@ -129,11 +154,11 @@ sub add_workout {
 	# ele
 	$self->add_plot({
 		legend	=> 'Elevation'. $suffix,
-		xscale	=> 'time',
+		#xscale	=> 'time',
 		yscale	=> 'ele',
 		type	=> 'Area',
 		source	=> $s,
-		xcol	=> 'time',
+		#xcol	=> 'time',
 		ycol	=> 'ele',
 		color	=> $self->{color}{ele},
 	}) if grep { /^ele$/ } @$fields;
@@ -159,7 +184,7 @@ sub add_workout {
 	# hr
 	$self->add_plot({
 		legend	=> 'Heartrate'. $suffix,
-		xcol	=> 'time',
+		#xcol	=> 'time',
 		ycol	=> 'hr',
 		source	=> $s,
 		color	=> $self->{color}{hr},
@@ -175,6 +200,18 @@ sub add_workout {
 		line_style	=> $self->{line_style},
 	}) if grep { /^pwr$/ } @$fields;
 
+	foreach my $f ( @{ $self->fields} ){
+		next if $f =~ /^(?:ele|spd|hr|cad|pwr)$/;
+		print STDERR "addind non-default plot: $f\n";
+
+		$self->add_plot( {
+			label	=> $f,
+			ycol	=> $f,
+			source	=> $s,
+			line_style	=> $self->{line_style},
+		});
+	};
+
 	++ $self->{line_style};
 
 	push @{$self->{source}}, $s;
@@ -183,8 +220,8 @@ sub add_workout {
 
 sub set_delta {
 	my( $self, $srcid, $delta ) = @_;
-	$self->{source}[$srcid]->set_delta( 'time', $delta );
-	$self->flush_bounds('time');
+	$self->{source}[$srcid]->set_delta( $self->xfield, $delta );
+	$self->flush_bounds($self->xfield);
 }
 
 sub draw_chart_bg {

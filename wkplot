@@ -19,6 +19,7 @@ use Glib qw/ TRUE FALSE /;
 my $recint;
 my @delta;
 my @fields;
+my $debug;
 
 my $wanthelp;
 my $needhelp;
@@ -33,6 +34,7 @@ if( ! GetOptions(
 	"recint|r=i"	=> \$recint,
 	"fields|f=s"	=> \@fields,
 	"delta|d=s"	=> \@delta,
+	"debug!"	=> \$debug,
 	"help|h!"	=> \$wanthelp,
 )){
 	$needhelp++;
@@ -48,12 +50,13 @@ Options:
 --recint=<sec>|-r     resample data to recint before plotting
 --fields=<f1>,...|-f  fields to plot: ele, spd, cad, hr, pwr
 --delta=<d1>,...      per file time-shift in seconds
+--debug               print debug output
 EOF
 	exit 0;
 }
 
 @fields = split( /,/, join(',',@fields));
-if( grep { ! /^(?:spd|cad|ele|pwr|hr)$/ } @fields ){
+if( grep { ! /^(?:spd|cad|ele|pwr|hr|torque|temp|deconv|grad|accel|vspd)$/ } @fields ){
 	print STDERR "invalid field\n";
 	$needhelp++;
 }
@@ -96,14 +99,29 @@ my $box = Gtk2::VBox->new;
 $win->add( $box );
 
 # graph
-my $graph = Workout::Gtk::Chart::Workout->new;
+my $graph = Workout::Gtk::Chart::Workout->new({
+	xscale	=> 'time',
+	fields	=> \@fields,
+	debug	=> $debug,
+});
 foreach my $fname ( @ARGV ){
 	my $d = shift @delta;
 
-	my $wk = Workout::file_read( $fname );
-	$wk = Workout::filter( 'Timeshift', $wk, { delta => $d }) if $d;
-	$wk = Workout::filter( 'Join', $wk, { recint => $recint });
-	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
+	my $wk = Workout::file_read( $fname, { 
+		debug => $debug,
+	} );
+	$wk = Workout::filter( 'Timeshift', $wk, {
+		debug => $debug,
+		delta => $d,
+	}) if $d;
+	$wk = Workout::filter( 'Join', $wk, {
+		debug => $debug,
+		recint => $recint,
+	});
+	$wk = Workout::filter( 'Resample', $wk, {
+		debug => $debug,
+		recint => $recint,
+	}) if $recint;
 
 	$graph->add_workout( $wk, \@fields );
 }

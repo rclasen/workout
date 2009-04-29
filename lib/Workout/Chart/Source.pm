@@ -7,18 +7,19 @@ use base 'MyChart::Source';
 
 # setup data source
 sub new {
-	my( $proto, $wk, @ds ) = @_;
+	my( $proto, $wk, $ds ) = @_;
 
 	my $self = $proto->SUPER::new;
-	$self->set_workout( $wk, @ds ) if $wk;
+	$self->set_workout( $wk, $ds ) if $wk;
 	$self;
 }
 
 sub set_workout {
-	my( $self, $wk, @ds ) = @_;
+	my( $self, $wk, $ds ) = @_;
 
-	@ds or @ds = qw/ ele spd hr cad pwr /;
+	my @ds = $ds ? @$ds : qw/ ele spd hr cad pwr /;
 	unshift @ds, 'time';
+	print STDERR "Workout->chart: @ds\n";
 
 	my @dat;
 	my %min;
@@ -32,11 +33,12 @@ sub set_workout {
 		my %r;
 		foreach( @ds ){
 			$r{$_} = $c->$_;
-			if( $_ eq 'spd' && defined $r{$_} ) {
+			next unless defined $r{$_};
+
+			if( $_ eq 'spd' ) {
 				$r{$_} *= 3.6;
 			}
 
-			next unless defined $r{$_};
 
 			if( ! defined $max{$_} || $r{$_} > $max{$_} ){
 				$max{$_} = $r{$_};
