@@ -31,6 +31,7 @@ use strict;
 use warnings;
 use base 'Workout::Filter::Base';
 use Carp;
+use Math::Trig;
 
 our $VERSION = '0.01';
 
@@ -74,6 +75,8 @@ our %init = (
 	work	=> 0,
 	pwr_max	=> 0,
 	pwr_max_time	=> undef,
+	torque_max	=> 0,
+	torque_max_time	=> undef,
 	hr_sum	=> 0,
 	hr_min	=> undef,
 	hr_min_time	=> undef,
@@ -216,7 +219,7 @@ sub process {
 
 	$self->set_nsum( $d, qw( cad ));
 	$self->set_asum( $d, qw( cad temp ));
-	$self->set_max( $d, qw( pwr hr cad spd vspd accel temp ele grad ));
+	$self->set_max( $d, qw( pwr torque hr cad spd vspd accel temp ele grad ));
 	$self->set_min( $d, qw( temp ele ));
 	$self->set_zmin( $d, qw( hr ));
 
@@ -338,6 +341,14 @@ sub pwr_avg {
 		or return;
 
 	$self->work / $dur;
+}
+
+sub torque_avg {
+	my( $self ) = @_;
+	my $cad = $self->cad_avg or return;
+	defined(my $pwr = $self->pwr_avg) or return;
+
+	$pwr / (2 * pi * $cad ) * 60;
 }
 
 1;
