@@ -1,34 +1,26 @@
-package Workout::GtkChart;
+package Workout::Gtk::Chart::Distrib;
 use strict;
 use warnings;
 use Carp;
 use Glib qw/ TRUE FALSE /;
 use Gtk2;
 use Workout;
-use Workout::Chart;
+use Workout::Chart::Distrib;
 use MyChart::Gtk;
 
 
 use Glib::Object::Subclass
 	'MyChart::Gtk',
 #	properties => [ # TODO
+#		field	=>,
 #	],
 ;
 
 sub INIT_INSTANCE {
 	my $self = shift;
 
-	$self->{chart_class} = 'Workout::Chart';
+	$self->{chart_class} = 'Workout::Chart::Distrib';
 	# TODO: adjust chart_defaults 
-}
-
-sub set_delta {
-	my $self = shift;
-
-	# TODO: use GtkAdjustment?
-	$self->chart->set_delta( @_ );
-
-	$self->queue_redraw;
 }
 
 sub add_workout {

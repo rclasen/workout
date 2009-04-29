@@ -1,9 +1,9 @@
 workout (0.09) unstable; urgency=low
 
-  * added wkdist
+  * added wkdist, wkhisto
   * TODO: release
 
- -- Rainer Clasen <bj@zuto.de>  Sun, 26 Apr 2009 21:35:08 +0200
+ -- Rainer Clasen <bj@zuto.de>  Tue, 28 Apr 2009 14:54:52 +0200
 
 workout (0.08) unstable; urgency=low
 

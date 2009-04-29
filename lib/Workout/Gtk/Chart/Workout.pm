@@ -1,25 +1,24 @@
-package Workout::GtkChartDelta;
+package Workout::Gtk::Chart::Workout;
 use strict;
 use warnings;
 use Carp;
 use Glib qw/ TRUE FALSE /;
 use Gtk2;
 use Workout;
-use Workout::ChartDelta;
+use Workout::Chart::Workout;
 use MyChart::Gtk;
 
 
 use Glib::Object::Subclass
 	'MyChart::Gtk',
 #	properties => [ # TODO
-#		field	=>,
 #	],
 ;
 
 sub INIT_INSTANCE {
 	my $self = shift;
 
-	$self->{chart_class} = 'Workout::ChartDelta';
+	$self->{chart_class} = 'Workout::Chart::Workout';
 	# TODO: adjust chart_defaults 
 }
 

@@ -11,7 +11,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Workout;
-use Workout::GtkChartDistrib;
+use Workout::Gtk::Chart::Distrib;
 
 use Gtk2 '-init';
 use Glib qw/ TRUE FALSE /;
@@ -96,7 +96,7 @@ my $box = Gtk2::VBox->new;
 $win->add( $box );
 
 # graph
-my $graph = Workout::GtkChartDistrib->new;
+my $graph = Workout::Gtk::Chart::Distrib->new;
 
 foreach my $fname ( @ARGV ){
 	my $d = shift @delta;

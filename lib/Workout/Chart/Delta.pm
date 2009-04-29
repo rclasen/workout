@@ -1,9 +1,9 @@
-package Workout::ChartDelta;
+package Workout::Chart::Delta;
 use strict;
 use warnings;
 use base 'MyChart';
 use Carp;
-use MyChart::Source::Workout;
+use Workout::Chart::Source;
 
 sub new {
 	my( $proto, $a ) = @_;
@@ -98,7 +98,7 @@ sub new {
 sub add_workout {
 	my( $self, $wk ) = @_;
 
-	my $s = MyChart::Source::Workout->new( $wk );
+	my $s = Workout::Chart::Source->new( $wk );
 
 	my $sourcecount = @{$self->{source}};
 

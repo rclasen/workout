@@ -1,9 +1,9 @@
-package Workout::Chart;
+package Workout::Chart::Workout;
 use strict;
 use warnings;
 use base 'MyChart';
 use Carp;
-use MyChart::Source::Workout;
+use Workout::Chart::Source;
 
 our %color = (
 	ele	=> [qw/ 1 1 0 /], # yellow
@@ -30,8 +30,10 @@ sub new {
 
 	# TODO: make tics configurable
 	# TODO: make default min/max configurable
-	# TODO: alternative x-scales: time, time_mov, dist
+	# TODO: alternative x-scales: time, dur_mov, odo, work
 	# TODO: tooltips with values under mouse cursor
+	# TODO: fields: temp, torque, deconv, vspd, grad, accel
+	# TODO: sum fields: odo, work
 
 	$self->add_scale(
 
@@ -118,7 +120,7 @@ sub new {
 sub add_workout {
 	my( $self, $wk, $fields ) = @_;
 
-	my $s = MyChart::Source::Workout->new( $wk );
+	my $s = Workout::Chart::Source->new( $wk );
 	$fields ||= [qw/ ele spd cad hr pwr /];
 
 	my $sourcecount = @{$self->{source}};

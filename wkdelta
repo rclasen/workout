@@ -18,7 +18,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Workout;
-use Workout::GtkChartDelta;
+use Workout::Gtk::Chart::Delta;
 
 use Gtk2;
 use Glib qw/ TRUE FALSE /;
@@ -152,7 +152,7 @@ sub show_chart {
 	$win->add( $box );
 
 	# graph
-	my $graph = Workout::GtkChartDelta->new(
+	my $graph = Workout::Gtk::Chart::Delta->new(
 #		field	=> $field, # TODO
 	);
 

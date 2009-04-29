@@ -1,4 +1,4 @@
-package Workout::ChartDistrib;
+package Workout::Chart::Distrib;
 use strict;
 use warnings;
 use base 'MyChart';
