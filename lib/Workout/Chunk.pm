@@ -31,6 +31,7 @@ use strict;
 use warnings;
 use base 'Class::Accessor::Fast';
 use Carp;
+use Math::Trig;
 
 
 our $VERSION = '0.01';
@@ -80,7 +81,6 @@ __PACKAGE__->mk_accessors('prev', @core_fields);
 
 =head2 new( { <args> } )
 
-create new Athlete object
 
 =cut
 
@@ -376,6 +376,22 @@ sub pwr {
 	my $d = $self->dur or return; # should be no-op
 	defined(my $w = $self->work) or return;
 	$w/$d;
+}
+
+sub torque {
+	my $self = shift;
+	my $cad = $self->cad or return;
+	defined(my $pwr = $self->pwr) or return;
+
+	$pwr / (2 * pi * $cad ) * 60;
+}
+
+sub deconv { # deconvolution / entfaltung
+	my $self = shift;
+	my $cad = $self->cad or return;
+	defined(my $spd = $self->spd) or return;
+
+	$spd / $cad * 60;
 }
 
 1;

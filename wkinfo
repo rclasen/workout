@@ -191,6 +191,9 @@ print
 	sprintf( '%.2f', ($finfo->vi||0) ), ")\n",
 "TSS:             ", sprintf( '%.2f', ($finfo->tss||0) ), " (IF=",
 	sprintf( '%.2f', ($finfo->if||0) ), ")\n",
+"avg Torque:      ", sprintf( '%.2f', ($info->torque_avg||0) ), " Nm\n", # TODO
+"max Torque:      ", sprintf( '%.2f', ($info->torque_max||0) ), " Nm at ", # TODO
+	fmttime($info->torque_max_time), "\n",
 "\n";
 
 1;
