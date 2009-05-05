@@ -69,7 +69,7 @@ sub new {
 		croak "ivalid xfield: ". $self->xfield;
 	}
 
-	print  STDERR "fields: ", join(', ', @{$self->fields}),"\n";
+	#print  STDERR "fields: ", join(', ', @{$self->fields}),"\n";
 
 	# left axis
 
@@ -134,7 +134,7 @@ sub new {
 	# TODO: fields: temp, torque, deconv, vspd, grad, accel
 	foreach my $f ( @{ $self->fields} ){
 		next if $f =~ /^(?:ele|spd|hr|cad|pwr)$/;
-		print STDERR "addind non-default scale: $f\n";
+		print STDERR "adding non-default scale: $f\n";
 
 		$self->add_scale( $f	=> {
 			scale_label	=> $f,
@@ -203,7 +203,7 @@ sub add_workout {
 
 	foreach my $f ( @{ $self->fields} ){
 		next if $f =~ /^(?:ele|spd|hr|cad|pwr)$/;
-		print STDERR "addind non-default plot: $f\n";
+		print STDERR "adding non-default plot: $f\n";
 
 		$self->add_plot( {
 			label	=> $f,
@@ -216,13 +216,12 @@ sub add_workout {
 	++ $self->{line_style};
 
 	push @{$self->{source}}, $s;
-	$self->flush_bounds_all;
 }
 
 sub set_delta {
 	my( $self, $srcid, $delta ) = @_;
 	$self->{source}[$srcid]->set_delta( $self->xfield, $delta );
-	$self->flush_bounds($self->xfield);
+	$self->flush_bounds($self->xfield); # TODO: move to source
 }
 
 sub draw_chart_bg {

@@ -1,9 +1,9 @@
 workout (0.09) unstable; urgency=low
 
   * added wkdist, wkhisto
-  * TODO: release
+  * feed pre-build chart to MyChart::Gtk (obsoleting Workout::Gtk::Chart::*)
 
- -- Rainer Clasen <bj@zuto.de>  Tue, 28 Apr 2009 14:54:52 +0200
+ -- Rainer Clasen <bj@zuto.de>  Tue,  5 May 2009 18:17:47 +0200
 
 workout (0.08) unstable; urgency=low
 

@@ -139,13 +139,12 @@ sub add_workout {
 	}
 
 	push @{$self->{source}}, $s;
-	$self->flush_bounds_all;
 }
 
 sub set_delta {
 	my( $self, $srcid, $delta ) = @_;
 	$self->{source}[$srcid]->set_delta( 'time', $delta );
-	$self->flush_bounds('time');
+	$self->flush_bounds('time'); # TODO: move to Source
 }
 
 

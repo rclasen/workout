@@ -15,8 +15,9 @@ use strict;
 use DateTime;
 use Getopt::Long;
 use Workout;
-use MyChart::Gtk;
+
 use Gtk2 '-init';
+use MyChart::Gtk;
 
 my $ctlconst = 42;
 my $atlconst = 7;
@@ -135,18 +136,6 @@ while( $day <= $last ){
 }
 
 
-my $win = Gtk2::Window->new;
-$win->set_title( "wkpmc: ". $first->ymd ." - ". $last->ymd );
-$win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
-$win->signal_connect( 'size-request' => sub {
-	my( $self, $req ) = @_;
-
-	$req->width( 600 );
-	$req->height( 300 );
-
-	1;
-} );
-
 my $s = MyChart::Source->new( {
 	list	=> \@dat,
 	min	=> \%min,
@@ -154,11 +143,8 @@ my $s = MyChart::Source->new( {
 } );
 
 
-my $box = Gtk2::VBox->new;
-$win->add( $box );
-
-my $graph = MyChart::Gtk->new;
-$graph->add_scale(
+my $chart = MyChart->new;
+$chart->add_scale(
 	time	=> {
 		orientation	=> 0,
 		position	=> 1,
@@ -180,7 +166,7 @@ $graph->add_scale(
 		label_fmt	=> '%d',
 	},
 );
-$graph->add_plot({
+$chart->add_plot({
 	xscale	=> 'time',
 	yscale	=> 'ctl',
 	source	=> $s,
@@ -200,6 +186,24 @@ $graph->add_plot({
 	ycol	=> 'tsb',
 });
 
+my $win = Gtk2::Window->new;
+$win->set_title( "wkpmc: ". $first->ymd ." - ". $last->ymd );
+$win->signal_connect( 'destroy' => sub { Gtk2->main_quit } );
+$win->signal_connect( 'size-request' => sub {
+	my( $self, $req ) = @_;
+
+	$req->width( 600 );
+	$req->height( 300 );
+
+	1;
+} );
+
+my $box = Gtk2::VBox->new;
+$win->add( $box );
+
+my $graph = MyChart::Gtk->new(
+	chart	=> $chart,
+);
 
 $box->pack_start( $graph, 1, 1, 0 );
 

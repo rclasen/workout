@@ -18,10 +18,11 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Workout;
-use Workout::Gtk::Chart::Delta;
+use Workout::Chart::Delta;
 
 use Gtk2;
 use Glib qw/ TRUE FALSE /;
+use MyChart::Gtk;
 
 my $delta = 0;
 my $recint;
@@ -152,12 +153,13 @@ sub show_chart {
 	$win->add( $box );
 
 	# graph
-	my $graph = Workout::Gtk::Chart::Delta->new(
-#		field	=> $field, # TODO
+	my $chart = Workout::Chart::Delta->new;
+	my $graph = MyChart::Gtk->new(
+		chart	=> $chart,
 	);
 
 	foreach my $wk ( @_ ){
-		$graph->add_workout( $wk );
+		$chart->add_workout( $wk );
 	}
 	$box->pack_start( $graph, 1, 1, 0 );
 
@@ -175,7 +177,7 @@ sub show_chart {
 	my $dadjust = Gtk2::Adjustment->new(
 		$delta, -2000000000, 2000000000,
 		1, 60, 0 );
-	$graph->set_delta( 0, $delta ) if $delta;
+	$chart->set_delta( 0, $delta ) if $delta;
 
 	my $spin = Gtk2::SpinButton->new( $dadjust, 1, 0 );
 	$spin->set_activates_default( 1 );
@@ -184,7 +186,7 @@ sub show_chart {
 	my $set = Gtk2::Button->new( 'show' );
 	$set->signal_connect( clicked => sub {
 		my( $button, $window ) = @_;
-		$graph->set_delta( 0, $dadjust->get_value );
+		$chart->set_delta( 0, $dadjust->get_value );
 	}, $win );
 	$hbox->pack_start( $set, 0, 0, 0 );
 	$set->can_default( 1 );

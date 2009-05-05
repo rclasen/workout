@@ -182,7 +182,6 @@ sub add_workout {
 	}
 
 	push @{$self->{source}}, \%s;
-	$self->flush_bounds_all;
 }
 
 

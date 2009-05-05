@@ -3,8 +3,6 @@ use warnings;
 use strict;
 use base 'MyChart::Source';
 
-# TODO: move to workout package
-
 # setup data source
 sub new {
 	my( $proto, $wk, $ds ) = @_;
@@ -19,7 +17,7 @@ sub set_workout {
 
 	my @ds = $ds ? @$ds : qw/ ele spd hr cad pwr /;
 	unshift @ds, 'time';
-	print STDERR "Workout->chart: @ds\n";
+	#print STDERR "Workout->chart: @ds\n"; # TODO: debug
 
 	my @dat;
 	my %min;

@@ -11,10 +11,11 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Workout;
-use Workout::Gtk::Chart::Workout;
+use Workout::Chart::Workout;
 
 use Gtk2 '-init';
 use Glib qw/ TRUE FALSE /;
+use MyChart::Gtk;
 
 my $recint;
 my @delta;
@@ -99,11 +100,14 @@ my $box = Gtk2::VBox->new;
 $win->add( $box );
 
 # graph
-my $graph = Workout::Gtk::Chart::Workout->new({
+my $chart = Workout::Chart::Workout->new({
 	xscale	=> 'time',
 	fields	=> \@fields,
 	debug	=> $debug,
 });
+my $graph = MyChart::Gtk->new(
+	chart	=> $chart,
+);
 foreach my $fname ( @ARGV ){
 	my $d = shift @delta;
 
@@ -123,7 +127,7 @@ foreach my $fname ( @ARGV ){
 		recint => $recint,
 	}) if $recint;
 
-	$graph->add_workout( $wk, \@fields );
+	$chart->add_workout( $wk, \@fields );
 }
 
 $box->pack_start( $graph, 1, 1, 0 );
