@@ -38,6 +38,7 @@ sub new {
 	# TODO: make tics configurable
 	# TODO: make default min/max configurable
 	# TODO: tooltips with values under mouse cursor
+	# TODO: fields total/last n sec: npwr, spd_av, pwr_av
 	# TODO: sum fields: odo, work
 
 	# bottom axis

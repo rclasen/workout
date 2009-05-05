@@ -36,6 +36,9 @@ use DateTime;
 
 our $VERSION = '0.01';
 
+# TODO: npwr
+# TODO: split rolling average into seperate module
+
 our %default = (
 	dur	=> 1200,
 	work	=> 0,
