@@ -44,11 +44,11 @@ use Workout::Filter::Info;
 our $VERSION = '0.01';
 
 my %magic_tag = (
-	OK19	=> 1,
-	SRM2	=> 2,
-	SRM3	=> 3,
-	SRM4	=> 4,
-	SRM5	=> 5,
+#	OK19	=> 1, # not supported
+#	SRM2	=> 2, # not supported
+#	SRM3	=> 3, # not supported
+#	SRM4	=> 4, # not supported
+#	SRM5	=> 5, # not supported
 	SRM6	=> 6,
 	SRM7	=> 7,
 );
@@ -64,6 +64,7 @@ our %defaults = (
 	zeropos		=> 100,
 	slope		=> 1,
 	athletename	=> 'srm',
+	version		=> 'SRM7',
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -150,7 +151,7 @@ sub do_write {
 	$self->debug( "writing ". @$blocks ." blocks, ".
 		$self->mark_count ." marker" );
 	print $fh pack( 'A4vvCCvvx(C/A*@71)', 
-		'SRM6',
+		$self->version || 'SRM6',
 		$days,
 		$self->circum,
 		$r1,
@@ -209,6 +210,16 @@ sub do_write {
 	############################################################
 	# chunks 
 
+	if( $self->version eq 'SRM7' ){
+		$self->write_srm7( $fh );
+	} else {
+		$self->write_srm( $fh );
+	}
+}
+
+sub write_srm {
+	my( $self, $fh ) = @_;
+
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
 
@@ -217,8 +228,8 @@ sub do_write {
 		# c0       c1       c2
 		# 11111111 11111111 11111111 bits
 		#
-		# -------- ----3210 -a987654 pwr
-		#              0x0f     0x7f
+		# -------- ----3210 ba987654 pwr
+		#              0x0f     0xff
 		#
 		# -6543210 a987---- -------- speed
 		#     0x7f 0xf0
@@ -228,7 +239,7 @@ sub do_write {
 
 		my $c0 = $spd & 0x7f;
 		my $c1 = ( ($spd >>3) & 0xf0) | ($pwr & 0x0f);
-		my $c2 = ($pwr >> 4) & 0x7f;
+		my $c2 = ($pwr >> 4) & 0xff;
 
 		print $fh pack( 'CCCCC', 
 			$c0,
@@ -236,6 +247,23 @@ sub do_write {
 			$c2,
 			$c->cad||0,	# $_[3],
 			$c->hr||0,	# $_[4],
+		) or croak "failed to write chunks";
+	}
+}
+
+sub write_srm7 {
+	my( $self, $fh ) = @_;
+
+	my $it = $self->iterate;
+	while( my $c = $it->next ){
+
+		print $fh pack( 'vCClls', 
+			$c->pwr||0,
+			$c->cad||0,
+			$c->hr||0,
+			($c->spd||0) * 1000,
+			$c->ele||0,
+			($c->temp||0) * 10,
 		) or croak "failed to write chunks";
 	}
 }
@@ -254,14 +282,17 @@ sub do_read {
 		
 	exists $magic_tag{$_[0]}
 		or croak "unrecognized file format";
-	my $version = $magic_tag{$_[0]};
+	$self->version( $_[0] );
+
 	my $clen;
-	if( $version == 5 ){
+	if( $_[0] eq 'SRM5' ){
 		$clen = 3;
-	} elsif( $version == 6 ){
+
+	} elsif( $_[0] =~ /^SRM[67]$/ ){
 		$clen = 255;
+
 	} else {
-		croak "unsupported file version: $version";
+		croak "unsupported file version: $_[0]";
 	}
 
 	my $date = DateTime->new( 
@@ -280,8 +311,9 @@ sub do_read {
 	$self->note( $_[7] );
 	my $temperature;
 
-	if( $_[7] =~ /^(\d+)øC/ ){
+	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)øC// ){
 		$temperature = $1;
+		$temperature =~ s/\,/./;
 	}
 	$self->debug( "date: ". $date->ymd 
 		." days: ". $_[1] .","
@@ -435,50 +467,16 @@ sub do_read {
 	############################################################
 	# read data chunks 
 
-	my $ckread = 0;
-	my $prev_chunk;
-
-	my $blk;
-	my $cktime;
-
-	while( CORE::read( $fh, $buf, 5 ) == 5 ){
-
-		if( ! $ckread || $ckread > $blk->{cklast} ){
-			if( @blocks  ){
-				$blk = shift @blocks;
-				$cktime = $blk->{stime};
-
-			} else {
-				warn "found extra chunk";
-				$cktime += $self->recint;
-			}
-
-		} else {
-			$cktime += $self->recint;
-		}
-		$ckread++;
-
-		@_ = unpack( 'CCCCC', $buf );
-		my $spd	= 3.0 / 26 * ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
-		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
-
-		my $chunk = Workout::Chunk->new( {
-			prev	=> $prev_chunk,
-			time	=> $cktime,
-			dur	=> $self->recint,
-			temp	=> $temperature,
-			cad	=> $_[3],
-			hr	=> $_[4],
-			dist	=> $spd/3.6 * $self->recint,
-			work	=> $pwr * $self->recint,
-		});
-
-		$self->_chunk_add( $chunk );
-		$prev_chunk = $chunk;
+	my $ckread;
+	
+	if( $self->version eq 'SRM7' ){
+		$ckread = $self->read_srm7( $fh, \@blocks, $temperature );
+	} else {
+		$ckread = $self->read_srm( $fh, \@blocks, $temperature );
 	}
 
-	$ckread < $ckcnt && warn "cannot read all data chunks";
-	$ckread > $ckcnt && warn "found more data chunks as expeced";
+	$ckread < $ckcnt && warn "cannot read all data chunks ($ckread/$ckcnt)";
+	$ckread > $ckcnt && warn "found more data chunks as expeced ($ckread/$ckcnt)";
 
 	############################################################
 	# add marker
@@ -513,6 +511,104 @@ sub do_read {
 		});
 	}
 }
+
+sub read_srm {
+	my( $self, $fh, $blocks, $temperature ) = @_;
+
+	my $ckread = 0;
+	my $prev_chunk;
+
+	my $blk;
+	my $buf;
+	my $cktime;
+
+	while( CORE::read( $fh, $buf, 5 ) == 5 ){
+
+		if( ! $ckread || $ckread > $blk->{cklast} ){
+			if( @$blocks  ){
+				$blk = shift @$blocks;
+				$cktime = $blk->{stime};
+
+			} else {
+				warn "found extra chunk";
+				$cktime += $self->recint;
+			}
+
+		} else {
+			$cktime += $self->recint;
+		}
+		$ckread++;
+
+		@_ = unpack( 'CCCCC', $buf );
+		my $spd	= 3.0 / 26 * ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
+		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
+
+		my $chunk = Workout::Chunk->new( {
+			prev	=> $prev_chunk,
+			time	=> $cktime,
+			dur	=> $self->recint,
+			temp	=> $temperature,
+			cad	=> $_[3],
+			hr	=> $_[4],
+			dist	=> $spd/3.6 * $self->recint,
+			work	=> $pwr * $self->recint,
+		});
+
+		$self->_chunk_add( $chunk );
+		$prev_chunk = $chunk;
+	}
+
+	$ckread;
+}
+
+
+sub read_srm7 {
+	my( $self, $fh, $blocks, $temperature ) = @_;
+
+	my $ckread = 0;
+	my $prev_chunk;
+
+	my $blk;
+	my $buf;
+	my $cktime;
+
+	while( CORE::read( $fh, $buf, 14 ) == 14 ){
+
+		if( ! $ckread || $ckread > $blk->{cklast} ){
+			if( @$blocks  ){
+				$blk = shift @$blocks;
+				$cktime = $blk->{stime};
+
+			} else {
+				warn "found extra chunk";
+				$cktime += $self->recint;
+			}
+
+		} else {
+			$cktime += $self->recint;
+		}
+		$ckread++;
+
+		@_ = unpack( 'vCClls', $buf ); # TODO: not bit-gender safe
+		my $chunk = Workout::Chunk->new( {
+			prev	=> $prev_chunk,
+			time	=> $cktime,
+			dur	=> $self->recint,
+			work	=> $_[0] * $self->recint,
+			cad	=> $_[1],
+			hr	=> $_[2],
+			dist	=> $_[3] / 1000 * $self->recint,
+			ele	=> $_[4],
+			temp	=> $_[5] / 10,
+		});
+
+		$self->_chunk_add( $chunk );
+		$prev_chunk = $chunk;
+	}
+
+	$ckread;
+}
+
 
 sub mark_workout {
 	my( $self ) = @_;
