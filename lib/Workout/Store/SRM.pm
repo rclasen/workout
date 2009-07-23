@@ -274,7 +274,7 @@ sub do_read {
 	my $buf;
 
 	############################################################
-	# file header
+	# file header @0
 
 	CORE::read( $fh, $buf, 86 ) == 86
 		or croak "failed to read file header";
@@ -324,7 +324,7 @@ sub do_read {
 		."=". $_[3] ."/". $_[4] );
 
 	############################################################
-	# read marker
+	# read marker @86
 
 	my @marker;
 	while( $markcnt-- >= 0 ){
@@ -353,7 +353,7 @@ sub do_read {
 	$self->athletename( (shift @marker)->{note} );
 
 	############################################################
-	# read recording block info
+	# read recording block info @86 + $marker*(15+$clen=255)
 
 	my $block_cknext = 0;
 	my @blocks;
@@ -396,7 +396,7 @@ sub do_read {
 	}
 
 	############################################################
-	# calibration data, ff
+	# calibration data, ff @86 + $marker*(15+$clen=255) + $blocks*6
 
 	CORE::read( $fh, $buf, 7 ) == 7
 		or croak "failed to read calibration data";
@@ -414,6 +414,8 @@ sub do_read {
 
 	############################################################
 	# consistency check, error correction
+	# @93 + $marker*(15+$clen=255) + $blocks*6
+	# min=369
 
 	if( $block_cknext < $ckcnt ){
 		warn "inconsistency: block chunks < total";
@@ -522,6 +524,8 @@ sub read_srm {
 	my $buf;
 	my $cktime;
 
+	$self->debug( "starting to read chunks at ", tell $fh );
+
 	while( CORE::read( $fh, $buf, 5 ) == 5 ){
 
 		if( ! $ckread || $ckread > $blk->{cklast} ){
@@ -540,7 +544,8 @@ sub read_srm {
 		$ckread++;
 
 		@_ = unpack( 'CCCCC', $buf );
-		my $spd	= 3.0 / 26 * ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
+		my $rspd = ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
+		my $spd	= 3.0 / 26 * $rspd;
 		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
 
 		my $chunk = Workout::Chunk->new( {

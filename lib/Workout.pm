@@ -8,7 +8,7 @@
 
 =head1 NAME
 
-Workout - Fabric to easily create workout objects
+Workout - Fabric for creating workout objects easily
 
 =head1 SYNOPSIS
 
@@ -40,7 +40,7 @@ use Module::Pluggable
 	search_path     => 'Workout::Store',
 	sub_name        => 'stores';
 
-our $VERSION = '0.01';
+our $VERSION = '0.09';
 
 our %ftype;
 

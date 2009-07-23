@@ -2,10 +2,12 @@ workout (0.09) unstable; urgency=low
 
   * added wkdist, wkhisto
   * feed pre-build chart to MyChart::Gtk (obsoleting Workout::Gtk::Chart::*)
+  * added torque info to Chunks and wkinfo output
+  * added Workout::Filter::Zone - caculcate time in specified zones
   * added support for new SRM7 files introduced for PCVI
   * fixed bug in SRM6 writing where the power data was truncated to 2048W
 
- -- Rainer Clasen <bj@zuto.de>  Fri, 12 Jun 2009 20:44:02 +0200
+ -- Rainer Clasen <bj@zuto.de>  Thu, 23 Jul 2009 09:51:04 +0200
 
 workout (0.08) unstable; urgency=low
 

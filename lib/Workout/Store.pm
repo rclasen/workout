@@ -8,7 +8,7 @@
 
 =head1 NAME
 
-Workout::Store - Base Class for Sport Workout data Stores
+Workout::Store - Base Class for Sports Workout data Stores
 
 =head1 SYNOPSIS
 

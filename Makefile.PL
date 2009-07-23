@@ -4,20 +4,21 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     NAME              => 'Workout',
-    VERSION      => '0.09',
+    VERSION_FROM      => 'lib/Workout.pm',
     PREREQ_PM         => {
 	    'Geo::Distance'	=> undef,
 	    'Geo::Gpx'	=> undef,
 	    'Class::Accessor::Fast'	=> undef,
 	    'Module::Pluggable'	=> undef,
 	    'DateTime'		=> undef,
-	    'MyChart'		=> undef,
+	    'MyChart'		=> '0.03',
     }, # e.g., Module::Name => 1.1
     'EXE_FILES'       => [qw(
 	wkconv
 	wkdelta
 	wkdist
 	wkdump
+	wkhisto
 	wkinfo
 	wkmerge
 	wkmodify
