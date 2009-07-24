@@ -191,9 +191,9 @@ sub do_write {
 	# blocks
 
 	foreach my $b ( @$blocks ){
-		$self->debug( "write block ". $b->[0]->stime ." ". @$b );
+		$self->debug( "write block ". $b->[0]->time ." ". @$b );
 		print $fh pack( 'Vv', 
-			($b->[0]->stime - $wtime) * 100,
+			($b->[0]->time - $wtime) * 100,
 			scalar @$b,
 		) or croak "failed to write recording block";
 	}
