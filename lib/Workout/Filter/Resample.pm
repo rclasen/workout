@@ -138,14 +138,14 @@ sub _fetch_time {
 	} # else enough data present
 
 	my $time = $merge[0]->stime + $wdur;
+	my $last = $merge[-1];
 
 	# ... fill end with zeros to complete recint
-	if( $dur < $wdur ){
-		my $p = $merge[-1];
-
+	if( $time - $last->time > 0.05 ){
 		$self->debug( "extending workout/block end from ". $dur ."sec at ".
-			$p->time );
-		my $n = $p->synthesize($time, $next);
+			$last->time );
+
+		my $n = $last->synthesize($time);
 		push @merge, $n;
 		$dur += $n->dur;
 	}

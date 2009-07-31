@@ -157,11 +157,12 @@ sub split {
 	my( $self, $time ) = @_;
 
 	my $remain = $self->time - $time;
-	croak "invalid split time ". $time ." for ". $self->time
-		if $remain < 0;
 
 	return $self->clone # , undef
-		if $remain < 0.1;
+		if abs($remain) < 0.1;
+
+	croak "invalid split time ". $time ." for ". $self->time
+		if $remain < 0;
 
 	my $dur = $self->dur - $remain;
 	my $ma = $dur / $self->dur;
