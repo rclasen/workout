@@ -101,7 +101,7 @@ my $gui_canceled;
 if( $opt_gui ) {
 	my $wk2 = get_wk( $f2 );
 	Gtk2->init;
-	&show_chart( $wk1, $wk2 );
+	&show_chart( $field, $wk1, $wk2 );
 }
 
 if( $gui_canceled ){
@@ -133,7 +133,8 @@ sub get_wk {
 
 # TODO: move this to seperate package
 sub show_chart {
-	
+	my $field = shift;
+	#my @workouts = @_;
 
 	my $win = Gtk2::Window->new;
 	$win->set_title( 'wkdelta: '. $f1 .' - '. $f2 );
@@ -153,7 +154,9 @@ sub show_chart {
 	$win->add( $box );
 
 	# graph
-	my $chart = Workout::Chart::Delta->new;
+	my $chart = Workout::Chart::Delta->new({
+		field	=> $field,
+	});
 	my $graph = MyChart::Gtk->new(
 		chart	=> $chart,
 	);
