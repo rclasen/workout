@@ -84,7 +84,13 @@ if( @fields ){
 	#@fields ||= (qw( time dur dist spd cad hr work pwr));
 	@fields = qw( ele );
 }
+foreach my $f ( @fields ){
+	grep /^$f$/, @Workout::Chunk::core_fields
+		and next;
 
+	print STDERR "field not supported: $f\n";
+	$needhelp++;
+}
 
 if( $needhelp ){
 	print STDERR "please use $0 --help for usage info\n";
