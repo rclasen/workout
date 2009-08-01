@@ -146,6 +146,7 @@ sub parse_params {
 			year	=> $1,
 			month	=> $2,
 			day	=> $3,
+			time_zone	=> 'local',
 		);
 
 	} elsif( $k eq 'starttime' ){

@@ -2,8 +2,10 @@ workout (0.10) unstable; urgency=low
 
   * Store::SRM: use block timestamps as chunk-end on read *and* write...
   * wkdelta: make --field work
+  * some bugfixes for subsecond timestamps/recints
+  * fix reading HRM timestamps
 
- -- Rainer Clasen <bj@zuto.de>  Fri, 31 Jul 2009 12:03:10 +0200
+ -- Rainer Clasen <bj@zuto.de>  Sat, 01 Aug 2009 22:33:11 +0200
 
 workout (0.09) unstable; urgency=low
 
