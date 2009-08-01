@@ -83,12 +83,13 @@ sub process {
 	});
 
 	#$self->debug( "merging chunk ". $m->stime ." to ". $m->time );
-	my $s = $self->_fetch_time( $m->dur, $m->time )
+	my $s = $self->_fetch_time( $o->dur, $o->time )
 		or return $o;
 
 	foreach my $f (@{$self->fields}){
 		$o->$f( $s->$f );
 	}
+	#$self->debug( "merged chunk ". $o->time .", ".  $o->spd );
 
 	$o;
 }

@@ -4,8 +4,9 @@ workout (0.10) unstable; urgency=low
   * wkdelta: make --field work
   * some bugfixes for subsecond timestamps/recints
   * fix reading HRM timestamps
+  * wkmerge: check fields to merge
 
- -- Rainer Clasen <bj@zuto.de>  Sat, 01 Aug 2009 22:33:11 +0200
+ -- Rainer Clasen <bj@zuto.de>  Sat, 01 Aug 2009 23:18:21 +0200
 
 workout (0.09) unstable; urgency=low
 

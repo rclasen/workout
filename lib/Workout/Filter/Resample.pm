@@ -86,11 +86,14 @@ sub _fetch_time {
 	my $next;
 
 	# collect data
+	#$self->debug( "collecting chunk: ".($wtime || 0) .", ". $wdur );
 	while( $dur < $wdur ){
 
 		$next = $self->_fetch_range( $wdur, $wtime )
 			or last;
 
+		#$self->debug( "next chunk: ".$next->time.", ". $next->dur 
+		#	.", ". ($next->spd||0) );
 		if( $wtime && ( $next->stime < ($wtime - $wdur)) ){
 			$self->debug( "discarding chunk data between ".
 				$next->stime." and ". ($wtime-$wdur) );
