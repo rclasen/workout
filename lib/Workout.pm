@@ -40,7 +40,7 @@ use Module::Pluggable
 	search_path     => 'Workout::Store',
 	sub_name        => 'stores';
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 our %ftype;
 

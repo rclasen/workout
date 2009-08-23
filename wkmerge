@@ -99,12 +99,10 @@ if( $needhelp ){
 
 $otype ||= lc( ($ofname =~ /\.([^.]+)$/)[0] );
 
-my $ath = Workout::Athlete->new;
-
 my $dst = Workout::file_new( { 
 	debug	=> $debug,
 	ftype	=> $otype,
-	athlete	=> $ath,
+	#athlete	=> $ath, - see below
 } );
 
 if( ! $join and $join = ! $dst->cap_block ){
@@ -158,6 +156,18 @@ my $it2 = Workout::filter('Join', $wk2, {
 	debug	=> $debug,
 });
 
+if( $dst->can( 'athlete' ) ){
+	if( $wk1->can( 'athlete' ) ){
+		$dst->athlete( $wk1->athlete );
+
+	} elsif( $wk1->can( 'athlete' ) ){
+		$dst->athlete( $wk1->athlete );
+
+	} else {
+		$dst->athlete( Workout::Athlete->new );
+
+	}
+}
 
 # fill dst
 my $merge = Workout::filter('Merge', $it2, {

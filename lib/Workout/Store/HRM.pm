@@ -37,6 +37,7 @@ use strict;
 use warnings;
 use base 'Workout::Store::Memory';
 use Workout::Chunk;
+use Workout::Athlete;
 use Carp;
 use DateTime;
 
@@ -83,6 +84,8 @@ sub do_read {
 
 	my $parser;
 	my $gotparams;
+
+	$self->athlete( Workout::Athlete->new );
 
 	# precompile pattern
 	my $re_stripnl = qr/[\r\n]+$/;
@@ -158,6 +161,18 @@ sub parse_params {
 			minutes	=> $2,
 			seconds	=> $3,
 		);
+
+	} elsif( $k eq 'resthr' ){
+		$self->athlete->hrrest( $v );
+
+	} elsif( $k eq 'maxhr' ){
+		$self->athlete->hrmax( $v );
+
+	} elsif( $k eq 'weight' ){
+		$self->athlete->weight( $v );
+
+	} elsif( $k eq 'vo2max' ){
+		$self->athlete->vo2max( $v );
 
 	} elsif( $k eq 'smode' ){
 		$v =~ /^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/
@@ -349,7 +364,7 @@ Timer1=0:00:00.0
 Timer2=0:00:00.0
 Timer3=0:00:00.0
 ActiveLimit=0
-MaxHr=", int($athlete->hrmax), "
+MaxHR=", int($athlete->hrmax), "
 RestHR=", int($athlete->hrrest), "
 StartDelay=0
 VO2max=", int($athlete->vo2max), "

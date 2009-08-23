@@ -1,3 +1,10 @@
+workout (0.11) unstable; urgency=low
+
+  * HRM: read athlete data
+  * wkconv/wkmerge/wkinfo: pick athlete info from source when available
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 23 Aug 2009 22:53:08 +0200
+
 workout (0.10) unstable; urgency=low
 
   * Store::SRM: use block timestamps as chunk-end on read *and* write...

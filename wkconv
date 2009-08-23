@@ -73,12 +73,14 @@ my( $ifile, $ofile ) = @ARGV;
 $itype ||= lc( ($ifile =~ /\.([^.]+)$/)[0] );
 $otype ||= lc( ($ofile =~ /\.([^.]+)$/)[0] );
 
-my $ath = Workout::Athlete->new;
 
 my $src = Workout::file_read( $ifile, { 
 	ftype	=> $itype,
 	debug	=> $debug,
 } );
+my $ath = $src->can( 'athlete' )
+	? $src->athlete
+	: Workout::Athlete->new;
 my $dst = Workout::file_new( { 
 	ftype	=> $otype,
 	athlete	=> $ath,

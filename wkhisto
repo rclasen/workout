@@ -17,7 +17,6 @@ use DateTime;
 use Getopt::Long;
 use Workout;
 use Workout::Store::Null;
-use Workout::Athlete;
 
 my %set = (
 	zone	=> [

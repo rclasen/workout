@@ -65,13 +65,16 @@ if( $needhelp ){
 	exit 1;
 }
 
-my $ath = Workout::Athlete->new;
-
 my $src = Workout::file_read( $fname, { 
 	debug	=> $debug, 
 	ftype	=> $itype, 
 } );
 my $iter = $src->iterate;
+
+my $ath = $src->can( 'athlete' )
+	? $src->athlete
+	: Workout::Athlete->new;
+
 # TODO: filter Smooth
 #$iter = Workout::filter( 'Smooth', $src, {
 #	debug	=> $debug,
