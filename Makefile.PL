@@ -6,6 +6,7 @@ WriteMakefile(
     NAME              => 'Workout',
     VERSION_FROM      => 'lib/Workout.pm',
     PREREQ_PM         => {
+	    # update debian/control, too!
 	    'Geo::Distance'	=> undef,
 	    'Geo::Gpx'	=> undef,
 	    'Class::Accessor::Fast'	=> undef,

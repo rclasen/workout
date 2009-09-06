@@ -8,7 +8,9 @@ Standards-Version: 3.7.2
 
 Package: workout
 Architecture: all
-Depends: ${perl:Depends}, ${misc:Depends}, 
+Depends: ${perl:Depends}, ${misc:Depends}, libgeo-distance-perl,
+ libgeo-gpx-perl, libclass-accessor-perl, libmodule-pluggable-perl,
+ libdatetime-perl, mychart 
 Description:  Workout file library
  This library and acompanying helper provide a common API to access
  recordings of sport exercise recordings (workouts). It's modular and easy
