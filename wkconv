@@ -53,7 +53,6 @@ convert workout files between formats
 --recint|-r=<int>   sampling interval
 --debug             enable debuging output
 
-for now only conversion from .srm to .hrm is supported
 EOF
 	exit 0;
 }
