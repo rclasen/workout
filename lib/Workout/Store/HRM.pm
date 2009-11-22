@@ -112,6 +112,9 @@ sub do_read {
 
 			# TODO: read laps / Marker
 
+			} elsif( $blockname eq 'note' ){
+				$parser = \&parse_note;
+
 			} else {
 				$parser = undef;
 			}
@@ -208,6 +211,12 @@ sub parse_params {
 		$self->{colfunc} = \@colfunc;
 	}
 	
+}
+
+sub parse_note {
+	my( $self, $l ) = @_;
+
+	$self->{note} .= $l;
 }
 
 sub parse_hrdata {
