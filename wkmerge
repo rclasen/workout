@@ -8,6 +8,7 @@
 #
 
 
+# example:
 # convert srm to hrm
 # ... merge gpx ele into hrm when available
 # get summary info
@@ -62,13 +63,13 @@ EOF
 
 my $sfname = shift;
 if( ! $sfname ){
-	print STDERR "missing srm file\n";
+	print STDERR "missing master file\n";
 	$needhelp++;
 }
 
 my $gfname = shift;
 if( ! $gfname ){
-	print STDERR "missing gpx file\n";
+	print STDERR "missing secondary file\n";
 	$needhelp++;
 }
 
