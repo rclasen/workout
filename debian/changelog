@@ -1,5 +1,6 @@
 workout (0.12) unstable; urgency=low
 
+  * Marker: fixed memory leak
   * SRM: fix to use more up to date cp850
 
  -- Rainer Clasen <bj@zuto.de>  Thu, 03 Dec 2009 19:56:57 +0100

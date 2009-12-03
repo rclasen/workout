@@ -2,10 +2,15 @@ package Workout::Marker;
 use strict;
 use warnings;
 use base 'Class::Accessor::Fast';
+use Carp;
+use Scalar::Util qw/ weaken /;
 use Workout::Filter::Timespan;
 
-__PACKAGE__->mk_accessors(qw/
+__PACKAGE__->mk_ro_accessors(qw/
 	store
+/);
+
+__PACKAGE__->mk_accessors(qw/
 	note
 	start
 	end
@@ -14,9 +19,12 @@ __PACKAGE__->mk_accessors(qw/
 sub new {
 	my( $proto, $a ) = @_;
 
-	$proto->SUPER::new({
-		( $a ? %$a : () ),
-	});
+	exists $a->{store}
+		or croak "missing store";
+
+	my $self = $proto->SUPER::new( $a );
+	weaken( $self->{store} );
+	$self;
 }
 
 sub iterate {
