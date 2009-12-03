@@ -2,8 +2,9 @@ workout (0.11) unstable; urgency=low
 
   * HRM: read athlete data
   * wkconv/wkmerge/wkinfo: pick athlete info from source when available
+  * SRM: properly de-/encode comments
 
- -- Rainer Clasen <bj@zuto.de>  Sun, 23 Aug 2009 22:53:08 +0200
+ -- Rainer Clasen <bj@zuto.de>  Thu, 03 Dec 2009 10:01:41 +0100
 
 workout (0.10) unstable; urgency=low
 

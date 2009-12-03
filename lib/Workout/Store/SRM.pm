@@ -38,6 +38,7 @@ use warnings;
 use base 'Workout::Store::Memory';
 use Carp;
 use DateTime;
+use Encode;
 use Workout::Filter::Info;
 
 
@@ -158,7 +159,7 @@ sub do_write {
 		$r2,
 		scalar @$blocks,
 		$self->mark_count,
-		substr($note||'', 0, 70),
+		substr(encode('cp437',$note)||'', 0, 70),
 	) or croak "failed to write file header";
 
 	############################################################
@@ -173,9 +174,8 @@ sub do_write {
 
 		my $first = $self->chunk_time2idx( $m->start );
 		my $last = $self->chunk_time2idx( $m->end );
-
 		print $fh pack( 'Z255Cvvvvvvv', 
-			($m->note||''),
+			encode('cp437',($m->note||'')),
 			1,			# active
 			$first + 1,
 			$last + 1,
@@ -308,7 +308,7 @@ sub do_read {
 	my $blockcnt = $_[5];
 	my $markcnt = $_[6];
 
-	$self->note( $_[7] );
+	$self->note( decode('cp437',$_[7]) );
 	my $temperature;
 
 	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)øC// ){
@@ -332,7 +332,7 @@ sub do_read {
 			or croak "failed to read marker";
 		@_ = unpack( "Z[$clen]Cvvvvvvv", $buf );
 		my %mark = (
-			note	=> $_[0],
+			note	=> decode('cp437',$_[0]),
 			active	=> $_[1],
 			ckfirst	=> $_[2] -1, # 1..
 			cklast	=> $_[3] -1, # 1..
