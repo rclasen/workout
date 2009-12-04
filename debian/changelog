@@ -1,8 +1,9 @@
 workout (0.13) unstable; urgency=low
 
   * removed superflous Null Store
+  * merged Store::Memory into Store
 
- -- Rainer Clasen <bj@zuto.de>  Fri, 04 Dec 2009 15:55:02 +0100
+ -- Rainer Clasen <bj@zuto.de>  Fri, 04 Dec 2009 18:00:41 +0100
 
 workout (0.12) unstable; urgency=low
 

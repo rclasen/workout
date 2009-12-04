@@ -35,7 +35,7 @@ package Workout::Store::Wkt;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store::Memory';
+use base 'Workout::Store';
 use Workout::Chunk;
 use Carp;
 use DateTime;

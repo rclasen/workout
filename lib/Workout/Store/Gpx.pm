@@ -32,7 +32,7 @@ package Workout::Store::Gpx;
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Store::Memory';
+use base 'Workout::Store';
 use Carp;
 use Geo::Gpx;
 use Geo::Distance;
