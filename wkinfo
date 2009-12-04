@@ -11,8 +11,6 @@
 # TODO: pod
 # TODO: options for parameters (bike, user)
 # TODO: one-line output for tabular lists of several workouts
-# TODO: show per-marker info
-# TODO: make it faster! Less verbose mode?
 
 # TODO: cumulate data from multiple files
 
@@ -25,6 +23,9 @@ use Workout::Athlete;
 my $itype;
 my $debug;
 my $ftp;
+my $dopwr;
+my $domax;
+my $domarks;
 my $recint;
 
 my $wanthelp;
@@ -32,6 +33,9 @@ my $needhelp;
 
 if( ! GetOptions(
 	"ftp=i"		=> \$ftp,
+	"pwr!"		=> \$dopwr,
+	"maxint!"	=> \$domax,
+	"marker!"	=> \$domarks,
 	"input|i=s"	=> \$itype,
 	"recint=i"	=> \$recint,
 	"debug!"	=> \$debug,
@@ -47,9 +51,11 @@ calculate some fancy data from Workout data
 Options:
 --debug             enable debuging output
 --input|-i=<type>   input file type
+--pwr               try to calculate missing power
 --ftp=<w>           threshold power (W)
+--maxint            calculate per-interval max power
+--marker            show per-marker info
 --recint=<sec>      resample before calculatin
---maxint=<sec>      interval to check for max. avg. power
 --help              this cruft
 EOF
 	exit 0;
@@ -76,34 +82,36 @@ my $ath = $src->can( 'athlete' )
 	? $src->athlete
 	: Workout::Athlete->new;
 
-# TODO: filter Smooth
-#$iter = Workout::filter( 'Smooth', $src, {
-#	debug	=> $debug,
-#});
 $iter = Workout::filter( 'Resample', $iter, {
 	debug	=> $debug,
 	recint	=> $recint,
 }) if $recint;
-my $pwr = Workout::filter( 'Pwr', $iter, { 
+
+$iter = my $pwr = Workout::filter( 'Pwr', $iter, { 
 	debug	=> $debug,
 	athlete => $ath,
-});
-my $info = Workout::filter( 'Info', $pwr, {
+}) if $dopwr;
+
+$iter = my $info = Workout::filter( 'Info', $iter, {
 	debug	=> $debug,
 });
-my $finfo = Workout::filter( 'FTP', $info, {
+
+$iter = my $finfo = Workout::filter( 'FTP', $iter, {
 	debug	=> $debug,
 	ftp	=> $ftp||0,
-});
-my $m20 = Workout::filter( 'Max', $finfo, {
+}) if defined $ftp;
+
+$iter = my $m20 = Workout::filter( 'Max', $iter, {
 	debug	=> $debug,
 	dur	=> 1200,
-} );
-my $m60 = Workout::filter( 'Max', $m20, {
+}) if defined $domax;
+
+$iter = my $m60 = Workout::filter( 'Max', $iter, {
 	debug	=> $debug,
 	dur	=> 3600,
-} );
-$m60->finish;
+}) if defined $domax;
+
+$iter->finish;
 
 
 if( $info->cntin == 0 ){
@@ -135,9 +143,6 @@ print
 	$src->recint||0, ")\n",
 "marker:          ", $src->mark_count, "\n",
 
-# TODO: filter Smooth
-#"chunks:          ", $iter->cntin, " (spdcut=", $iter->cntspd, " elecut=",
-#	$iter->cntele,")\n",
 "start time:      ", $sdate->datetime, "\n",
 "end time:        ", $edate->datetime, "\n",
 
@@ -182,25 +187,84 @@ print
 "total work:      ", sprintf( '%.2f', ($info->work||0) / 1000 ), " kJ\n",
 "avg Power:       ", sprintf( '%.2f', ($info->pwr_avg||0) ), " W\n", # TODO
 "max Power:       ", sprintf( '%.2f', ($info->pwr_max||0) ), " W at ", # TODO
-	fmttime($info->pwr_max_time), "\n",
+	fmttime($info->pwr_max_time), "\n";
+
+$m20 && print
 "20m avg Power:   ", sprintf( '%.2f', ($m20->pwr||0) ), " W from ",
 	fmttime($m20->stime), " to ",
-	fmttime($m20->time), "\n",
+	fmttime($m20->time), "\n";
+
+$m60 && print
 "60m avg Power:   ", sprintf( '%.2f', ($m60->pwr||0) ), " W from ",
 	fmttime($m60->stime), " to ",
-	fmttime($m60->time), "\n",
+	fmttime($m60->time), "\n";
 
+$finfo && print 
 "Zavg Power:      ", sprintf( '%.2f', ($finfo->apwr||0) ), " W\n",
 "norm. Power:     ", sprintf( '%.2f', ($finfo->npwr||0) ), " W (VI=",
 	sprintf( '%.2f', ($finfo->vi||0) ), ")\n",
 "TSS:             ", sprintf( '%.2f', ($finfo->tss||0) ), " (IF=",
-	sprintf( '%.2f', ($finfo->if||0) ), ")\n",
+	sprintf( '%.2f', ($finfo->if||0) ), ")\n";
+
+print
 "avg Torque:      ", sprintf( '%.2f', ($info->torque_avg||0) ), " Nm\n", # TODO
 "max Torque:      ", sprintf( '%.2f', ($info->torque_max||0) ), " Nm at ", # TODO
-	fmttime($info->torque_max_time), "\n",
-"\n";
+	fmttime($info->torque_max_time), "\n";
 
-1;
+if( $domarks ){
+	my $marks = $src->marks;
+	my $idx = 0;
+	foreach my $mark ( @$marks ){
+		my $mi = $mark->info;
+
+		my $sdate = DateTime->from_epoch( 
+			epoch		=> $mi->time_start,
+			time_zone	=> 'local',
+		);
+		my $edate = DateTime->from_epoch(
+			epoch		=> $mi->time_end,
+			time_zone	=> 'local',
+		);
+
+print "\nMarker ", $idx++, ":\n",
+"start time:      ", $sdate->datetime, "\n",
+"end time:        ", $edate->datetime, "\n",
+
+"duration:        ", fmtdur( $mi->dur ), " h (", int($mi->dur/60), "m)\n",
+
+"Heartrate min:   ", (int($mi->hr_min||0) || '?'), " 1/min\n",
+"Heartrate avg:   ", (int($mi->hr_avg||0) || '?'), " 1/min\n",
+"Heartrate max:   ", (int($mi->hr_max||0) || '?'), " 1/min at ",
+	fmttime($mi->hr_max_time), "\n",
+
+"Cadence avg:     ", (int($mi->cad_avg||0) || '?'), " 1/s\n",
+"Cadence max:     ", (int($mi->cad_max||0) || '?'), " 1/s at ",
+	fmttime($mi->cad_max_time), "\n",
+
+"start elevation: ", (int($mi->ele_start||0) ||'?'), " m\n",
+"min elevation:   ", (int($mi->ele_min||0) ||'?'), " m\n",
+"max elevation:   ", (int($mi->ele_max||0) ||'?'), " m at ",
+	fmttime($mi->ele_max_time), "\n",
+"total incline:   ", (int($mi->incline||0) ||'?'), " m\n",
+
+"total distance:  ", sprintf( '%.2f', ($mi->dist||0) / 1000), " km\n",
+
+"max speed:       ", sprintf( '%.2f', ($mi->spd_max||0) * 3.6 ), " km/h at ",
+	fmttime($mi->spd_max_time), "\n",
+"avg speed:       ", sprintf( '%.2f', ($mi->spd_avg||0) * 3.6 ), " km/h\n",
+"max accel:       ", sprintf( '%.2f', ($mi->accel_max||0) ), " m/s² at ",
+	fmttime($mi->accel_max_time), "\n",
+
+"total work:      ", sprintf( '%.2f', ($mi->work||0) / 1000 ), " kJ\n",
+"avg Power:       ", sprintf( '%.2f', ($mi->pwr_avg||0) ), " W\n", # TODO
+"max Power:       ", sprintf( '%.2f', ($mi->pwr_max||0) ), " W at ", # TODO
+	fmttime($mi->pwr_max_time), "\n";
+
+	}
+}
+
+print "\n";
+exit 0;
 
 sub fmtdur {
 	my $s = shift;
