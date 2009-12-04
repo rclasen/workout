@@ -1,3 +1,9 @@
+workout (0.13) unstable; urgency=low
+
+  * removed superflous Null Store
+
+ -- Rainer Clasen <bj@zuto.de>  Fri, 04 Dec 2009 15:55:02 +0100
+
 workout (0.12) unstable; urgency=low
 
   * Marker: fixed memory leak

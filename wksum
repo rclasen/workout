@@ -14,7 +14,6 @@ use strict;
 use DateTime;
 use Getopt::Long;
 use Workout;
-use Workout::Store::Null;
 
 my $debug;
 my $ftp;
@@ -65,8 +64,7 @@ foreach my $fname ( @ARGV ){
 		debug	=> $debug,
 		ftp	=> $ftp||0,
 	});
-	my $null = Workout::Store::Null->new;
-	$null->from( $fi );
+	$fi->finish;
 
 	$info{files}++;
 	$info{dur} += ($if->dur || 0 );

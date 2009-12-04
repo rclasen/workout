@@ -341,7 +341,7 @@ sub dur {
 sub info {
 	my $self = shift;
 	my $i = Workout::Filter::Info->new( $self->iterate, @_ );
-	while( $i->next ){ 1; };
+	$i->finish;
 	$i;
 }
 

@@ -97,6 +97,19 @@ sub all {
 	@all;
 }
 
+=head2 finish
+
+process all chunks, returns nothing.
+
+=cut
+
+sub finish {
+	my( $self ) = @_;
+
+	while( defined($self->next)){
+	}
+}
+
 =head2 store
 
 return store that's the source for this iterator (-chain).

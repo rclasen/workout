@@ -25,7 +25,7 @@ Workout::Filter::Zone - caculcate time in specified zones
 	min	=> 150,
 	max	=> 320,
   } ] } );
-  Workout::Store::Null->new->from( $it );
+  $it->finish;
   print $it->tss;
 
 =head1 DESCRIPTION

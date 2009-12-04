@@ -15,7 +15,7 @@ Workout::Filter::Max - caculcate NP, IF, TSS based on your Max
   # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
   $it = Workout::Filter::Max->new( $src->iterate, { ftp => 320 } );
-  Workout::Store::Null->new->from( $it );
+  $it->finish;
   print $it->tss;
 
 =head1 DESCRIPTION

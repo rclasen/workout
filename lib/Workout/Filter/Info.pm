@@ -15,7 +15,7 @@ Workout::Filter::Info - collect info about the workout
   # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
   $it = Workout::Filter::Info->new( $src->iterate );
-  Workout::Store::Null->new->from( $it );
+  $it->finish;
   print $it->dur;
 
 =head1 DESCRIPTION

@@ -16,7 +16,6 @@ use strict;
 use DateTime;
 use Getopt::Long;
 use Workout;
-use Workout::Store::Null;
 
 my %set = (
 	zone	=> [
@@ -90,8 +89,7 @@ my $fz = Workout::filter( 'Zone', $iter, {
 	debug	=> $debug,
 	zones	=> $set{$set},
 } );
-my $null = Workout::Store::Null->new;
-$null->from( $fz );
+$fz->finish;
 
 my $dur = $src->dur;
 foreach my $z ( @{$fz->zones} ){

@@ -49,6 +49,8 @@ sub filetypes {
 
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
 
+# TODO: use XML::Parser directly
+
 sub new {
 	my( $class, $a ) = @_;
 

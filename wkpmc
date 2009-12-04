@@ -69,7 +69,7 @@ foreach my $fname ( @ARGV ){
 		debug	=> $debug,
 		ftp	=> $ftp,
 	});
-	while( $if->next ){ 1 };
+	$if->finish;
 
 	my $date = DateTime->from_epoch(
 		epoch	=> $src->time_start,
