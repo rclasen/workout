@@ -5,8 +5,9 @@ workout (0.13) unstable; urgency=low
   * made some wkinfo output optional for speed
   * Store->chunk_add() no longer clones the chunk!!!!
   * removed now unneeded Store->_chunk_add
+  * converted Store::Gpx to XML::SAX
 
- -- Rainer Clasen <bj@zuto.de>  Sun, 06 Dec 2009 21:19:29 +0100
+ -- Rainer Clasen <bj@zuto.de>  Sun, 06 Dec 2009 23:17:41 +0100
 
 workout (0.12) unstable; urgency=low
 

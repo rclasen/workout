@@ -8,7 +8,7 @@ WriteMakefile(
     PREREQ_PM         => {
 	    # update debian/control, too!
 	    'Geo::Distance'	=> undef,
-	    'Geo::Gpx'	=> undef,
+	    'XML::SAX'	=> undef,
 	    'Class::Accessor::Fast'	=> undef,
 	    'Module::Pluggable'	=> undef,
 	    'DateTime'		=> undef,

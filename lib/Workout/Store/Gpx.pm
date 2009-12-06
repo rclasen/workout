@@ -28,28 +28,183 @@ Interface to read/write GPS files
 
 =cut
 
+package Workout::Store::Gpx::Read;
+use base 'Workout::XmlDescent';
+use strict;
+use warnings;
+use DateTime;
+use Geo::Distance;
+use Workout::Chunk;
+use Carp;
+
+our %nodes = (
+	top	=> {
+		gpx	=> 'gpx'
+	},
+
+	gpx	=> {
+		trk	=> 'trk',
+		'*'	=> 'ignore',
+	},
+
+	trk	=> {
+		trkseg	=> 'trkseg',
+		cmt	=> 'trkcmt',
+		#name	=> 'trkname',
+		'*'	=> 'ignore',
+	},
+	trkname		=> undef,
+	trkcmt		=> undef,
+
+	trkseg	=> {
+		trkpt	=> 'trkpt',
+		'*'	=> 'ignore',
+	},
+
+	trkpt	=> {
+		ele	=> 'trkele',
+		time	=> 'trktime',
+		'*'	=> 'ignore',
+	},
+	trkele		=> undef,
+	trktime		=> undef,
+
+	ignore	=> {
+		'*'	=> 'ignore',
+	},
+);
+
+our $re_time = qr/^\s*(-?\d\d\d\d+)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d(.\d+)?)(?:(Z)|(([+-]\d\d):(\d\d)))?\s*$/;
+
+sub _str2time {
+	my( $time ) = @_;
+
+	my( $year, $mon, $day, $hour, $min, $sec, $nsec, $z, $zhour, $zmin ) 
+		= ( $time =~ /$re_time/ )
+		or croak "invalid time format: $time";
+
+	if( $z || !defined $zhour || ! defined $zmin ){
+		$zhour = '+00';
+		$zmin = '00';
+	}
+	$nsec ||= 0;
+
+	DateTime->new(
+		year	=> $year,
+		month	=> $mon,
+		day	=> $day,
+		hour	=> $hour,
+		minute	=> $min,
+		second	=> $sec,
+		nanosecond	=> $nsec * 1000000000,
+		time_zone	=> $zhour.$zmin,
+	)->hires_epoch;
+}
+
+sub new {
+	my $proto = shift;
+	my $a = shift || {};
+
+	$proto->SUPER::new({
+		Store	=> undef,
+		%$a,
+		gcalc	=> Geo::Distance->new,
+		cmt	=> undef,
+		pt	=> {}, # current point
+		lpt	=> undef, # last point
+		nodes	=> \%nodes,
+	});
+}
+
+sub end_leaf {
+	my( $self, $el, $node ) = @_;
+
+	my $name = $node->{node};
+	if( $name eq 'trktime' ){
+		$self->{pt}{time} = _str2time( $node->{cdata} );
+
+	} elsif( $name eq 'trkele' ){
+		$self->{pt}{ele} = $node->{cdata};
+
+	} elsif( $name eq 'trkcmt' ){
+		$self->{cmt} ||= $node->{cdata};
+
+	#} elsif( $name eq 'trkname' ){
+
+	}
+}
+
+sub end_node {
+	my( $self, $el, $node ) = @_;
+
+	my $name = $node->{node};
+	if( $name eq 'trkpt' ){
+		$self->end_trkpt( $node->{attr} );
+
+	} elsif( $name eq 'trkseg' ){
+		$self->{lpt} = undef;
+
+	} elsif( $name eq 'gpx' ){
+		$self->{Store}->note( $self->{cmt} );
+
+	}
+}
+
+sub end_trkpt {
+	my( $self, $attr ) = @_;
+
+	my $pt = $self->{pt};
+	$self->{pt} = {};
+
+	return unless $pt->{time};
+
+	foreach my $a ( values %$attr ){
+		if( lc $a->{LocalName} eq 'lon' ){
+			$pt->{lon} = $a->{Value};
+
+		} elsif( lc $a->{LocalName} eq 'lat' ){
+			$pt->{lat} = $a->{Value};
+		}
+	}
+	my $dur = 0.015;
+	my $dist = 0;
+
+	if( defined( my $lpt = $self->{lpt} ) ){
+		$dur = $pt->{time} - $lpt->{time};
+		$dist = $self->{gcalc}->distance( 'meter',
+			$lpt->{lon}, $lpt->{lat},
+			$pt->{lon}, $pt->{lat},
+		);
+	}
+
+	return if $dur < 0.01;
+
+	$self->{Store}->chunk_add( Workout::Chunk->new({
+		%$pt,
+		dur     => $dur,
+		dist    => $dist,
+	}) );
+
+	$self->{lpt} = $pt;
+}
+
+
+
 package Workout::Store::Gpx;
 use 5.008008;
 use strict;
 use warnings;
 use base 'Workout::Store';
+use XML::SAX;
 use Carp;
-use Geo::Gpx;
-use Geo::Distance;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub filetypes {
 	return "gpx";
 }
 
-# TODO: Geo::Gpx doesn't support subsecond timestamps - only matters when
-# using something else but garmin as source: Garmin doesn't provide
-# subsecond time resolution, too.
-
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
-
-# TODO: use XML::Parser directly
 
 sub new {
 	my( $class, $a ) = @_;
@@ -66,47 +221,14 @@ sub new {
 sub do_read {
 	my( $self, $fh ) = @_;
 
-	my $gpx = Geo::Gpx->new( input => $fh )
-		or croak "cannot read file: $!";
+	my $parser = XML::SAX::ParserFactory->parser(
+		Handler	=> Workout::Store::Gpx::Read->new({
+			Store	=> $self,
+		}),
+	) or croak 'cannot start parser';
 
-	my $tracks = $gpx->tracks
-		or croak "no tracks found";
-	@$tracks <= 1
-		or croak "cannot deal with multiple tracks per file";
-	$self->note( $tracks->[0]{cmt} );
-
-	my $gcalc = Geo::Distance->new;
-	foreach my $seg ( @{$tracks->[0]{segments}} ){
-		my $lpt;
-		foreach my $pt ( @{$seg->{points}} ){
-			next unless $pt->{time};
-
-			my $dur = 0.015;
-			my $dist = 0;
-
-			if( $lpt ){
-				$dur = $pt->{time} - $lpt->{time};
-				$dist = $gcalc->distance( 'meter',
-					$lpt->{lon}, $lpt->{lat},
-					$pt->{lon}, $pt->{lat},
-				);
-			}
-
-			if( $dur < 0.01 ){
-				$self->debug( "skipping zero time-step: ".  $pt->{time} );
-				next;
-			}
-
-			my $ck = Workout::Chunk->new({
-				%$pt,
-				dur	=> $dur,
-				dist	=> $dist,
-			});
-			$self->chunk_add( $ck );
-
-			$lpt = $pt;
-		}
-	}
+	$parser->parse_file( $fh )
+		or croak "parse failed: $!";
 }
 
 
@@ -119,7 +241,17 @@ sub chunk_check {
 	$self->SUPER::chunk_check( $c );
 }
 
+sub _time2str {
+	my( $time ) = @_;
 
+	my $d = DateTime->from_epoch(
+		epoch	=> $time,
+		time_zone	=> 'UTC',
+	);
+	return $d->nanosecond
+		? $d->strftime( '%Y-%m-%dT%H:%M:%S.%6NZ' )
+		: $d->strftime( '%Y-%m-%dT%H:%M:%SZ' );
+}
 
 sub do_write {
 	my( $self, $fh ) = @_;
@@ -127,36 +259,58 @@ sub do_write {
 	$self->chunk_count
 		or croak "no data";
 
-	my @segs = ( {
-		points	=> [],
-	});
-
+	my( $minlon, $minlat, $maxlon, $maxlat );
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
-	
-		if( $c->isblockfirst 
-			&& @{$segs[-1]{points}} ){
-
-			push @segs, {
-				points	=> [],
-			};
+		if( ! defined $minlon || $c->lon < $minlon ){
+			$minlon = $c->lon;
 		}
 
-		push @{$segs[-1]{points}}, {
-			lon	=> $c->lon,
-			lat	=> $c->lat,
-			ele	=> $c->ele,
-			time	=> $c->time,
-		};
+		if( ! defined $minlat || $c->lat < $minlat ){
+			$minlat = $c->lat;
+		}
+
+		if( ! defined $maxlon || $c->lon > $maxlon ){
+			$maxlon = $c->lon;
+		}
+
+		if( ! defined $maxlat || $c->lat > $maxlat ){
+			$maxlat = $c->lat;
+		}
 	}
 
-	my $gpx = Geo::Gpx->new;
-	$gpx->tracks( [ {
-		segments	=> \@segs,
-		( $self->note ? (cmt => $self->note) : () ),
-	} ] );
+	my $now = _time2str( time );
+	my $note = $self->note || '';
 
-	print $fh $gpx->xml;
+	print $fh <<EOHEAD;
+<?xml version="1.0" encoding="utf-8"?>
+<gpx xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" creator="Workout::Store::Gpx" xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd" xmlns="http://www.topografix.com/GPX/1/0">
+<desc></desc>
+<time>$now</time>
+<bounds maxlat="$maxlat" maxlon="$maxlon" minlat="$minlat" minlon="$minlon" />
+<trk>
+<cmt>$note</cmt>
+<trkseg>
+EOHEAD
+
+	$it = $self->iterate;
+	while( my $c = $it->next ){
+	
+		if( $c->isblockfirst ){
+			print $fh "</trkseg>\n<trkseg>\n";
+		}
+
+		print $fh '<trkpt lat="', $c->lat, '" lon="', $c->lon, '">', "\n",
+		'<ele>', $c->ele, '</ele>',"\n",
+		'<time>', _time2str($c->time), '</time>',"\n",
+		'</trkpt>',"\n";
+	}
+
+	print $fh <<EOTAIL;
+</trkseg>
+</trk>
+</gpx>
+EOTAIL
 }
 
 1;
