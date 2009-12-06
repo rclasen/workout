@@ -518,7 +518,6 @@ sub read_srm {
 	my( $self, $fh, $blocks, $temperature ) = @_;
 
 	my $ckread = 0;
-	my $prev_chunk;
 
 	my $blk;
 	my $buf;
@@ -549,7 +548,6 @@ sub read_srm {
 		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
 
 		my $chunk = Workout::Chunk->new( {
-			prev	=> $prev_chunk,
 			time	=> $cktime,
 			dur	=> $self->recint,
 			temp	=> $temperature,
@@ -559,8 +557,7 @@ sub read_srm {
 			work	=> $pwr * $self->recint,
 		});
 
-		$self->_chunk_add( $chunk );
-		$prev_chunk = $chunk;
+		$self->chunk_add( $chunk );
 	}
 
 	$ckread;
@@ -571,7 +568,6 @@ sub read_srm7 {
 	my( $self, $fh, $blocks, $temperature ) = @_;
 
 	my $ckread = 0;
-	my $prev_chunk;
 
 	my $blk;
 	my $buf;
@@ -596,7 +592,6 @@ sub read_srm7 {
 
 		@_ = unpack( 'vCClls', $buf ); # TODO: not bit-gender safe
 		my $chunk = Workout::Chunk->new( {
-			prev	=> $prev_chunk,
 			time	=> $cktime,
 			dur	=> $self->recint,
 			work	=> $_[0] * $self->recint,
@@ -607,8 +602,7 @@ sub read_srm7 {
 			temp	=> $_[5] / 10,
 		});
 
-		$self->_chunk_add( $chunk );
-		$prev_chunk = $chunk;
+		$self->chunk_add( $chunk );
 	}
 
 	$ckread;

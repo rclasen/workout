@@ -125,7 +125,7 @@ sub from { # TODO: make this a constructor
 		or $iter = $iter->iterate;
 
 	while( defined( my $chunk = $iter->next )){
-		$self->chunk_add( $chunk );
+		$self->chunk_add( $chunk->clone );
 	}
 
 	my $store = $iter->store;
@@ -317,17 +317,11 @@ add data chunk to last data block.
 =cut
 
 sub chunk_add {
-	my( $self, $i ) = @_;
-
-	$self->_chunk_add( $i->clone({
-		prev	=> $self->chunk_last,
-	}));
-}
-
-sub _chunk_add {
 	my( $self, $n ) = @_;
 
 	$self->chunk_check( $n );
+
+	$n->prev( $self->chunk_last );
 	push @{$self->{chunk}}, $n;
 }
 

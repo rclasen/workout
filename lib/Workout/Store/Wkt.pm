@@ -143,11 +143,8 @@ sub parse_chunks {
 	# TODO: be more paranoid about input
 	my %a;
 	@a{@{$self->{columns}}} = split( /$re_fieldsep/, $l );
-	$a{prev}= $self->chunk_last;
 
-	my $ck = Workout::Chunk->new( \%a );
-
-	$self->_chunk_add( $ck );
+	$self->chunk_add( Workout::Chunk->new( \%a ));
 }
 
 sub parse_markers {

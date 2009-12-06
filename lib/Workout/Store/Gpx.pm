@@ -76,7 +76,6 @@ sub do_read {
 	$self->note( $tracks->[0]{cmt} );
 
 	my $gcalc = Geo::Distance->new;
-	my $lck;
 	foreach my $seg ( @{$tracks->[0]{segments}} ){
 		my $lpt;
 		foreach my $pt ( @{$seg->{points}} ){
@@ -100,13 +99,11 @@ sub do_read {
 
 			my $ck = Workout::Chunk->new({
 				%$pt,
-				prev	=> $lck,
 				dur	=> $dur,
 				dist	=> $dist,
 			});
-			$self->_chunk_add( $ck );
+			$self->chunk_add( $ck );
 
-			$lck = $ck;
 			$lpt = $pt;
 		}
 	}

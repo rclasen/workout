@@ -226,14 +226,13 @@ sub parse_hrdata {
 
 	$self->{time} += $self->recint;
 	my %a = (
-		prev	=> $self->{prev},
 		time	=> $self->{time},
 		dur	=> $self->recint,
 		map {
 			$_->( shift @row );
 		} @{$self->{colfunc}},
 	);
-	$self->_chunk_add( Workout::Chunk->new( \%a ));
+	$self->chunk_add( Workout::Chunk->new( \%a ));
 }
 
 
