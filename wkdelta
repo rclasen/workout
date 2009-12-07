@@ -113,7 +113,7 @@ print "$delta\n";
 if( $delta && $opt_save ){
 	my $store = $wk1->isa('Workout::Store')
 		? $wk1 
-		: $wk1->store;
+		: ($wk1->stores)[-1];
 	$store->time_add_delta( $delta );
 	$store->write( "$f1.wkdelta" );
 	unlink $f1 or die "unlink $f1 failed: $!";

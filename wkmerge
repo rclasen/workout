@@ -177,7 +177,6 @@ my $merge = Workout::filter('Merge', $it2, {
 	debug	=> $debug,
 });
 $dst->from( $merge );
-$dst->from_store( $wk1 );
 
 # write dst
 open( my $fh, '>', $ofname )

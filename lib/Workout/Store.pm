@@ -55,12 +55,13 @@ use base 'Workout::Iterator';
 sub process {
 	my( $self ) = @_;
 
-	my $dat = $self->store->{chunk};
+	my $dat = $self->src->{chunk};
 	return unless $self->{cntin} < @$dat;
 
 	$dat->[$self->{cntin}++];
 }
 
+sub stores { $_[0]->src; }
 
 
 
@@ -137,8 +138,9 @@ sub from { # TODO: make this a constructor
 		$self->chunk_add( $chunk->clone );
 	}
 
-	my $store = $iter->store;
-	$self->from_store( $store );
+	foreach my $store ( $iter->stores ){
+		$self->from_store( $store );
+	}
 }
 
 

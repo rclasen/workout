@@ -49,21 +49,11 @@ sub new {
 		or $iter = $iter->iterate( $a );
 
 	$a ||= {};
-	$class->SUPER::new( $iter->store, {
+	$class->SUPER::new( $iter, {
 		%$a,
-		src	=> $iter,
 		queue	=> [],
 	});
 }
-
-=head2 src
-
-return the source of which this iterator pulls it's values. This is either
-another iterator oder a store.
-
-=cut
-
-sub src { $_[0]->{src}; }
 
 sub _push {
 	my $self = shift;

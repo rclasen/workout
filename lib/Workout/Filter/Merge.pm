@@ -61,6 +61,11 @@ sub new {
 	});
 }
 
+sub stores {
+	my( $self ) = @_;
+	( $self->SUPER::stores, $self->master->stores );
+}
+
 sub _fetch_master {
 	my( $self ) = @_;
 

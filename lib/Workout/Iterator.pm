@@ -36,7 +36,7 @@ use Carp;
 our $VERSION = '0.01';
 
 our %init = (
-	store	=> undef,
+	src	=> undef,
 	cntin	=> 0,
 	cntout	=> 0,
 	last	=> undef,
@@ -44,22 +44,39 @@ our %init = (
 
 __PACKAGE__->mk_ro_accessors( keys %init );
 
-=head2 new( $store, $arg )
+=head2 new( $src, \%arg )
 
 create empty Iterator.
 
 =cut
 
 sub new {
-	my( $class, $store, $a ) = @_;
+	my( $class, $src, $a ) = @_;
 
 	$a ||= {};
 	$class->SUPER::new( {
 		%$a,
 		%init,
-		store	=> $store,
+		src	=> $src,
 	});
 }
+
+=head2 src
+
+return the source of which this iterator pulls it's values. This is either
+another iterator oder a store.
+
+=cut
+
+
+=head2 stores
+
+return list of stores where this iterator (-chain) is pulling chunks of.
+
+=cut
+
+sub stores { $_[0]->src->stores };
+
 
 
 =head2 next
@@ -68,7 +85,7 @@ return next chunk
 
 =cut
 
-sub process { croak "not implemented" ; };
+sub process { croak "not implemented"; };
 
 sub next {
 	my $self = shift;
@@ -109,13 +126,6 @@ sub finish {
 	while( defined($self->next)){
 	}
 }
-
-=head2 store
-
-return store that's the source for this iterator (-chain).
-
-=cut
-
 
 =head2 cntin
 
