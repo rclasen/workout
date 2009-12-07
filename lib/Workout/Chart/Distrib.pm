@@ -100,7 +100,7 @@ sub add_workout {
 	my( $self, $wk, $fields ) = @_;
 
 	$fields ||= [qw/ spd cad hr pwr /];
-	my @all = $wk->all;
+	my $all = $wk->chunks;
 
 	my %s;
 	foreach my $f ( @$fields ){
@@ -109,7 +109,7 @@ sub add_workout {
 		my $dur = 0;
 		foreach my $c ( sort {
 				($b->$f || 0) <=> ($a->$f || 0);
-		} @all ){
+		} @$all ){
 
 			my $v = $c->$f;
 			next unless defined $v;
