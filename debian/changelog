@@ -10,8 +10,9 @@ workout (0.13) unstable; urgency=low
   * added rudimentary Documentation to Store.pm
   * reworked Iterator store handling. Allows multiple stores per chain.
   * added support for tracking supported/used/wanted fields
+  * massive documentation updates
 
- -- Rainer Clasen <bj@zuto.de>  Mon, 07 Dec 2009 19:08:35 +0100
+ -- Rainer Clasen <bj@zuto.de>  Tue, 08 Dec 2009 00:59:35 +0100
 
 workout (0.12) unstable; urgency=low
 
