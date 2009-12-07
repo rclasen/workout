@@ -7,8 +7,9 @@ workout (0.13) unstable; urgency=low
   * removed now unneeded Store->_chunk_add
   * converted Store::Gpx to XML::SAX
   * fixed encoding for (new)Gpx, HRM and Wkt Stores
+  * added rudimentary Documentation to Store.pm
 
- -- Rainer Clasen <bj@zuto.de>  Mon, 07 Dec 2009 14:58:41 +0100
+ -- Rainer Clasen <bj@zuto.de>  Mon, 07 Dec 2009 16:04:28 +0100
 
 workout (0.12) unstable; urgency=low
 
