@@ -79,7 +79,6 @@ sub new {
 	});
 }
 
-# TODO: verify it's read/written as latin1/win125*
 
 sub do_read {
 	my( $self, $fh ) = @_;

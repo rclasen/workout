@@ -41,7 +41,6 @@ use Workout::Chunk;
 use Carp;
 use DateTime;
 
-# TODO: verify it's read/written as utf8
 
 our $VERSION = '0.01';
 
