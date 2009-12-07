@@ -92,9 +92,16 @@ __PACKAGE__->mk_accessors(qw(
 	note
 ));
 
-=head2 new( $arg )
+
+
+
+=head2 new( \%args )
+
+Constructor. Creates an empty Store.
 
 =cut
+
+# TODO: document new %args
 
 sub new {
 	my( $class, $a ) = @_;
@@ -111,9 +118,11 @@ sub new {
 	$self;
 }
 
-=head2 from( $iter )
 
-copy workout data from specified source (other Workout::Store or
+
+=head2 from( $source )
+
+Copy chunks and store data from specified source (other Workout::Store or
 Workout::Iterator).
 
 =cut
@@ -132,6 +141,14 @@ sub from { # TODO: make this a constructor
 	$self->from_store( $store );
 }
 
+
+
+=head2 from_store( $store )
+
+Copy store data (no chunks) from specified store.
+
+=cut
+
 sub from_store {
 	my( $self, $store ) = @_;
 
@@ -145,7 +162,25 @@ sub from_store {
 	$self->note( $store->note );
 }
 
+
+
+=head2 do_read( $fh )
+
+stub. Has to be implemented by individual stores according to their File
+format.
+
+=cut
+
 sub do_read { croak "reading is not suported"; };
+
+
+
+=head read( $fname, \%new )
+
+Constructor. Create new store and read data from $fname. \%new is passed
+to new().
+
+=cut
 
 sub read {
 	my( $class, $fname, $a ) = @_;
@@ -171,10 +206,26 @@ sub read {
 }
 
 
+
+=head2 do_write( $fh )
+
+stub. Has to be implemented by individual stores according to their File
+format.
+
+=cut
+
 sub do_write { croak "writing is not suported"; };
 
+
+
+=head2 write( $fname )
+
+write data to specified filename.
+
+=cut
+
 sub write {
-	my( $self, $fname, $a ) = @_;
+	my( $self, $fname ) = @_;
 
 	my $fh;
 	if( ref $fname ){
@@ -192,9 +243,27 @@ sub write {
 	1;
 }
 
+
+=head2 cap_block
+
+block capability. true when gaps between chunks are allowed.
+
+=head2 cap_note
+
+note capability. true when store supports a per-workout note/comment.
+
+=head2 note
+
+note. A per-workout comment.
+
+=head2 recint
+
+recording intervall (fixed). undef when variable intervalls are allowed.
+
+
 =head2 iterate
 
-return iterator to retrieve all chunks.
+returns a Workout::Iterator to retrieve chunks one by one.
 
 =cut
 
@@ -208,12 +277,13 @@ sub iterate {
 	});
 }
 
-sub all { 
-	my( $self ) = @_;
 
-	my $iter = $self->iterate or return;
-	$iter->all;
-}
+
+=head2 chunk_time2idx( $time )
+
+finds index of chunk at specified time.
+
+=cut
 
 sub chunk_time2idx {
 	my( $self, $time ) = @_;
@@ -246,6 +316,14 @@ sub _chunk_time2idx {
 	return $self->_chunk_time2idx( $time, $split, $idx2 );
 }
 
+
+
+=head2 chunk_idx2time( $idx )
+
+shortcut to return (end-)time of chunk with specified index.
+
+=cut
+
 sub chunk_idx2time {
 	my( $self, $idx ) = @_;
 	if( $idx >= $self->chunk_count 
@@ -256,10 +334,53 @@ sub chunk_idx2time {
 	$self->{chunk}[$idx]->time;
 }
 
+
+
+=head2 chunks
+
+return ref to internal array with all chunks.
+
+=cut
+
 sub chunks { $_[0]{chunk}; }
+
+
+
+=head2 chunk_count
+
+return number of chunks in store.
+
+=cut
+
 sub chunk_count { scalar @{$_[0]{chunk}}; }
+
+
+
+=head2 chunk_first
+
+returns first chunk in store.
+
+=cut
+
 sub chunk_first { $_[0]{chunk}[0]; }
+
+
+
+=head2 chunk_last
+
+returns last chunk in store.
+
+=cut
+
 sub chunk_last { $_[0]{chunk}[-1]; }
+
+
+
+=head2 chunk_get_idx( $from, [ $to ] )
+
+returns list of chunks in the specified index range.
+
+=cut
 
 sub chunk_get_idx {
 	my( $self, $idx1, $idx2 ) = @_;
@@ -271,6 +392,14 @@ sub chunk_get_idx {
 
 	@{$self->{chunk}}[$idx1 .. $idx2];
 }
+
+
+
+=head2 chunk_get_time( $from, [ $to ] )
+
+returns list of chunks in the specified time range.
+
+=cut
 
 sub chunk_get_time {
 	my( $self, $time1, $time2 ) = @_;
@@ -286,6 +415,15 @@ sub chunk_get_time {
 
 }
 
+
+
+=head2 chunk_del_idx( $from, [ $to ] )
+
+deletes chunks in the specified index range from store and returns them as
+list.
+
+=cut
+
 sub chunk_del_idx {
 	my( $self, $idx1, $idx2 ) = @_;
 
@@ -294,9 +432,18 @@ sub chunk_del_idx {
 		or croak "inverse index span";
 
 	# TODO: nuke marker outside the resulting time span
+	# TODO: update ->prev
 	splice @{$self->{chunk}}, $idx1, $idx2-$idx1;
 }
 
+
+
+=head2 chunk_del_time( $from, [ $to ] )
+
+deletes chunks in the specified time range from store and returns them as
+list.
+
+=cut
 sub chunk_del_time {
 	my( $self, $time1, $time2 ) = @_;
 
@@ -310,9 +457,11 @@ sub chunk_del_time {
 	);
 }
 
+
+
 =head2 chunk_add( $chunk )
 
-add data chunk to last data block.
+add data chunk to store.
 
 =cut
 
@@ -324,6 +473,8 @@ sub chunk_add {
 	$n->prev( $self->chunk_last );
 	push @{$self->{chunk}}, $n;
 }
+
+
 
 =head2 chunk_check( $chunk, $inblock )
 
@@ -371,15 +522,37 @@ sub blocks {
 
 
 
+=head2 marks
+
+returns arrayref with Workout::Marker in this store.
+
+=cut
+
 sub marks {
 	my( $self ) = @_;
 	$self->{mark};
 }
 
+
+
+=head2 mark_count
+
+returns number of marker in this store.
+
+=cut
+
 sub mark_count {
 	my( $self ) = @_;
 	scalar @{$self->{mark}};
 }
+
+
+
+=head2 mark_workout
+
+returns a marker spaning the whole workout.
+
+=cut
 
 sub mark_workout {
 	my( $self ) = @_;
@@ -391,6 +564,14 @@ sub mark_workout {
 	});
 }
 
+
+
+=head2 mark_new( \%marker_data )
+
+Creates a new marker with specified data and adds it to this Store.
+
+=cut
+
 sub mark_new {
 	my( $self, $a ) = @_;
 	# TODO: ensure that marker time span is within chunk timespan
@@ -400,6 +581,14 @@ sub mark_new {
 	});
 }
 
+
+
+=head2 mark_del( $idx )
+
+deletes specified marker from Store and returns it.
+
+=cut
+
 sub mark_del {
 	my( $self, $idx ) = @_;
 	splice @{$self->{mark}}, $idx, 1;
@@ -408,6 +597,11 @@ sub mark_del {
 
 
 
+=head2 time_add_delta( $delta )
+
+adds $delta to all chunks and markers in this store. 
+
+=cut
 
 sub time_add_delta {
 	my( $self, $delta ) = @_;
@@ -422,12 +616,28 @@ sub time_add_delta {
 	}
 }
 
+
+
+=head2 time_start
+
+returns start time of first chunk in this store.
+
+=cut
+
 sub time_start {
 	my $self = shift;
 	my $c = $self->chunk_first
 		or return;
 	$c->stime;
 }
+
+
+
+=head2 time_end
+
+returns end time of last chunk in this store.
+
+=cut
 
 sub time_end {
 	my $self = shift;
@@ -436,10 +646,27 @@ sub time_end {
 	$c->time;
 }
 
+
+
+=head2 dur
+
+returns duration (in seconds) covered by chunks in this store.
+
+=cut
+
 sub dur {
 	my $self = shift;
 	$self->time_end - $self->time_start;
 }
+
+
+
+=head2 info
+
+Collects overall Data from this story and returns it as a
+finish()ed Workout::Filter::Info.
+
+=cut
 
 sub info {
 	my $self = shift;
