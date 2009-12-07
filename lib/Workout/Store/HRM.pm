@@ -79,6 +79,8 @@ sub new {
 	});
 }
 
+# TODO: verify it's read/written as latin1/win125*
+
 sub do_read {
 	my( $self, $fh ) = @_;
 
@@ -92,6 +94,7 @@ sub do_read {
 	my $re_empty = qr/^\s*$/;
 	my $re_block = qr/^\[(\w+)\]/;
 
+	binmode( $fh, ':crlf:encoding(windows-1252)' );
 	while( defined(my $l = <$fh>) ){
 		$l =~ s/$re_stripnl//g;
 
@@ -353,6 +356,7 @@ sub do_write {
 		time_zone	=> $self->tz,
 	); 
 
+	binmode( $fh, ':crlf:encoding(windows-1252)' );
 	print $fh 
 "[Params]
 Version=106

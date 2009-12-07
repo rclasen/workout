@@ -28,6 +28,7 @@ Workout::Store::Wkt - read/write Wkt files
 Interface to read/write Wkt files.
 
 The Wkt file format is the "native" file format for the Workout library.
+Wkt files are always encoded as UTF8.
 
 =cut
 
@@ -40,6 +41,7 @@ use Workout::Chunk;
 use Carp;
 use DateTime;
 
+# TODO: verify it's read/written as utf8
 
 our $VERSION = '0.01';
 
@@ -78,6 +80,7 @@ sub do_read {
 	my $re_empty = qr/^\s*$/;
 	my $re_block = qr/^\[(\w+)\]/;
 
+	binmode( $fh, ':encoding(utf8)' );
 	while( defined(my $l = <$fh>) ){
 
 		if( $l =~/$re_empty/ ){
@@ -174,6 +177,7 @@ sub do_write {
 
 	my @fields = &Workout::Chunk::core_fields();
 
+	binmode( $fh, ':encoding(utf8)' );
 	print $fh "[Params]\n";
 	print $fh "Version=1\n";
 	print $fh "Columns=", join(",", @fields), "\n";

@@ -259,6 +259,8 @@ sub do_write {
 	$self->chunk_count
 		or croak "no data";
 
+	binmode( $fh, ':encoding(utf8)' );
+
 	my( $minlon, $minlat, $maxlon, $maxlat );
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
