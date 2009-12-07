@@ -58,6 +58,15 @@ sub filetypes {
 	return "srm";
 }
 
+our %fields_supported = map { $_ => 1; } qw{
+	dist
+	work
+	hr
+	cad
+	temp
+	ele
+};
+
 our %defaults = (
 	recint		=> 1,
 	tz		=> 'local',
@@ -82,6 +91,9 @@ sub new {
 	my $self = $class->SUPER::new( {
 		%defaults,
 		%$a,
+		fields_supported	=> {
+			%fields_supported,
+		},
 		cap_block	=> 1,
 		cap_note	=> 1,
 	});
@@ -471,6 +483,8 @@ sub do_read {
 
 	my $ckread;
 	
+	$self->debug( "starting to read chunks at ", tell $fh );
+
 	if( $self->version eq 'SRM7' ){
 		$ckread = $self->read_srm7( $fh, \@blocks, $temperature );
 	} else {
@@ -523,8 +537,6 @@ sub read_srm {
 	my $buf;
 	my $cktime;
 
-	$self->debug( "starting to read chunks at ", tell $fh );
-
 	while( CORE::read( $fh, $buf, 5 ) == 5 ){
 
 		if( ! $ckread || $ckread > $blk->{cklast} ){
@@ -559,6 +571,10 @@ sub read_srm {
 
 		$self->chunk_add( $chunk );
 	}
+
+	$self->fields_io( qw(
+		time dur work cad hr dist
+	));
 
 	$ckread;
 }
@@ -604,6 +620,10 @@ sub read_srm7 {
 
 		$self->chunk_add( $chunk );
 	}
+
+	$self->fields_io( qw(
+		time dur work cad hr dist ele temp
+	));
 
 	$ckread;
 }

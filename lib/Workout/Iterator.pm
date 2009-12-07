@@ -140,6 +140,46 @@ number of chunks passed out of this iterator
 =cut
 
 
+=head2 fields_supported( [ <field> .. ] )
+
+return list of fields supported by this Store.
+
+=cut
+
+sub fields_supported { shift->src->fields_supported( @_ ); }
+
+
+
+=head2 fields_unsupported( <field> ... )
+
+returns list of fields unsupported by this store.
+
+=cut
+
+sub fields_unsupported {
+	my $self = shift;
+
+	my %ok = map {
+		$_ => 1;
+	} $self->fields_supported;
+
+	grep { ! exists $ok{$_} } @_;
+}
+
+
+
+=head2 fields_io
+
+get list of fields that were read 
+
+=cut
+
+sub fields_io { shift->src->fields_io; }
+
+
+
+
+
 1;
 __END__
 

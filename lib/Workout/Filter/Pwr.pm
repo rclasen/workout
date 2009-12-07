@@ -68,6 +68,30 @@ sub new {
 	});
 }
 
+sub fields_supported {
+	my $self = shift;
+	
+	my %sup = map { $_ => 1 } ('work',
+		$self->SUPER::fields_supported,
+	);
+
+	if( @_ ){
+		return grep { exists $sup{$_} } @_;
+	} else {
+		return keys %sup;
+	}
+}
+
+sub fields_io {
+	my $self = shift;
+
+	my %fields = map { $_ => 1 } ( 'work',
+		$self->SUPER::fields_io,
+	);
+
+	keys %fields;
+}
+
 sub process {
 	my $self = shift;
 

@@ -44,8 +44,6 @@ __PACKAGE__->mk_ro_accessors(qw(
 	fields
 ));
 
-# TODO: use ->{store} for master to avoid breaking ->from
-
 sub new {
 	my( $class, $iter, $a ) = @_;
 
@@ -64,6 +62,22 @@ sub new {
 sub stores {
 	my( $self ) = @_;
 	( $self->SUPER::stores, $self->master->stores );
+}
+
+sub fields_supported {
+	my $self = shift;
+
+	my %sup = map { $_ => 1 }
+		$self->SUPER::fields_supported(  @{$self->{fields}} ),
+		$self->master->fields_supported( @_ );
+	
+	keys %sup;
+}
+
+sub fields_io {
+	my $self = shift;
+
+	( $self->master->fields_io, @{$self->{fields}} );
 }
 
 sub _fetch_master {

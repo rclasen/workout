@@ -9,6 +9,7 @@ workout (0.13) unstable; urgency=low
   * fixed encoding for (new)Gpx, HRM and Wkt Stores
   * added rudimentary Documentation to Store.pm
   * reworked Iterator store handling. Allows multiple stores per chain.
+  * added support for tracking supported/used/wanted fields
 
  -- Rainer Clasen <bj@zuto.de>  Mon, 07 Dec 2009 19:08:35 +0100
 

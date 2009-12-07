@@ -64,7 +64,6 @@ sub process {
 sub stores { $_[0]->src; }
 
 
-
 # TODO: move documentation to Workout;
 # TODO: rewrite Store::* as input/output filter
 
@@ -74,11 +73,22 @@ use 5.008008;
 use strict;
 use warnings;
 use base 'Workout::Base';
+use Workout::Chunk;
 use Workout::Marker;
 use Workout::Filter::Info;
 use Carp;
 
 our $VERSION = '0.01';
+
+our %fields_essential = map { $_ => 1; } qw{
+	time
+	dur
+};
+
+our %fields_supported = map { $_ => 1; } 
+	Workout::Chunk::core_fields;
+
+
 
 sub filetypes {
 	my( $class ) = @_;
@@ -111,11 +121,24 @@ sub new {
 	my $self = $class->SUPER::new({
 		cap_block	=> 1,
 		cap_note	=> 1,
+		fields_io	=> {},
+		fields_essential	=> {},
+		fields_supported	=> {
+			%fields_supported,
+		},
 		%$a,
 		chunk		=> [],
 		mark		=> [],
 	});
-
+	$self->{fields_essential} = {
+		%{$self->{fields_essential}},
+		%fields_essential,
+	},
+	$self->{fields_supported} = {
+		%{$self->{fields_supported}},
+		%{$self->{fields_essential}},
+	},
+	$self->{fields_io} ||= { %{ $self->{fields_supported} } };
 	$self;
 }
 
@@ -141,6 +164,8 @@ sub from { # TODO: make this a constructor
 	foreach my $store ( $iter->stores ){
 		$self->from_store( $store );
 	}
+
+	$self->fields_io( $self->fields_supported( $iter->fields_io ));
 }
 
 
@@ -244,6 +269,77 @@ sub write {
 
 	1;
 }
+
+
+
+=head2 fields_essential
+
+return list of fields essential for this store. Essential fields must have
+a (non-null) value.
+
+=cut
+
+sub fields_essential {
+	my $self = shift;
+	keys %{$self->{fields_essential}};
+}
+
+
+
+=head2 fields_supported( [ <fields>, ...] )
+
+return list of fields supported by this Store.
+
+=cut
+
+sub fields_supported {
+	my $self = shift;
+	if( @_ ){
+		grep { exists $self->{fields_supported}{$_} } @_;
+	} else {
+		keys %{$self->{fields_supported}};
+	}
+}
+
+
+
+=head2 fields_unsupported( <field> ... )
+
+returns list of fields unsupported by this store.
+
+=cut
+
+sub fields_unsupported {
+	my $self = shift;
+
+	grep { ! exists $self->{fields_supported}{$_} } @_;
+}
+
+
+
+=head2 fields_io( [<field> ... ] )
+
+set/get list of fields that were read / that are written.
+
+=cut
+
+sub fields_io {
+	my $self = shift;
+
+	if( @_ ){
+		if( my @unsup = $self->fields_unsupported( @_ ) ){
+			croak "fields are unsupported by this store: @unsup";
+		}
+
+		$self->{fields_io} = {
+			map { $_ => 1 } @_, keys %{$self->{fields_essential}},
+		};
+
+	} else {
+		keys %{$self->{fields_io}};
+	}
+}
+
 
 
 =head2 cap_block
@@ -487,10 +583,18 @@ check chunk data validity. For use in chunk_add().
 sub chunk_check {
 	my( $self, $c ) = @_;
 
-	$c->dur
-		or croak "missing duration";
-	$c->time
-		or croak "missing time";
+	foreach my $f ( keys %{ $self->{fields_essential} } ){
+		if( $f eq 'dur' ){
+			$c->dur or croak "missing duration";
+
+		} elsif( $f eq 'time' ){
+			$c->time or croak "missing time";
+
+		} else {
+			defined $c->$f or croak "missing field: $f";
+
+		}
+	}
 
 	if( $self->recint && abs($self->recint - $c->dur) > 0.1 ){
 		croak "duration doesn't match recint";

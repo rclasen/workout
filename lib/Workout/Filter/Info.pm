@@ -86,6 +86,7 @@ our %init = (
 	cad_nsum	=> 0,
 	cad_max	=> 0,
 	cad_max_time	=> undef,
+	fields_used	=> {},
 );
 
 __PACKAGE__->mk_accessors( keys %default );
@@ -101,11 +102,17 @@ sub new {
 	my( $class, $iter, $a ) = @_;
 
 	$a||={};
-	$class->SUPER::new( $iter, { 
+	my $self = $class->SUPER::new( $iter, { 
 		%default, 
 		%$a, 
 		%init,
 	});
+
+	$self->{fields_used} = { 
+		map { $_ => 0 } $self->fields_supported,
+	};
+	
+	$self;
 }
 
 sub set_min {
@@ -186,6 +193,10 @@ sub process {
 	$self->{chunk_first} ||= $d;
 	$self->{chunk_last} = $d;
 
+	foreach my $f ( keys %{$self->{fields_used}} ){
+		++$self->{fields_used}{$f} if $d->$f;
+	}
+
 	$self->{dist} += $d->dist ||0;
 
 	if( $d->ele ){
@@ -241,6 +252,22 @@ sub time_end {
 		or return;
 	$c->time;
 }
+
+=head fields_used
+
+builds and returns a hashref with fields that are actually used.
+
+=cut
+
+sub fields_used {
+	my( $self ) = @_;
+
+	$self->{fields_used};
+}
+
+
+
+
 
 sub dur {
 	my( $self ) = @_;

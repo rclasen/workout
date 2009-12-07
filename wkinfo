@@ -128,6 +128,9 @@ my $edate = DateTime->from_epoch(
 	time_zone	=> 'local',
 );
 
+my $fields = $info->fields_used;
+my @fields = sort { $a cmp $b } grep { $fields->{$_} } keys %{$fields};
+
 # TODO: zones/inzone
 
 foreach my $attr (qw( athletename note circum slope zeropos )){
@@ -141,6 +144,7 @@ print
 "chunks:          ", $src->chunk_count, " (", 
 	sprintf('%.2f',$info->dur/$src->chunk_count), "s/chunk recint=", 
 	$src->recint||0, ")\n",
+"used fields:     ", join(',', @fields ), "\n", 
 "marker:          ", $src->mark_count, "\n",
 
 "start time:      ", $sdate->datetime, "\n",

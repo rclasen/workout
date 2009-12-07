@@ -54,6 +54,14 @@ our %defaults = (
 	recint	=> 5,
 );
 
+our %fields_supported = map { $_ => 1; } qw{
+	hr
+	cad
+	dist
+	ele
+	work
+};
+
 our $re_fieldsep = qr/\t/;
 
 __PACKAGE__->mk_accessors( keys %defaults );
@@ -71,6 +79,9 @@ sub new {
 	$class->SUPER::new({
 		%defaults,
 		%$a,
+		fields_supported	=> {
+			%fields_supported,
+		},
 		date	=> undef,	# tmp read
 		time	=> 0,		# tmp read
 		colfunc	=> [],		# tmp read
@@ -180,12 +191,12 @@ sub parse_params {
 		$self->athlete->vo2max( $v );
 
 	} elsif( $k eq 'smode' ){
-		$v =~ /^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/
+		@_ = $v =~ /^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/
 			or croak "invalid smode";
 
 		# set unit conversion multiplieres
 		my( $mdist, $mele );
-		if( $8 ){ # uk
+		if( $_[7] ){ # uk
 			# 0.1 mph -> m/s
 			# ($x/10 * 1.609344)/3.6
 			$mdist = 1.609344/10/3.6;
@@ -199,17 +210,43 @@ sub parse_params {
 			$mele = 1;
 		}
 
-		# add parser for each column
+		# add parser/fields for each column
+		my @fields = qw/ time dur hr /;
 		my @colfunc = ( sub { 'hr'	=> $_[0] } );
-		push @colfunc, sub { 'dist' => $_[0] * $mdist * $self->recint } if $1;
-		push @colfunc, sub { 'cad' => $_[0] } if $2;
-		push @colfunc, sub { 'ele' => $_[0] * $mele } if $3;
-		push @colfunc, sub { 'work' => $_[0] * $self->recint } if $4;
+
+		if( $_[0] ){
+			push @fields, 'dist';
+			push @colfunc, sub {
+				'dist' => $_[0] * $mdist * $self->recint;
+			};
+		}
+
+		if( $_[1] ){
+			push @fields, 'cad';
+			push @colfunc, sub {
+				'cad' => $_[0];
+			};
+		}
+
+		if( $_[2] ){
+			push @fields, 'ele';
+			push @colfunc, sub {
+				'ele' => $_[0] * $mele;
+			};
+		}
+
+		if( $_[3] ){
+			push @fields, 'work';
+			push @colfunc, sub {
+				'work' => $_[0] * $self->recint;
+			};
+		}
 
 		# not supported, ignore:
 		#push @colfunc, sub { 'pbal' => $_[0] } if ($5||$6) && $9;
 		#push @colfunc, sub { 'air' => $_[0] } if $9;
 
+		$self->fields_io( @fields );
 		$self->{colfunc} = \@colfunc;
 	}
 	
@@ -272,7 +309,6 @@ write data to disk.
 
 our $minlap = 5;
 
-# TODO: specify what to write: hr, spd, cad, ele, pwr
 sub do_write {
 	my( $self, $fh ) = @_;
 
@@ -350,6 +386,22 @@ sub do_write {
 	}
 
 
+	my %fields = map {
+		$_	=> 1,
+	} $self->fields_io;
+
+	my $smode = sprintf('%0d%0d%0d%0d1110',
+		$fields{cad} || 0,
+		$fields{dist} || 0,
+		$fields{ele} || 0,
+		$fields{work} || 0,
+	);
+	my @colfunc = ( sub { int($_[0]->hr||0) } );
+	push @colfunc, sub { int( ($_[0]->spd||0) * 36 +0.5) } if $fields{dist};
+	push @colfunc, sub { int( ($_[0]->cad||0) +0.5) } if $fields{cad};
+	push @colfunc, sub { int( ($_[0]->ele||0) +0.5) } if $fields{ele};
+	push @colfunc, sub { int( ($_[0]->pwr||0) +0.5) } if $fields{work};
+
 	my $sdate = DateTime->from_epoch( 
 		epoch		=> $self->time_start,
 		time_zone	=> $self->tz,
@@ -360,7 +412,7 @@ sub do_write {
 "[Params]
 Version=106
 Monitor=12
-SMode=11111110
+SMode=$smode
 Date=", $sdate->strftime( '%Y%m%d' ), "
 StartTime=", $sdate->strftime( '%H:%M:%S.%1N' ), "
 Length=", $self->fmtdur( $self->dur ), "
@@ -457,13 +509,9 @@ Weight=", int($athlete->weight), "
 	print $fh "[HRData]\n";
 	my $it = $self->iterate;
 	while( my $row = $it->next ){
-		print $fh join( "\t", (
-			int(($row->hr || 0)+0.5),
-			int(($row->spd || 0) * 36+0.5),
-			int(($row->cad ||0)+0.5),
-			int(($row->ele ||0)+0.5),
-			int(($row->pwr ||0)+0.5),
-		) ), "\n";
+		print $fh join( "\t", map {
+			$_->( $row );
+		} @colfunc ), "\n";
 	};
 }
 

@@ -133,6 +133,7 @@ sub parse_params {
 			or croak "missing time column";
 		grep { /^dur$/ } @cols
 			or croak "missing duration column";
+		$self->fields_io( @cols );
 		$self->{columns} = \@cols;
 
 	}
@@ -174,7 +175,7 @@ sub do_write {
 
 	$self->chunk_last or croak "no data";
 
-	my @fields = &Workout::Chunk::core_fields();
+	my @fields = $self->fields_io;
 
 	binmode( $fh, ':encoding(utf8)' );
 	print $fh "[Params]\n";

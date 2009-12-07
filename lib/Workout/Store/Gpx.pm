@@ -125,6 +125,7 @@ sub end_leaf {
 
 	} elsif( $name eq 'trkele' ){
 		$self->{pt}{ele} = $node->{cdata};
+		++$self->{has_ele};
 
 	} elsif( $name eq 'trkcmt' ){
 		$self->{cmt} ||= $node->{cdata};
@@ -188,6 +189,18 @@ sub end_trkpt {
 	$self->{lpt} = $pt;
 }
 
+sub end_document {
+	my( $self ) = @_;
+
+	my @fields = $self->{Store}->fields_essential;
+	push @fields, 'ele' if $self->{has_ele};
+
+	$self->{Store}->fields_io( @fields );
+
+	$self->{has_ele} = 0;
+
+	1;
+}
 
 
 package Workout::Store::Gpx;
@@ -204,6 +217,16 @@ sub filetypes {
 	return "gpx";
 }
 
+our %fields_essential = map { $_ => 1; } qw{
+	lon
+	lat
+};
+
+our %fields_supported = map { $_ => 1; } qw{
+	ele
+};
+
+
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
 
 sub new {
@@ -212,6 +235,12 @@ sub new {
 	$a ||= {};
 	my $self = $class->SUPER::new( {
 		%$a,
+		fields_essential	=> {
+			%fields_essential,
+		},
+		fields_supported	=> {
+			%fields_supported,
+		},
 		cap_block	=> 1,
 		cap_note	=> 1,
 	});
@@ -229,17 +258,9 @@ sub do_read {
 
 	$parser->parse_file( $fh )
 		or croak "parse failed: $!";
+
 }
 
-
-sub chunk_check {
-	my( $self, $c ) = @_;
-
-	unless( $c->lon && $c->lat ){
-		croak "missing lon/lat at ". $c->time;
-	}
-	$self->SUPER::chunk_check( $c );
-}
 
 sub _time2str {
 	my( $time ) = @_;
@@ -284,6 +305,10 @@ sub do_write {
 	my $now = _time2str( time );
 	my $note = $self->note || '';
 
+	my %write = map {
+		$_ => 1;
+	} $self->fields_io;
+
 	print $fh <<EOHEAD;
 <?xml version="1.0" encoding="utf-8"?>
 <gpx xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" creator="Workout::Store::Gpx" xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd" xmlns="http://www.topografix.com/GPX/1/0">
@@ -302,10 +327,10 @@ EOHEAD
 			print $fh "</trkseg>\n<trkseg>\n";
 		}
 
-		print $fh '<trkpt lat="', $c->lat, '" lon="', $c->lon, '">', "\n",
-		'<ele>', $c->ele, '</ele>',"\n",
-		'<time>', _time2str($c->time), '</time>',"\n",
-		'</trkpt>',"\n";
+		print $fh '<trkpt lat="', $c->lat, '" lon="', $c->lon, '">', "\n";
+		print $fh '<ele>', $c->ele, '</ele>',"\n" if $write{ele};
+		print $fh '<time>', _time2str($c->time), '</time>',"\n",
+			'</trkpt>',"\n";
 	}
 
 	print $fh <<EOTAIL;
