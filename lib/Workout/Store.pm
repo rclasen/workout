@@ -14,34 +14,17 @@ Workout::Store - Memory storage for Workout data
 
   # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
-  # read Gpx file for elevation
-  $ele = Workout::Store::Gpx->read( "iele.gpx );
 
-  # join, resample and merge input files into a memory copy
-  $join = Workout::Filter::Join->new( $src );
-  # aggregate/split chunks
-  $res = Workout::Filter::Resample->new( $join, { recint => 5 } ); 
-  # add ele info
-  $merge = Workout::Filter::Merge->new( $ele, {
-  	master	=> $res, 
-	fields	=> [ 'ele' ],
-  }); 
-  # tmp copy for demonstration purpose
-  $mem = Workout::Store->new;
-  $mem->from( $merge );
-
-  # write to file, resample to new interval
-  $conv = Workout::Filter::Resample->new( $mem, { recint => 5 } );
-  # write to HRM file (one block) and different recint
-  $dst = Workout::Store::HRM->new( { recint => 5 } );
-  $dst->from( $conv );
-  $dst->write( "out.hrm" );
+  $it = $src->iterate;
+  while( defined(my $chunk = $it->next)){
+  	print join(",",@$chunk{qw(time dur pwr)}),"\n";
+  }
 
 
 =head1 DESCRIPTION
 
-Base Class Container for Sport Workout recordings taken from Heart rate
-monitors, Power meters, GPS receivers and so on.
+Container class with data chunks of sport workout recordings. This is
+supposed to be subclassed for reading/writing specific workout file types.
 
 =cut
 
@@ -64,8 +47,7 @@ sub process {
 sub stores { $_[0]->src; }
 
 
-# TODO: move documentation to Workout;
-# TODO: rewrite Store::* as input/output filter
+# TODO: rewrite individual Workout::Store::* as input/output filters
 
 package Workout::Store;
 
@@ -104,15 +86,34 @@ __PACKAGE__->mk_accessors(qw(
 ));
 
 
+=head1 CONSTRUCTOR
 
+=head2 new( [ \%arg ] )
 
-=head2 new( \%args )
+Creates an empty Store.
 
-Constructor. Creates an empty Store.
+In addition the the Workout::Base the following arguments are recognized.
+Please see the matching method's description:
+
+=over 4
+
+=item recint
+
+=item cap_block
+
+=item cap_note
+
+=item note
+
+=item fields_essential
+
+=item fields_supported
+
+=item fields_io
+
+=back
 
 =cut
-
-# TODO: document new %args
 
 sub new {
 	my( $class, $a ) = @_;
@@ -121,11 +122,11 @@ sub new {
 	my $self = $class->SUPER::new({
 		cap_block	=> 1,
 		cap_note	=> 1,
-		fields_io	=> {},
 		fields_essential	=> {},
 		fields_supported	=> {
 			%fields_supported,
 		},
+		fields_io	=> {},
 		%$a,
 		chunk		=> [],
 		mark		=> [],
@@ -143,68 +144,9 @@ sub new {
 }
 
 
+=head2 read( $fname [, \%arg ] )
 
-=head2 from( $source )
-
-Copy chunks and store data from specified source (other Workout::Store or
-Workout::Iterator).
-
-=cut
-
-sub from { # TODO: make this a constructor
-	my( $self, $iter ) = @_;
-
-	$iter->isa( 'Workout::Iterator' )
-		or $iter = $iter->iterate;
-
-	while( defined( my $chunk = $iter->next )){
-		$self->chunk_add( $chunk->clone );
-	}
-
-	foreach my $store ( $iter->stores ){
-		$self->from_store( $store );
-	}
-
-	$self->fields_io( $self->fields_supported( $iter->fields_io ));
-}
-
-
-
-=head2 from_store( $store )
-
-Copy store data (no chunks) from specified store.
-
-=cut
-
-sub from_store {
-	my( $self, $store ) = @_;
-
-	my $marks = $store->marks;
-	if( $marks ){
-		foreach my $mark ( @{$store->marks} ){
-			$self->mark_new( $mark );
-		}
-	}
-
-	$self->note( $store->note );
-}
-
-
-
-=head2 do_read( $fh )
-
-stub. Has to be implemented by individual stores according to their File
-format.
-
-=cut
-
-sub do_read { croak "reading is not suported"; };
-
-
-
-=head read( $fname, \%new )
-
-Constructor. Create new store and read data from $fname. \%new is passed
+Create new store and read data from $fname. \%arg is passed
 to new().
 
 =cut
@@ -231,6 +173,68 @@ sub read {
 
 	$self;
 }
+
+
+
+=head1 METHODS
+
+=head2 from( $source )
+
+Copy chunks and store data from specified source (other Workout::Store or
+Workout::Iterator).
+
+This will turn into a constructor in a future release.
+
+=cut
+
+sub from { # TODO: make this a constructor
+	my( $self, $iter ) = @_;
+
+	$iter->isa( 'Workout::Iterator' )
+		or $iter = $iter->iterate;
+
+	while( defined( my $chunk = $iter->next )){
+		$self->chunk_add( $chunk->clone );
+	}
+
+	foreach my $store ( $iter->stores ){
+		$self->from_store( $store );
+	}
+
+	$self->fields_io( $self->fields_supported( $iter->fields_io ));
+}
+
+
+
+=head2 from_store( $store )
+
+Copy store data (no chunks) from specified store. Used by from()
+
+=cut
+
+sub from_store {
+	my( $self, $store ) = @_;
+
+	my $marks = $store->marks;
+	if( $marks ){
+		foreach my $mark ( @{$store->marks} ){
+			$self->mark_new( $mark );
+		}
+	}
+
+	$self->note( $store->note );
+}
+
+
+
+=head2 do_read( $fh )
+
+stub. Has to be implemented by individual stores according to their File
+format.
+
+=cut
+
+sub do_read { croak "reading is not suported"; };
 
 
 
@@ -271,6 +275,22 @@ sub write {
 }
 
 
+
+=head2 recint
+
+recording intervall (fixed). undef when variable intervalls are allowed.
+
+=head2 cap_block
+
+block capability. true when gaps between chunks are allowed.
+
+=head2 cap_note
+
+note capability. true when store supports a per-workout note/comment.
+
+=head2 note
+
+note. A per-workout comment.
 
 =head2 fields_essential
 
@@ -342,26 +362,9 @@ sub fields_io {
 
 
 
-=head2 cap_block
-
-block capability. true when gaps between chunks are allowed.
-
-=head2 cap_note
-
-note capability. true when store supports a per-workout note/comment.
-
-=head2 note
-
-note. A per-workout comment.
-
-=head2 recint
-
-recording intervall (fixed). undef when variable intervalls are allowed.
-
-
 =head2 iterate
 
-returns a Workout::Iterator to retrieve chunks one by one.
+returns an iterator for this store.
 
 =cut
 
@@ -611,6 +614,14 @@ sub chunk_check {
 }
 
 
+
+=head2 blocks
+
+returns arrayref of arrays with continous chunks. i.e. the chunks are
+split into individual arrays at each gap.
+
+=cut
+
 sub blocks { 
 	my( $self ) = @_;
 
@@ -705,7 +716,7 @@ sub mark_del {
 
 =head2 time_add_delta( $delta )
 
-adds $delta to all chunks and markers in this store. 
+adds $delta to all chunks and markers in this store.
 
 =cut
 
@@ -790,7 +801,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Iterator
+Workout::Base, Workout::Chunk, Workout::Marker, Workout::Iterator
 
 =head1 AUTHOR
 

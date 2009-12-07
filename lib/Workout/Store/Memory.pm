@@ -22,6 +22,8 @@ Workout::Store::Memory - Migration helper
 Workout::Store::Memory was merged into Workout::Store. This is an empty
 class to help migration.
 
+This is obsolete and will get removed. Don't use it.
+
 =cut
 
 package Workout::Store::Memory;

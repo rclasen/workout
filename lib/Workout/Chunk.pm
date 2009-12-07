@@ -12,15 +12,20 @@ Workout::Chunk - Workout Data Chunk
 
 =head1 SYNOPSIS
 
-  $mem = Workout::Store::Memory->new;
-  $mem->chunk_add( Workout::Chunk->new( 
-  	time	=> now,
+  $chunk = Workout::Chunk->new( 
+  	time	=> scalar time(),
 	dur	=> 5,
-  ));
+	work	=> 100,
+	# ... other core fields
+  );
+  print join(' ', $chunk->stime, $chunk->dur, $chunk->time, $chunk->pwr ),"\n";
+
+  $mem = Workout::Store->new;
+  $mem->chunk_add( $chunk );
 
 =head1 DESCRIPTION
 
-Container for data of a short period of time during a Workout.
+Container for a data tuple within a workout store.
 
 =cut
 
@@ -33,36 +38,9 @@ use base 'Class::Accessor::Fast';
 use Carp;
 use Math::Trig;
 
+# TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, spdmin=moving
 
 our $VERSION = '0.01';
-
-=pod
-
-core data fields:
-
-field	span	calc from	description
-
-time	abs	p:time,dur	end date (sec. since epoch 1970-1-1)
-
-ele 	geo	-		elevation at end of interval (m)
-
-lon,lat	geo	-		GPS coordinates
-
-dur	chunk	time,p:time	duration (sec)
-
-dist	chunk	dur,spd		distance, abs (m)
-		xdist,climb
-		p:odo,odo
-
-cad	chunkv	-		cadence, avg (1/min)
-hr	chunkv	-		heartrate, avg (1/min)
-
-work	chunk	pwr,dur		total, (Joule)
-		angle,speed,..(guess)
-
-temp	abs	-		temperature °C
-
-=cut
 
 our @core_fields = qw( 
 	time
@@ -76,15 +54,23 @@ our @core_fields = qw(
 	work
 	temp
 );
+
+our @fields_avg = qw( cad hr );
+
 __PACKAGE__->mk_accessors('prev', @core_fields);
 
+=head1 CONSTRUCTOR
 
-=head2 new( { <args> } )
+=head2 new( [ \%arg ] )
 
+creates new chunk. Fills in data from \%arg.
+
+=head2 $copy = $chunk->clone( [ \%overrides ] )
+
+copy current chunk.
 
 =cut
 
-# copy this chunk
 sub clone {
 	my( $self, $a ) = @_;
 
@@ -95,9 +81,267 @@ sub clone {
 	});
 }
 
+=head1 CLASS METHODS
+
+=head2 core_fields
+
+returns list with all core fields.
+
+=cut
+
 sub core_fields {
 	@core_fields;
 }
+
+
+=head1 CORE FIELDS
+
+These are the fields with actual data. Other fields in this chunk are
+calculated from these fields. The accessor methods allow set/get of the
+values. You can pass these fields to the constructor for initialization.
+
+=head2 time	I<abs>
+
+Chunk end date in seconds (sec) since epoch 1970-1-1. Essential: Must be non-null in
+each chunk.
+
+=head2 dur	I<relative>
+
+Duration / length of chunk in seconds (sec). Essential: Must be non-null in each
+chunk.
+
+=head2 ele	I<geo>
+
+Elevation at end of interval in meter (m)
+
+=head2 lon,lat	I<geo>
+
+GPS coordinates degrees of arc WGS84 (°).
+
+=head2 dist	I<relative>
+
+travelled distance during chunk in meters (m).
+
+=head2 cad	I<avg>
+
+Average Cadence during chunk (1/min)
+
+=head2 hr	I<avg>
+
+Average Heartrate during chunk (1/mi)n
+
+=head2 work	I<relative>
+
+work done during this chunk (Joule)
+
+=head2 temp	I<abs>
+
+Temperature at end of chunk in degrees centigrade (°C)
+
+=head2 prev
+
+Not really a core field. Points to the previous chunk. This is necessary
+for several of the following calculations.
+
+
+=head1 FIELDS
+
+calculated data fields with read-only accessors:
+
+=head2 isfirst
+
+returns true when there's no previous chunk.
+
+=cut
+
+sub isfirst {
+	my $self = shift;
+	return ! $self->prev;
+}
+
+=head2 isblockfirst
+
+returns true when there's a gap between the previous and this chunk
+
+=cut
+
+sub isblockfirst {
+	my $self = shift;
+	my $p = shift || $self->prev or return;
+	abs($self->gap($p) ||0) > 0.1;
+}
+
+=head2 stime	I<abs>
+
+start time of chunk.
+
+=cut
+
+sub stime {
+	my $self = shift;
+	$self->time - $self->dur;
+}
+
+=head2 gap	I<relative)
+
+gap between previous and this chunk in seconds (sec).
+
+=cut
+
+sub gap {
+	my $self = shift;
+	my $p = shift || $self->prev or return;
+	$self->stime - $p->time;
+}
+
+=head2 climb	I<relative>
+
+elevation change (+-) since last chunk in meters (m).
+
+=cut
+
+sub climb {
+	my $self = shift;
+	my $e = $self->ele;
+	defined $e or return;
+	my $p = $self->prev or return;
+	my $pe = $p->ele;
+	defined $pe or return;
+	$e - $pe;
+}
+
+=head2 vspd	I<avg>
+
+average vertical speed during this chunk in meters/second (m/sec)
+
+=cut
+
+sub vspd {
+	my $self = shift;
+	my $c = $self->climb or return;
+	my $d = $self->dur or return;
+	$c / $d;
+}
+
+	
+=head2 xdist	I<relative>
+
+surface distance (2-dimensional) since last chunk in meters (m)
+
+=cut
+
+sub xdist {
+	my $self = shift;
+
+	defined( my $c = $self->climb ) or return;
+	defined( my $d = $self->dist ) or return;
+	my $arg = $d**2 - $c**2; 
+	return if $arg <= 0;
+
+	sqrt( $arg )
+}
+
+=head2 grad	I<relative>
+
+gradient of elevation change since last chunk in percent (%)
+
+=cut
+
+sub grad {
+	my $self = shift;
+	defined( my $c = $self->climb ) or return;
+	my $xd = $self->xdist or return;
+	100 * $c / $xd;
+}
+
+=head2 angle	I<relative>
+
+slope of elevation chane since last chunk in radians (rad pi)
+
+=cut
+
+sub angle {
+	my $self = shift;
+	defined( my $c = $self->climb ) or return;
+	my $xd = $self->xdist or return;
+	atan2( $c, $xd );
+}
+
+=head2 spd 	I<avg>
+
+average speed during this chunk in meters/second (m/sec)
+
+=cut
+
+sub spd {
+	my $self = shift;
+	my $d = $self->dur or return;
+	defined( my $i = $self->dist ) or return;
+	$i/$d;
+}
+
+=head2 accel	I<relative>
+
+acceleration since last chunk in meters/second² (m/sec²)
+
+=cut
+
+sub accel {
+	my $self = shift;
+	my $d = $self->dur or return;
+	defined( my $s = $self->spd ) or return;
+	my $p = $self->prev or return;
+	defined( my $ps = $p->spd ) or return;
+	( $s - $ps ) / $d;
+}
+
+
+=head2 pwr 	I<avg>
+
+average power during this chunk in watt (W)
+
+=cut
+
+sub pwr {
+	my $self = shift;
+	my $d = $self->dur or return; # should be no-op
+	defined(my $w = $self->work) or return;
+	$w/$d;
+}
+
+=head2 torque	I<avg>
+
+average torque during this chunk in Newton * meter (Nm)
+
+=cut
+
+sub torque {
+	my $self = shift;
+	my $cad = $self->cad or return;
+	defined(my $pwr = $self->pwr) or return;
+
+	$pwr / (2 * pi * $cad ) * 60;
+}
+
+=head2 deconv	I<avg>
+
+average deconvolution during this chunk in meters (m). Might help you
+identifying the gear you've been using.
+
+=cut
+
+sub deconv { # deconvolution / entfaltung
+	my $self = shift;
+	my $cad = $self->cad or return;
+	defined(my $spd = $self->spd) or return;
+
+	$spd / $cad * 60;
+}
+
+
+=head1 METHODS
+
+=cut
 
 # caluclate data for time between two chunks
 sub _intersect {
@@ -130,7 +374,13 @@ sub _intersect {
 	$new;
 }
 
-# generate chunk that follows the current and lasts at most to the next
+
+=head2 synthesize( $time [, $next_chunk ] )
+
+generates an all-zero chunk that follows the current and lasts at most to the next
+
+=cut
+
 sub synthesize {
 	my( $self, $time, $next ) = @_;
 
@@ -152,7 +402,13 @@ sub synthesize {
 	$self->_intersect( $next, \%a );
 }
 
-# split current chunk at specified time
+=head2 split( $time )
+
+split current chunk at specified time and return the resulting two new
+chunks.
+
+=cut
+
 sub split {
 	my( $self, $time ) = @_;
 
@@ -197,7 +453,11 @@ sub split {
 	});
 }
 
-our @fields_avg = qw( cad hr );
+=head2 merge( @other_chunks )
+
+returns new chunk with summarized data from this and all @other_chunks.
+
+=cut
 
 sub merge {
 	my %a;
@@ -237,170 +497,12 @@ sub merge {
 	return Workout::Chunk->new( \%a );
 }
 
-=pod
-
-calculated data fields:
-
-field	span	calc from	description
-
-climb	chunk	p:ele,ele	elevation change, abs (m)
-incline	trip	p:incline,climb	cumulated positive climb, abs (m)
-
-xdist	chunk	geo,p:geo	2dimensional distance, abs (m)
-		dist,climb
-odo	trip	p:odo,dist	cumulated distance, abs, (m)
-
-grad	chunk	xdist,climb	gradient, avg (%)
-angle	chunk	xdist,climb	angle, avg (RAD PI)
-
-spd 	chunkv	dur,dist	speed, avg (m/sec)
-accel	chunk	p:spd,spd	acceleration (m/sec²)
-
-pwr 	chunkv	dur,work	power, avg (watt)
-
-pbal		-		pedal balance (?,polar)
-pidx		-		pedal index (?,polar)
-apres		-		air pressure, avg (?,polar)
-
-
-span:
-- abs		momentary snapshot of value at chunks' end
-- geo		momentary snapshot of geographic position at chunks' end
-- chunk		delta during chunk
-- chunkv	average of chunk's period
-- trip		cumulated value for whole trip
-
-abs+geo require two data sets
-
-geo based fields
- time	-> dur
- lon	-
- lat	|
- ele	+> dist, xdist, odo, climb, incline, grad, spd
-
-chunk based fields
- dur
- dist	-> spd
- climb	-> xdist, incline, grad
- pwr	-> work
- cad
- hr
-
-=cut
-
-# TODO: use vertmax=elef, elefuz=climb, accelmax,ravg=spd, spdmin=moving
-
-sub isfirst {
-	my $self = shift;
-	return ! $self->prev;
-}
-
-sub stime {
-	my $self = shift;
-	$self->time - $self->dur;
-}
-
-sub gap {
-	my $self = shift;
-	my $p = shift || $self->prev or return;
-	$self->stime - $p->time;
-}
-
-sub isblockfirst {
-	my $self = shift;
-	my $p = shift || $self->prev or return;
-	abs($self->gap($p) ||0) > 0.1;
-}
-
-sub climb {
-	my $self = shift;
-	my $e = $self->ele;
-	defined $e or return;
-	my $p = $self->prev or return;
-	my $pe = $p->ele;
-	defined $pe or return;
-	$e - $pe;
-}
-
-sub vspd {
-	my $self = shift;
-	my $c = $self->climb or return;
-	my $d = $self->dur or return;
-	$c / $d;
-}
-
-	
-sub xdist {
-	my $self = shift;
-
-	defined( my $c = $self->climb ) or return;
-	defined( my $d = $self->dist ) or return;
-	my $arg = $d**2 - $c**2; 
-	return if $arg <= 0;
-
-	sqrt( $arg )
-}
-
-sub grad {
-	my $self = shift;
-	defined( my $c = $self->climb ) or return;
-	my $xd = $self->xdist or return;
-	100 * $c / $xd;
-}
-
-sub angle {
-	my $self = shift;
-	defined( my $c = $self->climb ) or return;
-	my $xd = $self->xdist or return;
-	atan2( $c, $xd );
-}
-
-sub spd {
-	my $self = shift;
-	my $d = $self->dur or return;
-	defined( my $i = $self->dist ) or return;
-	$i/$d;
-}
-
-sub accel {
-	my $self = shift;
-	my $d = $self->dur or return;
-	defined( my $s = $self->spd ) or return;
-	my $p = $self->prev or return;
-	defined( my $ps = $p->spd ) or return;
-	( $s - $ps ) / $d;
-}
-
-
-sub pwr {
-	my $self = shift;
-	my $d = $self->dur or return; # should be no-op
-	defined(my $w = $self->work) or return;
-	$w/$d;
-}
-
-sub torque {
-	my $self = shift;
-	my $cad = $self->cad or return;
-	defined(my $pwr = $self->pwr) or return;
-
-	$pwr / (2 * pi * $cad ) * 60;
-}
-
-sub deconv { # deconvolution / entfaltung
-	my $self = shift;
-	my $cad = $self->cad or return;
-	defined(my $spd = $self->spd) or return;
-
-	$spd / $cad * 60;
-}
-
 1;
 __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Workout::Store, Workout::Iterator
 
 =head1 AUTHOR
 

@@ -7,7 +7,12 @@ cycling workouts (especially wattage based).
 These import/-export modules are "chained" together with filters for
 merging, converting and/or analyzing the data. 
 
-Please take a look at the examples executables (wk*) to see what's possible.
+Please start with 'perldoc Workout' to get an overview on how this library
+works.
+
+Please take a look at the executables (wkdump, wkinfo, wkconv, wkmerge,
+... ) to get some examples.
+
 
 INSTALLATION
 
@@ -23,9 +28,10 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
     Geo::Distance
-    Geo::Gpx
+    XML::SAX
     Class::Accessor::Fast
     Module::Pluggable
+    DateTime
 
 Optional (for wkplot and interactive wkdelta):
 
@@ -39,7 +45,7 @@ Copyright (C) 2008 by Rainer Clasen
 please find the details in the file "LICENSE".
 
 The SRM module is based on Stephan Mantlers SRM description from
-http://www.stephanmantler.com/wordpress/srm-file-format/en/
+http://www.stephanmantler.com/blog/srm-file-format/
 
 The Polar HRM module is based on
 http://www.polar.fi/files/Polar_HRM_file%20format.pdf 

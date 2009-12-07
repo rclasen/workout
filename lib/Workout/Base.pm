@@ -10,18 +10,9 @@
 
 Workout::Base - Base Class for Workout framework
 
-=head1 SYNOPSIS
-
-  # read SRM file with 1sec recint and multiple blocks
-  $src = Workout::Store::SRM->read( "input.srm" ); 
-  $it = $src->iterate;
-  while( defined(my $c = $it->next)){
-  	print join(",",$c->time, $c->dur, $c->pwr),"\n";
-  }
-
 =head1 DESCRIPTION
 
-Base Class to iterate through Workout Stores.
+Base class for functionality shared accross the Workout framework.
 
 =cut
 
@@ -35,24 +26,40 @@ use base 'Class::Accessor::Fast';
 
 our $VERSION = '0.01';
 
-=head2 new( $arg )
 
-create empty class.
+=head1 CONSTRUCTOR
+
+=head2 new( \%arg )
+
+create empty class. 
+
+Arguments:
+
+=over 4
+
+=item debug => 0|1
+
+enables debug logging. Defaults to off.
+
+=back
 
 =cut
 
 sub new {
 	my( $class, $a ) = @_;
 
-	my $self = $class->SUPER::new( $a );
-	$self->{debug} = $a->{debug} || 0,
-
-	return $self;
+	$a ||= {};
+	$class->SUPER::new({
+		debug => 0,
+		%$a,
+	});
 }
 
-=head2 debug
+=head1 METHODS
 
-log debug message when initialized with debug=>1
+=head2 debug( @msg )
+
+logs debug message to STDERR when initialized with debug=>1
 
 =cut
 
@@ -67,7 +74,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Class::Accessor, Workout::Store, Workout::Iterator
 
 =head1 AUTHOR
 

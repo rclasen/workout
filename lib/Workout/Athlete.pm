@@ -18,9 +18,10 @@ Workout::Athlete - Athlete specific Data
 	weight	=> 80,
   );
   $ath->vo2max( 50 );
+
   $src = Workout::Store::Gpx->read( "input.gpx" } );
   $pwr = Workout::Filter::Pwr->new( $src, { athlete => $ath } );
-  $dst = Workout::Store::Memory->new;
+  $dst = Workout::Store->new;
   $dst->from( $pwr );
 
 =head1 DESCRIPTION
@@ -48,32 +49,57 @@ our %default = (
 __PACKAGE__->mk_accessors( keys %default );
 
 
-=head2 new( <args> )
+# TODO: training zones
 
-create new Athlete object
+=head1 CONSTRUCTOR
+
+=head2 new( [ \%data ] )
+
+create new Athlete object. It's used in some places for calculating
+certain data.
+
+The object is initialized with the values from the optional data hashref.
+
+=cut
+
+sub new {
+	my( $class, $a ) = @_;
+
+	$a ||= {};
+	$class->SUPER::new({
+		%default,
+		%$a,
+	});
+}
+
+=head1 METHODS
+
+=head2 hrrest
+
+get/set resting heart rate (1/min).
+
+=head2 hrmax
+
+get/set maximum heart rate (1/min).
+
+=head2 weight
+
+get/set weight (kg)
+
+=head2 vo2max
+
+get/set maximal oxygen consumption rate (ml/min/kg)
 
 =cut
 
 
-sub new {
-	my( $class, %a ) = @_;
-
-	my $self = bless { %default
-	}, $class;
-
-	foreach my $f ( keys %default ){
-		$self->$f( $a{$f} ) if exists $a{$f};
-	}
-
-	return $self;
-}
 
 1;
 __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Class::Accessor, Workout, Workout::Store::HRM, Workout::Filter::Pwr
 
 =head1 AUTHOR
 

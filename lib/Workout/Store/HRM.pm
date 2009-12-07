@@ -17,6 +17,7 @@ Workout::Store::HRM - read/write polar HRM files
   use Workout::Store::HRM;
 
   $src = Workout::Store::HRM->read( "foo.hrm" );
+
   $iter = $src->iterate;
   while( $chunk = $iter->next ){
   	...
@@ -27,7 +28,11 @@ Workout::Store::HRM - read/write polar HRM files
 
 =head1 DESCRIPTION
 
-Interface to read/write Polar HRM files.
+Interface to read/write Polar HRM files. Inherits from Workout::Store and
+implements do_read/_write methods.
+
+HRM files are always written as DOS files with CRLF line endings and
+windows-1252 encoding.
 
 =cut
 
@@ -66,9 +71,9 @@ our $re_fieldsep = qr/\t/;
 
 __PACKAGE__->mk_accessors( keys %defaults );
 
-=head2 new( $file, $args )
+=head1 CONSTRUCTOR
 
-constructor
+=head2 new( [ \%args ] )
 
 =cut
 
@@ -90,6 +95,20 @@ sub new {
 	});
 }
 
+
+=head1 METHODS
+
+=head2 athlete
+
+set/get Workout::Athlete object for this Store. Most of it's data is part
+of the HRM file header.
+
+=head2 tz
+
+set/get timezone for reading/writing timestamps as HRM files stores them
+in local time without timezone. See DateTime.
+
+=cut
 
 sub do_read {
 	my( $self, $fh ) = @_;
@@ -275,17 +294,6 @@ sub parse_hrdata {
 }
 
 
-=head2 chunk_check( $chunk )
-
-=cut
-
-sub chunk_check {
-	my( $self, $c ) = @_;
-
-	$self->SUPER::chunk_check( $c );
-}
-
-
 =head2 fmtdur( $sec )
 
 format duration as required in HRM files
@@ -301,13 +309,7 @@ sub fmtdur {
 	sprintf( '%02i:%02i:%02i.0', $hrs, $min, $sec );
 }
 
-=head2 write
-
-write data to disk.
-
-=cut
-
-our $minlap = 5;
+our $minlap = 5; # TODO: minimum lap duration
 
 sub do_write {
 	my( $self, $fh ) = @_;
@@ -521,7 +523,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Workout::Store, Workout::Athlete
 
 =head1 AUTHOR
 

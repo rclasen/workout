@@ -12,23 +12,65 @@ Workout - Fabric for creating workout objects easily
 
 =head1 SYNOPSIS
 
-  # read SRM file with 1sec recint and multiple blocks
-  $src = Workout::file_read( "input.srm" ); 
-  $it = $src->iterate;
-  while( defined(my $chunk = $it->next)){
-  	print join(",",@$chunk{qw(time dur pwr)}),"\n";
-  }
+  # read SRM file with power, hr, cad, speed, but no elevation. Data has
+  # small gaps from stops at traffic lights. 1-sec recording intervall.
+  $srm = Workout::file_read( "input.srm" ); 
 
-  $dst = Workout::file_new( "foo", { ftype => "hrm" });
+  # read GPX file with elevaton. "Auto"-recording -> variable recording
+  # intervall. Data has gaps from bad signal reception.
+  $gpx = Workout::file_read( "iele.gpx, { ftype => 'gpx' });
+
+  # new empty store for Polar HRM file. Polar files have a fixed
+  # recording. According to the spec 5sec is the minimum fixed recording
+  # intervall.
+  $hrm = Workout::file_new( { ftype => "hrm", recint => 5 });
+
+  # join, resample and merge input files into the destination store:
+
+  # close gaps
+  $join = Workout::filter( 'Join', $srm );
+
+  # aggregate/split chunks
+  $res = Workout::filter( 'Resample', $join, { recint => 5 } ); 
+
+  # add ele info
+  $merge = Workout::filter( 'Merge', $ele, {
+  	master	=> $res, 
+	fields	=> [ 'ele' ],
+  }); 
+
+  # run the above filter pipelin to convert and copy data to 
+  # the HRM store:
+  $hrm->from( $merge );
+
+  # write the resulting HRM data to file
+  $hrm->write( "out.hrm" );
 
 =head1 DESCRIPTION
 
-easily create workout objects
+The Workout framework offers a common api to access all kinds of sport
+workout data. It focuses on data from bike computers, heart rate monitors
+and GPS that collect data throughout your workout in frequent intervalls.
+Admittedly it's a bit focused on cycling.
+
+Each recorded data tuple is stored in a "Workout::Chunk" object.
+
+All chunks of a workout are stored in a Workout::Store container. The
+store also supports "Workout::Marker" to keep track of laps or intervals
+in your workout.
+
+Usually you retrieve chunks from a store using the store's own iterator.
+This allows hiding the the store's internal details. 
+
+These iterators are chainable (similar to a unix pipe) with further
+filters (Workout::Filter). There are powerful filters for collecting some
+infos, merging workouts and doing other processing.
 
 =cut
 
 # TODO: capabilities for auto plumb: blocking, variable recint, supported fields
 # TODO: automatic plumbing of filters
+# TODO: automagically pass $calc, $athlete, and other options to new instances
 
 package Workout;
 
@@ -55,13 +97,20 @@ foreach my $store ( __PACKAGE__->stores ){
 	}
 }
 
-# TODO: automagically pass $calc, $athlete, and other options to new instances
 
-=head2 file_read( $fname, $a )
 
-instanciate object according to specified ftype (or guess one).
+=head1 FUNCTIONS
+
+=head2 file_types()
+
+return mapping of file-extension to Workout::Store class as detected on
+startup.
 
 =cut
+
+sub file_types {
+	return \%ftype;
+}
 
 sub file_type_class {
 	my( $type ) = @_;
@@ -72,6 +121,16 @@ sub file_type_class {
 	return $ftype{lc $type};
 }
 
+
+
+=head2 file_read( $fname, \%arg )
+
+Instantiates a Workout::Store using it's read() constructor. The Store
+class is guessed from the file extension unless specified manually. The
+argument hash is passed to it's constructor.
+
+=cut
+
 sub file_read {
 	my( $fname, $a ) = @_;
 
@@ -81,6 +140,15 @@ sub file_read {
 	$class->read( $fname, $a );	
 }
 
+
+
+=head2 file_new( \%arg )
+
+Instantiates an empty Workout::Store of the specified type, The argument
+hash is passed to it's constructor.
+
+=cut
+
 sub file_new {
 	my( $a ) = @_;
 
@@ -89,9 +157,12 @@ sub file_new {
 	$class->new( $a );	
 }
 
-=head2 filter( $type, <args> )
 
-create new filter object, passing <args> to it's constructor
+
+=head2 filter( $type, \%arg )
+
+create new Workout::Filter::$type filter object, passing the argument hash
+to it's constructor.
 
 =cut
 
@@ -110,7 +181,8 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Workout::Store, Workout::Chunk, Workout::Marker, Workout::Iterator,
+Workout::Filter::*, wkdump, wkinfo, wkconv, wkmerge
 
 =head1 AUTHOR
 

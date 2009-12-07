@@ -15,6 +15,7 @@ Workout::Store::Gpx - read/write GPS tracks in XML format
   use Workout::Store::Gpx;
 
   $src = Workout::Store::Gpx->read( "foo.gpx" );
+
   $iter = $src->iterate;
   while( $chunk = $iter->next ){
   	...
@@ -24,7 +25,8 @@ Workout::Store::Gpx - read/write GPS tracks in XML format
 
 =head1 DESCRIPTION
 
-Interface to read/write GPS files
+Interface to read/write GPS files. Inherits from Workout::Store and
+implements do_read/_write methods.
 
 =cut
 
@@ -229,6 +231,12 @@ our %fields_supported = map { $_ => 1; } qw{
 
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
 
+=head1 CONSTRUCTOR
+
+=head2 new( [ \%arg ] )
+
+=cut
+
 sub new {
 	my( $class, $a ) = @_;
 
@@ -345,7 +353,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store
+Workout::Store, Workout::XmlDescent, XML::SAX
 
 =head1 AUTHOR
 

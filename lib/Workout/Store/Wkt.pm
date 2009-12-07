@@ -25,7 +25,8 @@ Workout::Store::Wkt - read/write Wkt files
 
 =head1 DESCRIPTION
 
-Interface to read/write Wkt files.
+Interface to read/write Wkt files. Inherits from Workout::Store and
+implements do_read/_write methods.
 
 The Wkt file format is the "native" file format for the Workout library.
 Wkt files are always encoded as UTF8.

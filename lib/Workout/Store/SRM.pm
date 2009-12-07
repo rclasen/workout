@@ -26,7 +26,8 @@ Workout::Store::SRM - Perl extension to read/write SRM files
 
 =head1 DESCRIPTION
 
-Interface to read/write SRM power meter files
+Interface to read/write SRM power meter files. Inherits from
+Workout::Store and implements do_read/_write methods.
 
 =cut
 
@@ -78,9 +79,9 @@ our %defaults = (
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
-=head2 new( $file, $args )
+=head2 new( [ \%arg ] )
 
-constructor
+constructor. 
 
 =cut
 
@@ -100,6 +101,39 @@ sub new {
 
 	$self;
 }
+
+=head1 METHODS
+
+=head2 tz
+
+set/get timezone for reading/writing timestamps as the SRM files store only a
+local timestamp without timezone. See DateTime.
+
+=head2 circum
+
+set/get wheel circumference in millimeters (mm)
+
+=head2 zeropos
+
+set/get zero offset in Hertz (HZ)
+
+=head2 slope
+
+set/get slope as known from srmwin and PowerControl
+
+=cut
+
+# TODO: unit for slope
+
+=head2 athletename
+
+set/get name of athlete (as stored in the PowerControl)
+
+=head2 version
+
+set/get file version: SRM6 or SRM7
+
+=cut
 
 sub from_store {
 	my( $self, $store ) = @_;
