@@ -27,13 +27,18 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-    Geo::Distance
-    XML::SAX
     Class::Accessor::Fast
     Module::Pluggable
     DateTime
 
-Optional (for wkplot and interactive wkdelta):
+Optional:
+
+  Certain file formats:
+
+    Geo::Distance
+    XML::SAX
+
+  Visualization (wkplot, wkdelta, ...)
 
     MyChart	- my local Chart plotting library
     Gtk2	- as Perl module
