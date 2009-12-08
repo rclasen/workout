@@ -235,6 +235,8 @@ our %fields_supported = map { $_ => 1; } qw{
 
 =head2 new( [ \%arg ] )
 
+creates an empty Store.
+
 =cut
 
 sub new {

@@ -12,15 +12,18 @@ Workout::Filter::FTP - caculcate NP, IF, TSS based on your FTP
 
 =head1 SYNOPSIS
 
-  # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
-  $it = Workout::Filter::FTP->new( $src->iterate, { ftp => 320 } );
+
+  $it = Workout::Filter::FTP->new( $src, { ftp => 320 } );
   $it->finish;
-  print $it->tss;
+
+  print "tss: ", $it->tss, "\n";
 
 =head1 DESCRIPTION
 
-Base Class for modifying and filtering the Chunks of a Workout.
+Calculates the metrics as defined by "Training and Racing with a power
+meter". This requires to resample the data to 1sec intervall to build a
+rolling average.
 
 =cut
 
@@ -41,9 +44,11 @@ our %default = (
 
 __PACKAGE__->mk_accessors( keys %default );
 
-=head2 new( $iter, $arg )
+=head1 CONSTRUCTOR
 
-create empty Iterator.
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -65,10 +70,25 @@ sub new {
 	});
 }
 
+=head1 METHODS
+
+=head2 dur
+
+returns the total duration of all chunks we've seen so far. So this is the
+total workout duration minus all gaps.
+
+=cut
+
 sub dur {
 	my( $self ) = @_;
 	$self->{dur};
 }
+
+=head2 apwr
+
+returns the average power of all chunks.
+
+=cut
 
 sub apwr {
 	my( $self ) = @_;
@@ -78,6 +98,12 @@ sub apwr {
 	$self->{work} / $self->{dur};
 }
 
+=head2 npwr
+
+returns the normalized power of all chunks
+
+=cut
+
 sub npwr {
 	my( $self ) = @_;
 
@@ -85,6 +111,12 @@ sub npwr {
 		or return;
 	( $self->{npwr_sum} / $self->{dur} ) ** 0.25;
 }
+
+=head2 vi
+
+returns the variability index of all chunks
+
+=cut
 
 sub vi {
 	my( $self ) = @_;
@@ -96,6 +128,12 @@ sub vi {
 	$npwr / $apwr;
 }
 
+=head2 vi
+
+returns the intensity factor of all chunks
+
+=cut
+
 sub if {
 	my( $self ) = @_;
 
@@ -103,6 +141,12 @@ sub if {
 		or return;
 	$self->npwr / $ftp;
 }
+
+=head2 vi
+
+returns the trainig stress score of all chunks
+
+=cut
 
 sub tss {
 	my( $self ) = @_;
@@ -140,6 +184,16 @@ sub process {
 	$c;
 }
 
-
 1;
+__END__
+
+=head1 SEE ALSO
+
+Workout::Filter::Resample
+
+=head1 AUTHOR
+
+Rainer Clasen
+
+=cut
 

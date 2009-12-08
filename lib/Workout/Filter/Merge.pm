@@ -14,20 +14,23 @@ Workout::Filter::Merge - Merge Workout data
 
 =head1 SYNOPSIS
 
-  $src_from = Workout::Store::Gpx->read( "foo.gpx" );
-  $src_to = Workout::Store::SRM->read( "foo.srm" );
-  $merged = Workoute::Filter::Merge( $src_from, $src_to, {
-  	master	=> $src_to,
+  $slave = Workout::Store::Gpx->read( "foo.gpx" );
+  $master = Workout::Store::SRM->read( "foo.srm" );
+
+  $merged = Workoute::Filter::Merge( $slave, {
+  	master	=> $master,
   	fields	=> [ "ele" ],
   });
+
   while( $chunk = $merged->next ){
   	# do something
   }
 
 =head1 DESCRIPTION
 
-merge data from different Workout Stores into one stream. You may specify
-whch fields to pick from the second, ... Store.
+merge data from different sources into one stream. Only specified
+fields are merged from the "slave" source into the chunks of the "master"
+source. Chunks of the slave source are resampled to fit the master.
 
 =cut
 
@@ -44,6 +47,14 @@ __PACKAGE__->mk_ro_accessors(qw(
 	fields
 ));
 
+=head1 CONSTRUCTOR
+
+=head2 new( $src, \%arg )
+
+creates the filter.
+
+=cut
+
 sub new {
 	my( $class, $iter, $a ) = @_;
 
@@ -58,6 +69,19 @@ sub new {
 		master	=> $master,
 	});
 }
+
+=head1 METHODS
+
+=head2 master
+
+returns the source itarator that returns the "master" chunks.
+
+=head2 fields
+
+returns an arrayref with the list of fields that are merged into the
+master chunks.
+
+=cut
 
 sub stores {
 	my( $self ) = @_;
@@ -119,7 +143,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Filter::Base 
+Workout::Filter::Resample 
 
 =head1 AUTHOR
 

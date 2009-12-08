@@ -17,8 +17,9 @@ Workout::Store::SRM - Perl extension to read/write SRM files
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->read( "foo.srm" );
+
   $iter = $src->iterate;
-  while( $chunk = itersrc->next ){
+  while( $chunk = $iter->next ){
   	...
   }
 
@@ -79,9 +80,11 @@ our %defaults = (
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
+=head1 CONSTRUCTOR
+
 =head2 new( [ \%arg ] )
 
-constructor. 
+creates an empty Store.
 
 =cut
 

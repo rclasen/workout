@@ -15,15 +15,18 @@ Workout::Filter::Timeshift - Timeshift Workout data
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->read( "foo.srm" );
-  $join = Workout::Filter::Timeshift->new( $src );
-  while( my $chunk = $join->next ){
+
+  $iter = Workout::Filter::Timeshift->new( $src, {
+  	delta => 42,
+  });
+
+  while( my $chunk = $iter->next ){
   	# do something
   }
 
 =head1 DESCRIPTION
 
-Iterator that automagically fills the gaps between individual data blocks
-with fake chunks.
+Adjusts the timestamps in all chunks by adding the specified delta
 
 =cut
 
@@ -32,6 +35,7 @@ use strict;
 use warnings;
 use base 'Workout::Filter::Base';
 use Carp;
+
 
 # TODO: also change marker?
 
@@ -43,9 +47,11 @@ our %default = (
 
 __PACKAGE__->mk_accessors(keys %default );
 
-=head2 new( $src, $arg )
+=head1 CONSTRUCTOR
 
-new iterator
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -59,9 +65,11 @@ sub new {
 	});
 }
 
-=head2 next
+=head1 METHODS
 
-get next data chunk
+=head2 delta
+
+get/set the delta that's added to all chunks.
 
 =cut
 

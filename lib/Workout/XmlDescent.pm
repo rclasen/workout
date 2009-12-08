@@ -10,15 +10,14 @@
 
 Workout::XmlDescent - adaptor for custom XML::SAX handler
 
-=head1 SYNOPSIS
-
-
 =head1 DESCRIPTION
 
 recurses nested tags and disambiguates their name + position in the
 hierarchie to a "node name". 
 
-The node tree lists which tags are allowed in each level.
+Tags allowed in each level are specified in the node tree.
+
+This class is intended as base class for custom handlers.
 
 =cut
 

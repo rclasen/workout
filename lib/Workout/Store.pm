@@ -12,19 +12,19 @@ Workout::Store - Memory storage for Workout data
 
 =head1 SYNOPSIS
 
-  # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
 
   $it = $src->iterate;
-  while( defined(my $chunk = $it->next)){
-  	print join(",",@$chunk{qw(time dur pwr)}),"\n";
+  while( $c = $it->next ){
+	print join(",",$c->time, $c->dur, $c->pwr ),"\n";
   }
 
 
 =head1 DESCRIPTION
 
 Container class with data chunks of sport workout recordings. This is
-supposed to be subclassed for reading/writing specific workout file types.
+supposed to be subclassed for reading/writing specific workout file types
+or downloading data direcly from a device.
 
 =cut
 
@@ -193,7 +193,7 @@ sub from { # TODO: make this a constructor
 	$iter->isa( 'Workout::Iterator' )
 		or $iter = $iter->iterate;
 
-	while( defined( my $chunk = $iter->next )){
+	while( my $chunk = $iter->next ){
 		$self->chunk_add( $chunk->clone );
 	}
 
@@ -364,7 +364,7 @@ sub fields_io {
 
 =head2 iterate
 
-returns an iterator for this store.
+returns an iterator for the chunks in this store.
 
 =cut
 
@@ -787,7 +787,7 @@ finish()ed Workout::Filter::Info.
 
 sub info {
 	my $self = shift;
-	my $i = Workout::Filter::Info->new( $self->iterate, @_ );
+	my $i = Workout::Filter::Info->new( $self, @_ );
 	$i->finish;
 	$i;
 }

@@ -10,13 +10,6 @@
 
 Workout::Store::Memory - Migration helper
 
-=head1 SYNOPSIS
-
-  $src = Workout::Store::Memory->new;
-  while( $chunk = $src->next ){
-  	...
-  }
-
 =head1 DESCRIPTION
 
 Workout::Store::Memory was merged into Workout::Store. This is an empty

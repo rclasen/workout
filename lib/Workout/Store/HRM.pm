@@ -67,13 +67,23 @@ our %fields_supported = map { $_ => 1; } qw{
 	work
 };
 
+# precompile pattern
 our $re_fieldsep = qr/\t/;
+our $re_stripnl = qr/[\r\n]+$/;
+our $re_empty = qr/^\s*$/;
+our $re_block = qr/^\[(\w+)\]/;
+our $re_value = qr/^\s*(\S+)\s*=\s*(\S*)\s*$/;
+our $re_date = qr/^(\d\d\d\d)(\d\d)(\d\d)$/;
+our $re_time = qr/^(\d+):(\d+):([\d.]+)$/;
+our $re_smode = qr/^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/;
 
 __PACKAGE__->mk_accessors( keys %defaults );
 
 =head1 CONSTRUCTOR
 
-=head2 new( [ \%args ] )
+=head2 new( [ \%arg ] )
+
+creates an empty Store.
 
 =cut
 
@@ -118,11 +128,6 @@ sub do_read {
 
 	$self->athlete( Workout::Athlete->new );
 
-	# precompile pattern
-	my $re_stripnl = qr/[\r\n]+$/;
-	my $re_empty = qr/^\s*$/;
-	my $re_block = qr/^\[(\w+)\]/;
-
 	binmode( $fh, ':crlf:encoding(windows-1252)' );
 	while( defined(my $l = <$fh>) ){
 		$l =~ s/$re_stripnl//g;
@@ -161,7 +166,7 @@ sub do_read {
 sub parse_params {
 	my( $self, $l ) = @_;
 
-	my( $k, $v ) = ($l =~ /^\s*(\S+)\s*=\s*(\S*)\s*$/)
+	my( $k, $v ) = ($l =~ /$re_value/ )
 		or croak "misformed input: $l";
 
 	$k = lc $k;
@@ -177,7 +182,7 @@ sub parse_params {
 		$self->{recint} = $v;
 	
 	} elsif( $k eq 'date' ){
-		$v =~ /^(\d\d\d\d)(\d\d)(\d\d)$/
+		$v =~ /$re_date/
 			or croak "invalid date";
 
 		$self->{date} = DateTime->new(
@@ -188,7 +193,7 @@ sub parse_params {
 		);
 
 	} elsif( $k eq 'starttime' ){
-		$v =~ /^(\d+):(\d+):([\d.]+)$/
+		$v =~ /$re_time/
 			or croak "invalid starttime";
 
 		$self->{date}->add(
@@ -210,7 +215,7 @@ sub parse_params {
 		$self->athlete->vo2max( $v );
 
 	} elsif( $k eq 'smode' ){
-		@_ = $v =~ /^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/
+		@_ = $v =~ /$re_smode/
 			or croak "invalid smode";
 
 		# set unit conversion multiplieres
@@ -292,13 +297,6 @@ sub parse_hrdata {
 	);
 	$self->chunk_add( Workout::Chunk->new( \%a ));
 }
-
-
-=head2 fmtdur( $sec )
-
-format duration as required in HRM files
-
-=cut
 
 sub fmtdur {
 	my( $self, $sec ) = @_;
@@ -443,7 +441,7 @@ Weight=", int($athlete->weight), "
 	print $fh "[IntTimes]\n";
 	foreach my $lap ( @laps ){
 		my $info = Workout::Filter::Info->new(
-			Workout::Filter::Timespan->new( $self->iterate, {
+			Workout::Filter::Timespan->new( $self, {
 				start	=> $lap->{start},
 				end	=> $lap->{end},
 			} )

@@ -182,7 +182,7 @@ sub stime {
 	$self->time - $self->dur;
 }
 
-=head2 gap	I<relative)
+=head2 gap	I<relative>
 
 gap between previous and this chunk in seconds (sec).
 

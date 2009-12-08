@@ -17,8 +17,8 @@ chunks
   $src = Workout::Store::SRM->read( "input.srm" ); 
 
   $it = $src->iterate;
-  while( defined(my $chunk = $it->next)){
-  	print join(",",@$chunk{qw(time dur pwr)}),"\n";
+  while( $c = $it->next ){
+	print join(",",$c->time, $c->dur, $c->pwr ),"\n";
   }
 
 =head1 DESCRIPTION
@@ -125,7 +125,7 @@ sub all {
 	my( $self ) = @_;
 
 	my @all;
-	while( defined(my $c = $self->next)){
+	while( my $c = $self->next ){
 		push @all, $c;
 	}
 
@@ -142,7 +142,7 @@ process all chunks, returns nothing.
 sub finish {
 	my( $self ) = @_;
 
-	while( defined($self->next)){}
+	while( $self->next ){}
 }
 
 

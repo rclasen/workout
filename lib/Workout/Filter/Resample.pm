@@ -15,7 +15,9 @@ Workout::Filter::Resample - Resample Workout data
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->read( "foo.srm" );
+
   $new = Workout::Filter::Resample->new( $src, { recint => 10 } );
+
   while( $chunk = $new->next ){
   	# do smething
   }
@@ -27,6 +29,7 @@ interval or shift data to a different offset. Multiple (shorter) Chunks
 are merged, longer Chunks are split into multiple parts.
 
 =cut
+
 
 use 5.008008;
 use strict;
@@ -43,9 +46,11 @@ our %default = (
 
 __PACKAGE__->mk_accessors( keys %default );
 
-=head2 new( $src, $arg )
+=head1 CONSTRUCTOR
 
-new Iterator
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -61,16 +66,10 @@ sub new {
 
 =head2 recint
 
-return recording/sampling interval in use
+get/set recording/sampling interval in use
 
 =cut
 
-
-=head2 next
-
-return next (resampled) data chunk
-
-=cut
 
 sub process {
 	my( $self ) = @_;

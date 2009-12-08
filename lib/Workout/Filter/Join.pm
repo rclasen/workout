@@ -15,14 +15,16 @@ Workout::Filter::Join - Join blocks within Workout data
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->read( "foo.srm" );
+
   $join = Workout::Filter::Join->new( $src );
+
   while( my $chunk = $join->next ){
   	# do something
   }
 
 =head1 DESCRIPTION
 
-Iterator that automagically fills the gaps between individual data blocks
+automagically fills the gaps between individual data blocks
 with fake chunks.
 
 =cut
@@ -41,9 +43,11 @@ our %default = (
 
 __PACKAGE__->mk_accessors( keys %default );
 
-=head2 new( $src, $arg )
+=head1 CONSTRUCTOR
 
-new Iterator
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -58,12 +62,6 @@ sub new {
 	$self->{stime} = undef;
 	$self;
 }
-
-=head2 next
-
-get next data chunk
-
-=cut
 
 sub process {
 	my( $self ) = @_;

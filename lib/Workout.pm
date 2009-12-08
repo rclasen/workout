@@ -49,15 +49,17 @@ Workout - Fabric for creating workout objects easily
 =head1 DESCRIPTION
 
 The Workout framework offers a common api to access all kinds of sport
-workout data. It focuses on data from bike computers, heart rate monitors
-and GPS that collect data throughout your workout in frequent intervalls.
-Admittedly it's a bit focused on cycling.
+workout data that's recorded in frequent intervalls througout the whole
+workout. It's written with heart rate monitors, bike computers and GPS in
+mind. Admittedly it's a bit focused on cycling.
 
 Each recorded data tuple is stored in a "Workout::Chunk" object.
 
 All chunks of a workout are stored in a Workout::Store container. The
 store also supports "Workout::Marker" to keep track of laps or intervals
-in your workout.
+in your workout. For now there's a bunch of stores to read and write
+several files (srm, hrm, gpx, ...). Writing stores to integrate other file
+types or direct device download should be quite easy.
 
 Usually you retrieve chunks from a store using the store's own iterator.
 This allows hiding the the store's internal details. 
@@ -71,6 +73,7 @@ infos, merging workouts and doing other processing.
 # TODO: capabilities for auto plumb: blocking, variable recint, supported fields
 # TODO: automatic plumbing of filters
 # TODO: automagically pass $calc, $athlete, and other options to new instances
+# TODO: find way to construct more complex pipelines more easily
 
 package Workout;
 
@@ -101,7 +104,7 @@ foreach my $store ( __PACKAGE__->stores ){
 
 =head1 FUNCTIONS
 
-=head2 file_types()
+=head2 file_types
 
 return mapping of file-extension to Workout::Store class as detected on
 startup.

@@ -12,9 +12,8 @@ Workout::Store::Wkt - read/write Wkt files
 
 =head1 SYNOPSIS
 
-  use Workout::Store::Wkt;
-
   $src = Workout::Store::Wkt->read( "foo.wkt" );
+
   $iter = $src->iterate;
   while( $chunk = $iter->next ){
   	...
@@ -51,10 +50,16 @@ sub filetypes {
 
 our $re_fieldsep = qr/\t/;
 our $re_mark = qr/^(\d*)\t(\d*)\t(.*)/;
+our $re_empty = qr/^\s*$/;
+our $re_block = qr/^\[(\w+)\]/;
+our $re_value = qr/^\s*(\S+)\s*=\s*(.*)\s*$/;
+our $re_colsep = qr/\s*,\s*/;
 
-=head2 new( $file, $args )
+=head1 CONSTRUCTOR
 
-constructor
+=head2 new( [ \%arg ] )
+
+creates an empty Store.
 
 =cut
 
@@ -76,9 +81,6 @@ sub do_read {
 	my $parser;
 	my $gotparams;
 	my $gotchunks;
-
-	my $re_empty = qr/^\s*$/;
-	my $re_block = qr/^\[(\w+)\]/;
 
 	binmode( $fh, ':encoding(utf8)' );
 	while( defined(my $l = <$fh>) ){
@@ -116,7 +118,7 @@ sub do_read {
 sub parse_params {
 	my( $self, $l ) = @_;
 
-	my( $k, $v ) = ($l =~ /^\s*(\S+)\s*=\s*(.*)\s*$/)
+	my( $k, $v ) = ($l =~ /$re_value/)
 		or croak "misformed input: $l";
 
 	$k = lc $k;
@@ -129,10 +131,10 @@ sub parse_params {
 		$self->note( $v );
 
 	} elsif( $k eq 'columns' ){
-		my @cols = split( /\s*,\s*/, lc $v);
-		grep { /^time$/ } @cols
+		my @cols = split( /$re_colsep/, lc $v);
+		grep { $_ eq 'time' } @cols
 			or croak "missing time column";
-		grep { /^dur$/ } @cols
+		grep { $_ eq 'dur' } @cols
 			or croak "missing duration column";
 		$self->fields_io( @cols );
 		$self->{columns} = \@cols;
@@ -164,13 +166,7 @@ sub parse_markers {
 	});
 }
 
-=head2 write
 
-write data to disk.
-
-=cut
-
-# TODO: specify what to write: hr, spd, cad, ele, pwr
 sub do_write {
 	my( $self, $fh ) = @_;
 

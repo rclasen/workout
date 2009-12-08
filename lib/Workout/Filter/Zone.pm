@@ -12,9 +12,9 @@ Workout::Filter::Zone - caculcate time in specified zones
 
 =head1 SYNOPSIS
 
-  # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
-  $it = Workout::Filter::Zone->new( $src->iterate, { zones => [ {
+
+  $it = Workout::Filter::Zone->new( $src, { zones => [ {
 	zone	=> 'recovery',
   	field	=> 'pwr',
 	min	=> 0,
@@ -26,11 +26,15 @@ Workout::Filter::Zone - caculcate time in specified zones
 	max	=> 320,
   } ] } );
   $it->finish;
-  print $it->tss;
+
+  foreach $zone ( @{ $it->zones } ){
+	  print "time in zone ", $zone->{zone}, ": ",
+	  	$zone->{dur}, "\n";
+  }
 
 =head1 DESCRIPTION
 
-Base Class for modifying and filtering the Chunks of a Workout.
+calculates time spent in specified zones.
 
 =cut
 
@@ -48,7 +52,15 @@ our %default = (
 	zones	=> [],
 );
 
-__PACKAGE__->mk_accessors( keys %default );
+__PACKAGE__->mk_ro_accessors( keys %default );
+
+=head1 CONSTRUCTOR
+
+=head2 new( $src, \%arg )
+
+creates the filter.
+
+=cut
 
 sub new {
 	my( $class, $iter, $a ) = @_;
@@ -67,6 +79,13 @@ sub new {
 	} );
 }
 
+=head1 METHODS
+
+=head2 zones
+
+returns an arrayref with the zones.
+
+=cut
 
 sub process {
 	my( $self ) = @_;
@@ -90,4 +109,15 @@ sub process {
 
 
 1;
+__END__
+
+=head1 SEE ALSO
+
+Workout::Filter::Base
+
+=head1 AUTHOR
+
+Rainer Clasen
+
+=cut
 

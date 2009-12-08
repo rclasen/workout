@@ -10,18 +10,10 @@
 
 Workout::Filter::Base - Base Class to filter Workout chunks
 
-=head1 SYNOPSIS
-
-  # read SRM file with 1sec recint and multiple blocks
-  $src = Workout::Store::SRM->read( "input.srm" ); 
-  $it = Workout::Filter::Join->new( $src->iterate );
-  while( defined(my $chunk = $it->next)){
-  	print join(",",@$chunk{qw(time dur pwr)}),"\n";
-  }
-
 =head1 DESCRIPTION
 
-Base Class for modifying and filtering the Chunks of a Workout.
+Base Class for modifying and filtering the Chunks of a Workout. Inherits
+from Workout::Iterator.
 
 =cut
 
@@ -35,10 +27,11 @@ use Carp;
 
 our $VERSION = '0.01';
 
+=head1 CONSTRUCTOR
 
-=head2 new( $iter, $arg )
+=head2 new( $src, \%arg )
 
-create empty Iterator.
+creates the filter.
 
 =cut
 
@@ -54,6 +47,8 @@ sub new {
 		queue	=> [],
 	});
 }
+
+# TODO: POD
 
 sub _push {
 	my $self = shift;

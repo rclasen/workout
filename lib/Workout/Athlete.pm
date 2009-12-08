@@ -21,12 +21,14 @@ Workout::Athlete - Athlete specific Data
 
   $src = Workout::Store::Gpx->read( "input.gpx" } );
   $pwr = Workout::Filter::Pwr->new( $src, { athlete => $ath } );
-  $dst = Workout::Store->new;
+
+  $dst = Workout::Store::Hrm->new( { athlete => $ath } );
   $dst->from( $pwr );
+  $dst->write( "out.hrm" );
 
 =head1 DESCRIPTION
 
-Container for Athlete Data.
+Class to hold athlete data.
 
 =cut
 

@@ -16,11 +16,14 @@ Workout::Filter::Pwr - Calculatate work/pwr from other data
 
   $ath = Workout::Athlete->new;
   $src = Workout::Store::Gpx->read( "foo.gpx" );
+
   $pwr = Workout::Filter->new( $src, { athlete => $ath } );
   ...
 
 =head1 DESCRIPTION
 
+Calculates work from other data (elevation, speed, weight, rolling
+resistance, air drag, ...).
 
 =cut
 
@@ -53,8 +56,11 @@ my %defaults = (
 
 __PACKAGE__->mk_accessors( keys %defaults );
 
-=head2 new( $arg )
+=head1 CONSTRUCTOR
 
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -67,6 +73,39 @@ sub new {
 		%$a,
 	});
 }
+
+=head1 METHODS
+
+=head2 athlete
+
+get/set Workout::Athlete handle with athlete data.
+
+=head2 CwA
+
+get/set air drag Cw * front_surface (m²).
+
+=head2 Cr
+
+get/set rolling resitance.
+
+=head2 Cm
+
+get/set mechanical loss.
+
+=head2 weight
+
+get/set equipment weight (kg). Used in addition to Athelte's weight.
+
+=head2 atemp
+
+get/set default ambient temperature in degrees centigrade (°C). Fallback
+when chunks' temperature isn't set.
+
+=head2 wind
+
+get/set speed of front wind in meter/second (m/s).
+
+=cut
 
 sub fields_supported {
 	my $self = shift;
@@ -134,7 +173,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Filter
+Workout::Filter::Base
 
 =head1 AUTHOR
 

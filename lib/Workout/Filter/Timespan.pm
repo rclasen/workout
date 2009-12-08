@@ -15,17 +15,19 @@ Workout::Filter::Timespan - only returns chunks within a specified timespan
 =head1 SYNOPSIS
 
   $src = Workout::Store::SRM->read( "foo.srm" );
+
   $cut = Workout::Filter::Timespan->new( $src, { 
   	start	=> $start_time,	# seconds since epoch
 	end	=> $end_time,	# seconds since epoch
   });
+
   while( my $chunk = $cut->next ){
   	# do something
   }
 
 =head1 DESCRIPTION
 
-Iterator that supressed data outside the specified timespan.
+supresses data outside the specified timespan.
 
 =cut
 
@@ -46,9 +48,11 @@ our %default = (
 
 __PACKAGE__->mk_accessors(keys %default );
 
-=head2 new( $src, $arg )
+=head1 CONSTRUCTOR
 
-new iterator
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -62,9 +66,15 @@ sub new {
 	});
 }
 
-=head2 next
+=head1 METHODS
 
-get next data chunk
+=head2 start
+
+get/set start time.
+
+=head2 end
+
+get/set end time.
 
 =cut
 

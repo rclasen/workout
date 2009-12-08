@@ -8,19 +8,22 @@
 
 =head1 NAME
 
-Workout::Filter::Max - caculcate NP, IF, TSS based on your Max
+Workout::Filter::Max - find peak power periods
 
 =head1 SYNOPSIS
 
-  # read SRM file with 1sec recint and multiple blocks
   $src = Workout::Store::SRM->read( "input.srm" ); 
-  $it = Workout::Filter::Max->new( $src->iterate, { ftp => 320 } );
+
+  $it = Workout::Filter::Max->new( $src, { dur => 300 } );
   $it->finish;
-  print $it->tss;
+
+  print "max 5min power: ", $it->pwr
+  	"(at ", $it->tme ,")\n";
 
 =head1 DESCRIPTION
 
-Base Class for modifying and filtering the Chunks of a Workout.
+calculates the average power for the duration throughout the whole workout
+and finds the span where it peaks. Chunks are resampled to the duration.
 
 =cut
 
@@ -47,9 +50,11 @@ our %default = (
 
 __PACKAGE__->mk_accessors( keys %default );
 
-=head2 new( $iter, $arg )
+=head1 CONSTRUCTOR
 
-create empty Iterator.
+=head2 new( $src, \%arg )
+
+creates the filter.
 
 =cut
 
@@ -67,19 +72,45 @@ sub new {
 	});
 }
 
-sub pwr {
-	my( $self ) = @_;
+=head1 METHODS
 
-	my $d = $self->dur or return; # should be no-op
-	defined(my $w = $self->work) or return;
-	$w/$d;
-}
+=head2 dur
+
+duration in seconds to calculate average power for.
+
+=head2 time
+
+end time of peak period.
+
+=head2 stime
+
+start time of peak period.
+
+=cut
 
 sub stime {
 	my( $self ) = @_;
 
 	my $t = $self->time or return;
 	$t - $self->dur;
+}
+
+=head2 work
+
+work of the peak period.
+
+=head2 pwr
+
+average power during the peak period.
+
+=cut
+
+sub pwr {
+	my( $self ) = @_;
+
+	my $d = $self->dur or return; # should be no-op
+	defined(my $w = $self->work) or return;
+	$w/$d;
 }
 
 sub process {
@@ -111,4 +142,15 @@ sub process {
 
 
 1;
+__END__
+
+=head1 SEE ALSO
+
+Workout::Filter::Resample
+
+=head1 AUTHOR
+
+Rainer Clasen
+
+=cut
 
