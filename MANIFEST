@@ -1,6 +1,6 @@
-.cvsignore
+.gitignore
 Changes
-debian/.cvsignore
+debian/.gitignore
 debian/changelog
 debian/compat
 debian/control
