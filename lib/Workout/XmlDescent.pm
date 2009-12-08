@@ -78,26 +78,9 @@ evaluated in end_element.
 sub start_element {
 	my( $self, $el )= @_;
 
-	my $node = $self->{stack}[0]{node};
-	my $next = $self->dispatch( $node, $el );
-
-	unshift @{$self->{stack}}, {
-		cdata	=> '',
-		attr	=> $el->{Attributes},
-		node	=> $next,
-	}
-}
-
-=head2 dispatch
-
-called by start_element to determin the next node.
-
-=cut
-
-sub dispatch {
-	my( $self, $node, $el )= @_;
-
 	my $name = lc $el->{LocalName};
+
+	my $node = $self->{stack}[0]{node};
 	exists $self->{nodes}{$node}
 		or croak "invalid node: $node/$name";
 
@@ -116,8 +99,15 @@ sub dispatch {
 		croak "unsupported element: $node/$name";
 	}
 
-	$children->{$name};
+	my $next = $children->{$name};
+
+	unshift @{$self->{stack}}, {
+		cdata	=> '',
+		attr	=> $el->{Attributes},
+		node	=> $next,
+	}
 }
+
 
 =head2 end_element
 
