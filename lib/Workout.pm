@@ -85,7 +85,7 @@ use Module::Pluggable
 	search_path     => 'Workout::Store',
 	sub_name        => 'stores';
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 our %file_types;
 

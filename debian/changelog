@@ -1,3 +1,43 @@
+workout (0.14) unstable; urgency=low
+
+  * clarified optional dependencies
+  * Store::Gpx: don't write bogus elevation
+  * HRM/SRM: identify missing heartrate
+  * Store::Wkt: strip line endings
+  * Store::Wkt: handle undefined fields properly
+  * added filter SkipUndef
+  * Store::HRM: fixed lap temperature
+  * added support for TCX files
+  * GPX,TCX: wrapped regex for more readability
+  * pass filename to Store::do_read/_write
+  * added Store::Powertap
+  * Store::Tcx: fixed to use note in correct block
+  * Store::HRM: fixed subsecond Timestamps
+  * Filter::Join: reduce debug logging
+  * Store::SRM: removed debug logging of read markers
+  * Store: return lists in array context
+  * Store: added debug logging for markers read
+  * Store: Added support to convert Marker <-> Laps.
+  * Store::HRM: use new Lap conversion
+  * Store::HRM: added support for reading laps
+  * fix Store: don't close passed file handles
+  * Store: try to guess marker from lap notes
+  * Wkt,HRM: properly escape line breaks in notes
+  * added Filter::Concat
+  * added wkjoin
+  * moved queueing from Filter::Base to Filter::BaseQueue
+  * Store::HRM: copy athlete info when available
+  * fix wkmerge: pick athlete from second workout, too
+  * Iterator: added capabilites
+  * Store::Wkt: sort written columns for consistency
+  * Store::SRM: fixed writing marker offset
+  * Store::Gpx: simplified lon,lat reading
+  * HRM,SRM: use carp instead of warn.
+  * added support for probing file types to fabric
+  * wk*: cleaned command line options
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 13 Dec 2009 16:49:55 +0100
+
 workout (0.13) unstable; urgency=low
 
   * removed superflous Null Store
