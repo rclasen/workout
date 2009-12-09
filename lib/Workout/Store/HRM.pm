@@ -446,12 +446,10 @@ Weight=", int($athlete->weight), "
 				end	=> $lap->{end},
 			} )
 		);
+		$info->finish;
 
-		my $last_chunk;
-		while( my $chunk = $info->next ){
-			$last_chunk = $chunk;
-		}
-		$last_chunk or next;
+		my $last_chunk = $info->chunk_last
+			or next;
 
 		print $fh 
 			# row 1
@@ -467,7 +465,7 @@ Weight=", int($athlete->weight), "
 				0,	# flags
 				0,	# rectime
 				0,	# rechr
-				int( ($last_chunk->spd||0) * 3.6),
+				int( ($last_chunk->spd||0) * 3.6), # TODO check
 				int($last_chunk->cad||0),
 				int($last_chunk->ele||0),
 				),"\n",
@@ -484,7 +482,7 @@ Weight=", int($athlete->weight), "
 				0,	# lap type
 				int($info->dist||0),
 				int($last_chunk->pwr||0),
-				int($last_chunk->temp||0),
+				int(10 * ($last_chunk->temp||0) ),
 				0,	# phase lap
 				0,	# resrved
 				),"\n",
