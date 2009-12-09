@@ -49,6 +49,7 @@ sub filetypes {
 }
 
 our $re_fieldsep = qr/\t/;
+our $re_stripnl = qr/[\r\n]+$/;
 our $re_mark = qr/^(\d*)\t(\d*)\t(.*)/;
 our $re_empty = qr/^\s*$/;
 our $re_block = qr/^\[(\w+)\]/;
@@ -84,6 +85,7 @@ sub do_read {
 
 	binmode( $fh, ':encoding(utf8)' );
 	while( defined(my $l = <$fh>) ){
+		$l =~ s/$re_stripnl//g;
 
 		if( $l =~/$re_empty/ ){
 			next;
