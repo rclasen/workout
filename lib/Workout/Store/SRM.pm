@@ -601,7 +601,7 @@ sub read_srm {
 			dur	=> $self->recint,
 			temp	=> $temperature,
 			cad	=> $_[3],
-			hr	=> $_[4],
+			hr	=> ($_[4] || undef),
 			dist	=> $spd/3.6 * $self->recint,
 			work	=> $pwr * $self->recint,
 		});

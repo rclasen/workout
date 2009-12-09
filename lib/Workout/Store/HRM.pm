@@ -236,7 +236,7 @@ sub parse_params {
 
 		# add parser/fields for each column
 		my @fields = qw/ time dur hr /;
-		my @colfunc = ( sub { 'hr'	=> $_[0] } );
+		my @colfunc = ( sub { 'hr'	=> ($_[0] || undef) } );
 
 		if( $_[0] ){
 			push @fields, 'dist';
