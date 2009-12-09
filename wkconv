@@ -23,6 +23,7 @@ my $itype;
 my $otype;
 my $recint;
 my $join;
+my $skip;
 my @fields;
 my $opt_verbose;
 my $debug;
@@ -35,7 +36,8 @@ if( ! GetOptions(
 	"input|i=s"	=> \$itype,
 	"output|o=s"	=> \$otype,
 	"recint|r=i"	=> \$recint,
-	"join|j"	=> \$join,
+	"join|j!"	=> \$join,
+	"skip!"		=> \$skip,
 	"verbose|v!"	=> \$opt_verbose,
 	"fields|f=s"	=> \@fields,
 	"debug!"	=> \$debug,
@@ -52,6 +54,7 @@ convert workout files between formats
 --input|-i=<type>   input file type
 --output|-o=<type>  input file type
 --join              join blocks
+--skip              skip chunks where essential fields are missing
 --recint|-r=<int>   sampling interval
 --fields|-f=<n,n..> write only specified fields
 --debug             enable debuging output
@@ -120,6 +123,12 @@ if( $recint ){
 
 my $srci = $src->iterate;
 my $iter = $srci;
+
+my $skipi = $iter = Workout::filter( 'SkipUndef', $iter, {
+	debug	=> $debug,
+	fields	=> [ $dst->fields_essential ],
+}) if $skip;
+
 
 my $joini = $iter = Workout::filter( 'Join', $iter, {
 	debug	=> $debug,

@@ -24,6 +24,7 @@ use Workout;
 use Workout::Athlete;
 
 my $join;
+my $skip;
 my $recint;
 my $otype;
 my $delta = 0;
@@ -38,6 +39,7 @@ if( ! GetOptions(
 	"type=s"	=> \$otype,
 	"recint|r=i"	=> \$recint,
 	"join|j"	=> \$join,
+	"skip!"		=> \$skip,
 	"fields|f=s"	=> \@fields,
 	"delta|d=i"	=> \$delta,
 	"help|h!"	=> \$wanthelp,
@@ -56,6 +58,7 @@ Options:
 --fields|-f=<n,n..> fields to pick from fname2
 --delta|-d=<d>      time difference of fname2
 --join              join blocks
+--skip              skip chunks where essential fields are missing
 --help              this cruft
 EOF
 	exit 0;
@@ -170,13 +173,20 @@ if( $dst->can( 'athlete' ) ){
 	}
 }
 
-# fill dst
-my $merge = Workout::filter('Merge', $it2, {
+my $iter = Workout::filter('Merge', $it2, {
 	master	=> $it1, 
 	fields	=> \@fields,
 	debug	=> $debug,
 });
-$dst->from( $merge );
+
+$iter = Workout::filter( 'SkipUndef', $iter, {
+	debug	=> $debug,
+	fields	=> [ $dst->fields_essential ],
+}) if $skip;
+
+
+# fill dst
+$dst->from( $iter );
 
 # write dst
 open( my $fh, '>', $ofname )

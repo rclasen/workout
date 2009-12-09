@@ -68,6 +68,7 @@ if( @fields ){
 } else {
 	#@fields ||= (qw( time dur dist spd cad hr work pwr));
 	@fields = qw( time dur spd pwr ele );
+	# TODO: use fields_io() or fields_used()
 }
 
 my $ifile = shift;
