@@ -194,12 +194,13 @@ sub end_trkpt {
 sub end_document {
 	my( $self ) = @_;
 
-	my @fields = $self->{Store}->fields_essential;
+	my @fields = $self->{Store}->fields_essential, 'dist';
 	push @fields, 'ele' if $self->{has_ele};
 
 	$self->{Store}->fields_io( @fields );
 
 	$self->{has_ele} = 0;
+	$self->{cmt} = undef;
 
 	1;
 }
@@ -225,6 +226,7 @@ our %fields_essential = map { $_ => 1; } qw{
 };
 
 our %fields_supported = map { $_ => 1; } qw{
+	dist
 	ele
 };
 
@@ -338,7 +340,8 @@ EOHEAD
 		}
 
 		print $fh '<trkpt lat="', $c->lat, '" lon="', $c->lon, '">', "\n";
-		print $fh '<ele>', $c->ele, '</ele>',"\n" if $write{ele};
+		print $fh '<ele>', $c->ele, '</ele>',"\n"
+			if $write{ele} && defined $c->ele;
 		print $fh '<time>', _time2str($c->time), '</time>',"\n",
 			'</trkpt>',"\n";
 	}
