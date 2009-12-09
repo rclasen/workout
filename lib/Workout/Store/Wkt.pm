@@ -150,7 +150,9 @@ sub parse_chunks {
 
 	# TODO: be more paranoid about input
 	my %a;
-	@a{@{$self->{columns}}} = split( /$re_fieldsep/, $l );
+	@a{@{$self->{columns}}} = map {
+		$_ eq '' ? undef : $_;
+	} split( /$re_fieldsep/, $l );
 
 	$self->chunk_add( Workout::Chunk->new( \%a ));
 }
@@ -187,7 +189,7 @@ sub do_write {
 	my $it = $self->iterate;
 	while( my $ck = $it->next ){
 		print $fh join( "\t", map { 
-			$_ || 0;
+			$_ || '';
 		} @$ck{@fields}), "\n";
 	}
 
