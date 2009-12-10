@@ -76,7 +76,9 @@ our %nodes = (
 	},
 );
 
-our $re_time = qr/^\s*(-?\d\d\d\d+)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d(.\d+)?)(?:(Z)|(([+-]\d\d):(\d\d)))?\s*$/;
+our $re_time = qr/^\s*(-?\d\d\d\d+)-(\d\d)-(\d\d)	# date
+	T(\d\d):(\d\d):(\d\d(.\d+)?)			# time
+	(?:(Z)|(([+-]\d\d):(\d\d)))?\s*$/x;		# zone
 
 sub _str2time {
 	my( $time ) = @_;
