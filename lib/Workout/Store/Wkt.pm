@@ -77,7 +77,7 @@ sub new {
 }
 
 sub do_read {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	my $parser;
 	my $gotparams;
@@ -172,7 +172,7 @@ sub parse_markers {
 
 
 sub do_write {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	$self->chunk_last or croak "no data";
 

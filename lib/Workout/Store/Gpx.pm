@@ -262,7 +262,7 @@ sub new {
 }
 
 sub do_read {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	my $parser = XML::SAX::ParserFactory->parser(
 		Handler	=> Workout::Store::Gpx::Read->new({
@@ -289,7 +289,7 @@ sub _time2str {
 }
 
 sub do_write {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	$self->chunk_count
 		or croak "no data";

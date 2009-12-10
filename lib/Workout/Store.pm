@@ -163,7 +163,7 @@ sub read {
 			or croak "open '$fname': $!";
 	}
 
-	$self->do_read( $fh );
+	$self->do_read( $fh, $fname );
 	close($fh);
 
 	if( $self->{debug} ){
@@ -227,10 +227,11 @@ sub from_store {
 
 
 
-=head2 do_read( $fh )
+=head2 do_read( $fh, $fname )
 
 stub. Has to be implemented by individual stores according to their File
-format.
+format. $fname might be undefined when reading from a pipe, a scalar or
+similar.
 
 =cut
 
@@ -238,10 +239,10 @@ sub do_read { croak "reading is not suported"; };
 
 
 
-=head2 do_write( $fh )
+=head2 do_write( $fh, $fname )
 
 stub. Has to be implemented by individual stores according to their File
-format.
+format. 
 
 =cut
 
@@ -266,7 +267,7 @@ sub write {
 			or croak "open '$fname': $!";
 	}
 
-	$self->do_write( $fh );
+	$self->do_write( $fh, $fname );
 
 	close($fh)
 		or return;

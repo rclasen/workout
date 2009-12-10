@@ -121,7 +121,7 @@ in local time without timezone. See DateTime.
 =cut
 
 sub do_read {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	my $parser;
 	my $gotparams;
@@ -310,7 +310,7 @@ sub fmtdur {
 our $minlap = 5; # TODO: minimum lap duration
 
 sub do_write {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	$self->chunk_count
 		or croak "no data";

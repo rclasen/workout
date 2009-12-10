@@ -149,7 +149,7 @@ sub from_store {
 }
 
 sub do_write {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	############################################################
 	# file header
@@ -318,7 +318,7 @@ sub write_srm7 {
 }
 
 sub do_read {
-	my( $self, $fh ) = @_;
+	my( $self, $fh, $fname ) = @_;
 
 	my $buf;
 
