@@ -46,6 +46,7 @@ use Workout::Athlete;
 use Carp;
 use DateTime;
 
+# TODO: verify read values are numbers
 
 our $VERSION = '0.01';
 
@@ -76,6 +77,8 @@ our $re_value = qr/^\s*(\S+)\s*=\s*(\S*)\s*$/;
 our $re_date = qr/^(\d\d\d\d)(\d\d)(\d\d)$/;
 our $re_time = qr/^(\d+):(\d+):((\d+)(\.\d+))?$/;
 our $re_smode = qr/^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/;
+our $re_lap0 = qr/^(\d+):(\d+):((\d+)(\.\d+))?\t/;
+our $re_lapnote = qr/(\d+)\t(.*)/;
 
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -100,6 +103,8 @@ sub new {
 		date	=> undef,	# tmp read
 		time	=> 0,		# tmp read
 		colfunc	=> [],		# tmp read
+		blockline	=> 0,	# tmp read
+		laps		=> [],	# tmp read
 		cap_block	=> 0,
 		cap_note	=> 1,
 	});
@@ -137,6 +142,7 @@ sub do_read {
 
 		} elsif( $l =~ /$re_block/ ){
 			my $blockname = lc $1;
+			$self->{blockline} = 0;
 
 			if( $blockname eq 'params' ){
 				$parser = \&parse_params;
@@ -144,10 +150,15 @@ sub do_read {
 
 			} elsif( $blockname eq 'hrdata' ){
 				$gotparams or croak "missing parameter block";
-				$self->{time} = $self->{date}->hires_epoch;
+				$self->{time} ||= $self->{date}->hires_epoch;
 				$parser = \&parse_hrdata;
 
-			# TODO: read laps / Marker
+			} elsif( $blockname eq 'inttimes' ){
+				$self->{time} ||= $self->{date}->hires_epoch;
+				$parser = \&parse_inttime;
+
+			} elsif( $blockname eq 'intnotes' ){
+				$parser = \&parse_intnotes;
 
 			} elsif( $blockname eq 'note' ){
 				$parser = \&parse_note;
@@ -158,9 +169,12 @@ sub do_read {
 
 		} elsif( $parser ){
 			$parser->( $self, $l );
+			++$self->{blockline};
 
 		} # else ignore input
 	}
+
+	$self->mark_new_laps( $self->{laps} ) if @{$self->{laps}};
 }
 
 sub parse_params {
@@ -275,6 +289,42 @@ sub parse_params {
 		$self->{colfunc} = \@colfunc;
 	}
 	
+}
+
+sub parse_inttime {
+	my( $self, $l ) = @_;
+
+	if( 0 == ($self->{blockline} % 5) ){
+		if( $l !~ /$re_lap0/ ){
+			warn "invalid lap time in line $.";
+			return;
+		}
+
+		my $delta = $3 + 60 * ( $2 + 60 * $1 );
+		push @{ $self->{laps} }, {
+			end	=> $self->{time} + $delta,
+			note	=> undef,
+		};
+	}
+}
+
+sub parse_intnotes {
+	my( $self, $l ) = @_;
+
+	if( $l !~ /$re_lapnote/ ){
+		warn "skipping invalid lap note line $.";
+		return;
+	}
+
+	my $lap = $1 -1;
+	my $note = $2;
+
+	if( ($lap < 0) || ($lap >= @{ $self->{laps} }) ){
+		warn "skipping note for unknown lap $lap at line $.";
+		return;
+	}
+
+	$self->{laps}[$lap]{note} = $note;
 }
 
 sub parse_note {
