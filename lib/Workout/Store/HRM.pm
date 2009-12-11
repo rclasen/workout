@@ -74,7 +74,7 @@ our $re_empty = qr/^\s*$/;
 our $re_block = qr/^\[(\w+)\]/;
 our $re_value = qr/^\s*(\S+)\s*=\s*(\S*)\s*$/;
 our $re_date = qr/^(\d\d\d\d)(\d\d)(\d\d)$/;
-our $re_time = qr/^(\d+):(\d+):([\d.]+)$/;
+our $re_time = qr/^(\d+):(\d+):((\d+)(\.\d+))?$/;
 our $re_smode = qr/^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/;
 
 __PACKAGE__->mk_accessors( keys %defaults );
@@ -199,7 +199,8 @@ sub parse_params {
 		$self->{date}->add(
 			hours	=> $1,
 			minutes	=> $2,
-			seconds	=> $3,
+			seconds	=> $4,
+			nanoseconds	=> $5 * 1000000000,
 		);
 
 	} elsif( $k eq 'resthr' ){
@@ -301,10 +302,10 @@ sub parse_hrdata {
 sub fmtdur {
 	my( $self, $sec ) = @_;
 
-	# TODO: support fractional seconds ( %= doesn't )
+	my $xsec = ($sec - int($sec)) * 10;
 	my $min = int($sec / 60 ); $sec %= 60;
 	my $hrs = int($min / 60 ); $min %= 60;
-	sprintf( '%02i:%02i:%02i.0', $hrs, $min, $sec );
+	sprintf( '%02i:%02i:%02i.%1d', $hrs, $min, $sec, $xsec );
 }
 
 our $minlap = 5; # TODO: minimum lap duration
