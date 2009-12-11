@@ -145,27 +145,29 @@ sub new {
 }
 
 
-=head2 read( $fname [, \%arg ] )
+=head2 read( $source [, \%arg ] )
 
-Create new store and read data from $fname. \%arg is passed
+Create new store and read data from $source. When source is a filename,
+it's opened. Otherwise it's assumed to be an IO::Handle. \%arg is passed
 to new().
 
 =cut
 
 sub read {
-	my( $class, $fname, $a ) = @_;
+	my( $class, $source, $a ) = @_;
 	my $self = $class->new( $a );
 
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
+	my( $fh, $fname );
+	if( ref $source ){
+		$fh = $source;
 	} else {
+		$fname = $source;
 		open( $fh, '<', $fname )
 			or croak "open '$fname': $!";
 	}
 
 	$self->do_read( $fh, $fname );
-	close($fh);
+	close($fh) if $fname;
 
 	if( $self->{debug} ){
 		my $sdate = DateTime->from_epoch(
@@ -282,27 +284,30 @@ sub do_write { croak "writing is not suported"; };
 
 
 
-=head2 write( $fname )
+=head2 write( $destination )
 
-write data to specified filename.
+write data to specified destination. If destination is a filename, it's
+opened. Otherwise it's assumed to be an IO::Handle.
 
 =cut
 
 sub write {
-	my( $self, $fname ) = @_;
+	my( $self, $source ) = @_;
 
-	my $fh;
-	if( ref $fname ){
-		$fh = $fname;
+	my( $fh, $fname );
+	if( ref $source ){
+		$fh = $source;
 	} else {
+		$fname = $source;
 		open( $fh, '>', $fname )
 			or croak "open '$fname': $!";
 	}
 
 	$self->do_write( $fh, $fname );
 
-	close($fh)
-		or return;
+	if( $fname ){
+		close($fh) or return;
+	}
 
 	1;
 }
