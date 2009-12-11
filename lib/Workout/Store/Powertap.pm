@@ -30,6 +30,11 @@ taken.
 
 =cut
 
+# TODO: document timestamp in filename, provide method to build basename
+# TODO: read/write altitude as GoldenCheetah does
+# TODO: support extra date columns written by 'ptapdl -DTM'
+# TODO: verify read values are numbers
+
 # heavily inspired by GoldenCheetah and
 # http://rick.mollprojects.com/power_meter_tools/csv_format.html
 
@@ -111,6 +116,8 @@ sub do_read {
 	my $distconv;
 
 	my $line = <$fh>;
+
+	# TODO: cope with shuffled columns
 
 	if( ! defined $line ){
 		croak "empty file";
@@ -194,11 +201,8 @@ sub do_read {
 
 	my $lodo = 0;
 	my $time = $stime;
-	my @laps = {
-		note	=> 0,
-		start	=> $time,
-		end	=> undef,
-	};
+	my $lapid = 0;
+	my @laps;
 	foreach my $chunk ( @data ){
 		$time += $recint;
 
@@ -217,24 +221,24 @@ sub do_read {
 				: undef,
 		}));
 
-		if( $chunk->[7] && $laps[-1]{note} != $chunk->[7] ){
-			$laps[-1]{end} = $time;
+		if( $chunk->[7] && $lapid != $chunk->[7] ){
 
 			push @laps, {
-				note	=> $chunk->[7],
-				start	=> $time,
-				end	=> undef,
+				note	=> $lapid++,
+				end	=> $time,
 			};
 		}
 
 		$lodo = $chunk->[4];
 	}
-	$laps[-1]{end} = $time;
 
-	if( @laps > 1 ){
-		foreach my $lap ( @laps ){
-			$self->mark_new( $lap );
-		}
+	if( @laps ){
+		push @laps, {
+			note	=> $lapid,
+			end	=> $time,
+		};
+
+		$self->mark_new_laps( \@laps );
 	}
 }
 
@@ -242,37 +246,31 @@ sub do_read {
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
-	my $first = $self->chunk_first
+	$self->chunk_first
 		or croak "no data";
 
 	binmode( $fh, ':crlf:encoding(windows-1252)' );
 
-	my $marks = $self->marks;
-	my @tics = sort { $a <=> $b } grep {
-		$_ > $first->time;
-	} map {
-		$_->start, $_->end;
-	} @$marks;
-
+	my @laps = $self->laps;
 
 	print $fh " Minutes, Torq (N-m),  Km\/h, Watts,      Km, Cadence, Hrate,  ID\n";
 
-	my $id = 0;
+	my $lapid = 0;
 	my $iter = $self->iterate;
 	my $time = 0;
 	my $odo = 0;
 	while( my $c = $iter->next ){
 
 		my $nextid;
-		while( @tics && $tics[0] < $c->time ){
+		while( @laps && $laps[0]->end < $c->time ){
 			++$nextid;
-			shift @tics;
+			shift @laps;
 		}
 
-		++$id if $nextid;
+		++$lapid if $nextid;
 
 		$time += $c->dur;
-		$odo += $c->dist;
+		$odo += ($c->dist || 0);
 
 		print $fh join(",",
 			sprintf('%8.3f', $time / 60),
@@ -285,7 +283,7 @@ sub do_write {
 			sprintf('%8d', $c->cad||0),
 			$c->hr ? sprintf('%6d', $c->hr)
 				: '      ',
-			sprintf('%4d', $id),
+			sprintf('%4d', $lapid),
 		),"\n";
 	}
 
