@@ -167,8 +167,39 @@ sub read {
 	close($fh);
 
 	if( $self->{debug} ){
-		$self->debug( "read ". $self->chunk_count ." chunks ".
-			$self->mark_count ." marker");
+		my $sdate = DateTime->from_epoch(
+			epoch		=> $self->time_start,
+			time_zone	=> 'local',
+		);
+		my $edate = DateTime->from_epoch(
+			epoch		=> $self->time_end,
+			time_zone	=> 'local',
+		);
+		$self->debug( "read from ". $sdate->hms
+			. " (".  $self->time_start
+			.") to ". $edate->hms
+			. " (".  $self->time_end
+			."): ". $self->chunk_count
+			." chunks, ".  $self->mark_count
+			." marker");
+
+		my $num = 0;
+		foreach my $mark ( $self->marks ){
+			$sdate = DateTime->from_epoch(
+				epoch		=> $mark->start,
+				time_zone	=> 'local',
+			);
+			$edate = DateTime->from_epoch(
+				epoch		=> $mark->end,
+				time_zone	=> 'local',
+			);
+
+			$self->debug( "mark ". $num++
+				.": ".  $sdate->hms . " (".  $mark->start .")"
+				." to ". $edate->hms . " (".  $mark->end .")"
+				." ". $mark->note
+			);
+		}
 	}
 
 	$self;
