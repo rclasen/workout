@@ -57,6 +57,7 @@ use warnings;
 use base 'Workout::Base';
 use Workout::Chunk;
 use Workout::Marker;
+use Workout::Lap;
 use Workout::Filter::Info;
 use Carp;
 
@@ -700,7 +701,7 @@ sub mark_count {
 
 =head2 mark_workout
 
-returns a marker spaning the whole workout.
+returns a marker spanning the whole workout.
 
 =cut
 
@@ -710,7 +711,7 @@ sub mark_workout {
 		store	=> $self, 
 		start	=> $self->time_start, 
 		end	=> $self->time_end,
-		note	=> $self->note,
+		note	=> undef,
 	});
 }
 
@@ -744,8 +745,109 @@ sub mark_del {
 	splice @{$self->{mark}}, $idx, 1;
 }
 
+=head2 laps( [$minlap] )
+
+converts the marker to "laps". In contrast to markers, laps don't overlap.
+Returns array-/ref with Workout::Lap.
+
+=cut
+
+# TODO: document $minlaps
+
+sub laps {
+	my( $self, $minlap ) = @_;
+
+	# step1: find marker, that refer to the same time
+
+	$minlap ||= $self->recint || 1;
+
+	my %tics;
+	foreach my $mark ( sort { $a->start <=> $b->start } $self->marks ){
+
+		push @{$tics{int(100 * $mark->start / $minlap)}{mark_start}}, $mark;
+		push @{$tics{int(100 * $mark->end / $minlap)}{mark_end}}, $mark;
+	};
+
+	my $mark = $self->mark_workout;
+	push @{$tics{int(100 * $mark->end / $minlap)}{mark_end}}, $mark;
+
+	# step2: build laps
+
+	my @laps;
+	my $ltime = $self->time_start;
+	foreach my $tictime ( sort { $a <=> $b } keys %tics ){
+		my $tic = $tics{$tictime};
+
+		my $lap = Workout::Lap->new({
+			%$tic,
+			start	=> $ltime,
+			store	=> $self,
+		});
+		push @laps, $lap;
+
+		$ltime = $lap->end;
+		if( $self->{debug} ){
+			my $s = DateTime->from_epoch(
+				epoch	=> $lap->start,
+				time_zone	=> 'local',
+			);
+			my $e = DateTime->from_epoch(
+				epoch	=> $lap->start,
+				time_zone	=> 'local',
+			);
+
+			$self->debug( 'lap '. @laps
+				.': '. $s->hms
+				.' ('. $lap->start
+				.') to '. $e->hms
+				.' ('.  $ltime
+				.'): '. ($lap->note||'') );
+		}
+	}
+
+	wantarray ? @laps : \@laps;
+}
+
+=head2 mark_new_laps( \@laps )
+
+converts a list with lap end timestamps and note to marker and adds them
+to this store:
+
+ $store->mark_new_laps([{
+ 	end	=> $lap_end_time1,
+	note	=> '1',
+ }, {
+ 	end	=> $lap_end_time2,
+	note	=> '2',
+ });
 
 
+=cut
+
+sub mark_new_laps {
+	my( $self, $laps ) = @_;
+
+	# TODO: guess overlapping marker (eg. laps with same name)
+
+	my $ltime = $self->time_start;
+
+	foreach my $lap ( @$laps ){
+		$self->mark_new({
+			start	=> $ltime,
+			end	=> $lap->{end},
+			note	=> $lap->{note},
+		});
+
+		$ltime = $lap->{end};
+	}
+
+	if( $ltime < $self->time_end ){
+		$self->mark_new({
+			start	=> $ltime,
+			end	=> $self->time_end,
+		});
+	}
+}
 
 =head2 time_add_delta( $delta )
 
