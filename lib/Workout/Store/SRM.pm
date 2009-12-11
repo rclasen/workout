@@ -540,23 +540,6 @@ sub do_read {
 		my $last = $self->chunk_get_idx( $mark->{cklast} )
 			or next;
 
-		if( $self->{debug} ){
-			my $sdate = DateTime->from_epoch( 
-				epoch		=> $first->stime,
-				time_zone	=> $self->tz,
-			);
-			my $edate = DateTime->from_epoch(
-				epoch		=> $last->time,
-				time_zone	=> $self->tz,
-			);
-
-			$self->debug( "mark"
-				." ".  $sdate->hms . " (".  $first->stime .")"
-				." to ". $edate->hms . " (".  $last->time .")"
-				." ". $mark->{note}
-			);
-		}
-
 		$self->mark_new({
 			start	=> $first->stime,
 			end	=> $last->time,
