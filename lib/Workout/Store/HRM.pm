@@ -308,8 +308,6 @@ sub fmtdur {
 	sprintf( '%02i:%02i:%02i.%1d', $hrs, $min, $sec, $xsec );
 }
 
-our $minlap = 5; # TODO: minimum lap duration
-
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
@@ -319,73 +317,7 @@ sub do_write {
 	my $athlete = $self->athlete
 		or croak "missing athlete info";
 
-	# convert marker -> lap
-	my @tics = sort { 
-		$a->{time} <=> $b->{time}
-
-	} map {
-		{
-			isend	=> 1,
-			time	=> $_->start,
-			note	=> $_->note,
-		}, ( $_->end - $_->start >= $minlap ? {
-			isend	=> 0,
-			time	=> $_->end,
-			note	=> $_->note,
-		} : () ); 
-
-	} @{ $self->marks || [] };
-
-	if( ! @tics || $tics[0]->{time} > $self->time_start ){
-		unshift @tics, {
-			isend	=> 0,
-			time	=> $self->time_start,
-			note	=> '',
-		};
-	}
-	if( ! @tics || $tics[-1]->{time} < $self->time_end ){
-		push @tics, {
-			isend	=> 1,
-			time	=> $self->time_end,
-			note	=> '',
-		};
-	}
-
-	my @laps;
-	my $last;
-	foreach my $tic ( @tics ){
-		if( $tic->{time} < $self->time_start ){
-			$tic->{time} = $self->time_start;
-
-		} elsif( $tic->{time} > $self->time_end ){
-			$tic->{time} = $self->time_end;
-		}
-
-		if( $last ){
-			if( $tic->{time} - $last->{time} <= $minlap ){
-				# isend "overwrites" other entries
-				if( @laps && ! $laps[-1]->{isend} 
-					&& $tic->{isend} ){
-
-					pop @laps;
-
-				} else {
-					next;
-				}
-			}
-
-			$self->debug( 'lap: '. $last->{time}. '-'.
-				$tic->{time}. ': '. $tic->{note} );
-			push @laps, {
-				start	=> $last->{time}, 
-				end	=> $tic->{time},
-				note	=> $tic->{note},
-				isend	=> $tic->{isend},
-			};
-		}
-		$last = $tic;
-	}
-
+	my $laps = $self->laps;
 
 	my %fields = map {
 		$_	=> 1,
@@ -440,14 +372,8 @@ Weight=", int($athlete->weight), "
 
 	# write laps / Marker
 	print $fh "[IntTimes]\n";
-	foreach my $lap ( @laps ){
-		my $info = Workout::Filter::Info->new(
-			Workout::Filter::Timespan->new( $self, {
-				start	=> $lap->{start},
-				end	=> $lap->{end},
-			} )
-		);
-		$info->finish;
+	foreach my $lap ( @$laps ){
+		my $info = $lap->info;
 
 		my $last_chunk = $info->chunk_last
 			or next;
@@ -500,8 +426,9 @@ Weight=", int($athlete->weight), "
 	print $fh "\n";
 
 	print $fh "[IntNotes]\n";
-	foreach my $l ( 0 .. $#laps ){
-		print $fh $l+1, "\t", $laps[$l]->{note}, "\n" if $laps[$l]->{note};
+	foreach my $l ( 0 .. $#$laps ){
+		my $note = $laps->[$l]->note or next;
+		print $fh $l+1, "\t", $note, "\n";
 	}
 	print $fh "\n";
 
