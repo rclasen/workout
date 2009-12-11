@@ -81,11 +81,11 @@ sub process {
 			my $time = $self->{stime} + $self->recint 
 				* (1+int($elapsed/$self->recint));
 
-			$self->debug( "insert join from ". $last->time ." to ". $time );
+			#$self->debug( "insert join from ". $last->time ." to ". $time );
 			return $last->synthesize( $time, $i );
 		}
 
-		$self->debug( "insert join from ". $last->time ." to ".  $i->stime );
+		#$self->debug( "insert join from ". $last->time ." to ".  $i->stime );
 		return $last->synthesize( $i->stime, $i );
 
 	}
