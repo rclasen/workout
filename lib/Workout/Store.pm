@@ -440,11 +440,13 @@ sub chunk_idx2time {
 
 =head2 chunks
 
-return ref to internal array with all chunks.
+return array/-ref to internal array with all chunks.
 
 =cut
 
-sub chunks { $_[0]{chunk}; }
+sub chunks {
+	wantarray ? @{$_[0]{chunk}} : $_[0]{chunk};
+}
 
 
 
@@ -618,7 +620,7 @@ sub chunk_check {
 
 =head2 blocks
 
-returns arrayref of arrays with continous chunks. i.e. the chunks are
+returns array/-ref of arrays with continous chunks. i.e. the chunks are
 split into individual arrays at each gap.
 
 =cut
@@ -635,20 +637,19 @@ sub blocks {
 		push @{$blocks[-1]}, $c;
 	}
 
-	\@blocks;
+	wantarray ? @blocks : \@blocks;
 }
 
 
 
 =head2 marks
 
-returns arrayref with Workout::Marker in this store.
+returns array/-ref (depending on context) with Workout::Marker in this store.
 
 =cut
 
 sub marks {
-	my( $self ) = @_;
-	$self->{mark};
+	wantarray ? @{$_[0]{mark}} : $_[0]{mark};
 }
 
 
