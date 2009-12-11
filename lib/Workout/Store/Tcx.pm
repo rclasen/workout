@@ -45,6 +45,8 @@ use Geo::Distance;
 use Workout::Chunk;
 use Carp;
 
+# TODO: verify read values are numbers
+
 our %nodes = (
 	top	=> {
 		trainingcenterdatabase	=> 'tcx'
@@ -62,15 +64,17 @@ our %nodes = (
 
 	activity	=> {
 		'lap'	=> 'lap',
+		'notes'	=> 'actnote',
 		'*'	=> 'ignore',
 	},
+	actnote	=> undef,
 
 	lap	=> {
 		track	=> 'track',
-		notes	=> 'notes',
+		notes	=> 'lapnote',
 		'*'	=> 'ignore',
 	},
-	notes	=> undef,
+	lapnote	=> undef,
 
 	track	=> {
 		trackpoint	=> 'trackpoint'
@@ -152,11 +156,12 @@ sub new {
 	$proto->SUPER::new({
 		Store	=> undef,
 		%$a,
+		nodes	=> \%nodes,
 		gcalc	=> Geo::Distance->new,
-		note	=> undef,
+		actnote	=> undef,
+		lapnote	=> undef,
 		pt	=> {}, # current point
 		lpt	=> undef, # last point
-		nodes	=> \%nodes,
 		field_use	=> {},
 	});
 }
@@ -196,8 +201,12 @@ sub end_leaf {
 		$self->{pt}{hr} = $node->{cdata};
 		++$self->{field_use}{hr};
 
-	} elsif( $name eq 'notes' ){
-		$self->{note} ||= $node->{cdata};
+	} elsif( $name eq 'lapnote' ){
+		$self->{lapnote} = $node->{cdata};
+
+	} elsif( $name eq 'actnote' ){
+		# TODO: silently merges multiple activities
+		$self->{actnote} ||= $node->{cdata};
 	}
 }
 
@@ -212,8 +221,12 @@ sub end_node {
 	} elsif( $name eq 'track' ){
 		$self->{lpt} = undef;
 
-	} elsif( $name eq 'lap' ){ # TODO: marker?
-		$self->{Store}->note( $self->{note} );
+	} elsif( $name eq 'lap' ){
+		# TODO: marker?
+		$self->{lapnote} = undef;
+
+	} elsif( $name eq 'activity' ){
+		$self->{Store}->note( $self->{actnote} );
 
 	}
 }
@@ -276,7 +289,7 @@ sub end_document {
 	$self->{Store}->fields_io( @fields );
 
 	$self->{field_use} = {};
-	$self->{note} = undef;
+	$self->{actnote} = undef;
 
 	1;
 }
@@ -451,8 +464,7 @@ EOHEAD
 		print $fh "</Trackpoint>\n";
 	}
 
-	print $fh "</Track>\n",
-		"<Notes>", ($self->note || ''), "</Notes>\n";
+	print $fh "</Track>\n";
 
 	print $fh "<Extensions>\n",
 		"<LX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
@@ -461,7 +473,8 @@ EOHEAD
 		"</Extensions>\n"
 		if $write{work} && defined $info->pwr_avg;
 
-	print $fh "</Lap>\n";
+	print $fh "</Lap>\n",
+		"<Notes>", ($self->note || ''), "</Notes>\n";
 
 	print $fh "</Activity>\n",
 		"</Activities>\n",
