@@ -324,6 +324,7 @@ sub parse_intnotes {
 		return;
 	}
 
+	$note =~ s/\\n/\n/g;
 	$self->{laps}[$lap]{note} = $note;
 }
 
@@ -478,6 +479,7 @@ Weight=", int($athlete->weight), "
 	print $fh "[IntNotes]\n";
 	foreach my $l ( 0 .. $#$laps ){
 		my $note = $laps->[$l]->note or next;
+		$note =~ s/\n/\\n/g;
 		print $fh $l+1, "\t", $note, "\n";
 	}
 	print $fh "\n";
