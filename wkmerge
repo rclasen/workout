@@ -161,8 +161,8 @@ my $it2 = Workout::filter('Join', $wk2, {
 });
 
 if( $dst->can( 'athlete' ) ){
-	if( $wk1->can( 'athlete' ) ){
-		$dst->athlete( $wk1->athlete );
+	if( $wk2->can( 'athlete' ) ){
+		$dst->athlete( $wk2->athlete );
 
 	} elsif( $wk1->can( 'athlete' ) ){
 		$dst->athlete( $wk1->athlete );
