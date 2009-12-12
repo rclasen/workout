@@ -180,7 +180,8 @@ sub do_write {
 
 	$self->chunk_last or croak "no data";
 
-	my @fields = $self->fields_io;
+	my @fields = sort { $a cmp $b } $self->fields_io;
+	$self->debug( "writing columns: ". join(",", @fields) );
 
 	binmode( $fh, ':encoding(utf8)' );
 	print $fh "[Params]\n";
