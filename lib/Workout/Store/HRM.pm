@@ -383,6 +383,7 @@ sub do_write {
 	my %fields = map {
 		$_	=> 1,
 	} $self->fields_io;
+	$self->debug( "writing fields: ", join(",", keys %fields ) );
 
 	my $smode = sprintf('%0d%0d%0d%0d1110',
 		$fields{cad} || 0,

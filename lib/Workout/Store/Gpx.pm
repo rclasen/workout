@@ -234,6 +234,7 @@ our %fields_supported = map { $_ => 1; } qw{
 
 
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
+# TODO: verify read values are numbers
 
 =head1 CONSTRUCTOR
 
@@ -322,6 +323,7 @@ sub do_write {
 	my %write = map {
 		$_ => 1;
 	} $self->fields_io;
+	$self->debug( "writing fields: ", join(",", keys %write ) );
 
 	print $fh <<EOHEAD;
 <?xml version="1.0" encoding="utf-8"?>

@@ -162,6 +162,9 @@ sub do_read {
 		} split( /$re_fieldsep/, $line ) ];
 	}
 
+	# TODO: only allow certain recints: 1, 1.26, ...
+	# otherwise recints vary too much.
+
 	my $dur = 60 * $data[-1][0];
 	my $recint = int( 100 * $dur / scalar @data) / 100;
 	$self->recint( $recint );
@@ -272,6 +275,7 @@ sub do_write {
 		$time += $c->dur;
 		$odo += ($c->dist || 0);
 
+		# TODO: is it really necessary to limit the float precision?
 		print $fh join(",",
 			sprintf('%8.3f', $time / 60),
 			'           ',

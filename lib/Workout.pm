@@ -87,6 +87,8 @@ use Module::Pluggable
 
 our $VERSION = '0.13';
 
+# TODO: support multiple stores per ftype
+
 our %ftype;
 
 foreach my $store ( __PACKAGE__->stores ){
