@@ -83,8 +83,9 @@ sub process {
 
 	my $i;
 	do {
-		$i = $self->_fetch
+		$i = $self->src->next
 			or return;
+		$self->{cntin}++;
 
 		my $end = $self->end;
 		if( defined $end && $end < $i->time ){

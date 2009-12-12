@@ -62,6 +62,10 @@ creates the filter.
 
 =cut
 
+# TODO: document in-/output zone hash elements
+# TODO: support other fields
+# TODO: support multiple fields
+
 sub new {
 	my( $class, $iter, $a ) = @_;
 
@@ -90,8 +94,9 @@ returns an arrayref with the zones.
 sub process {
 	my( $self ) = @_;
 
-	my $c = $self->_fetch
+	my $c = $self->src->next
 		or return;
+	$self->{cntin}++;
 
 	foreach my $z ( @{$self->zones} ){
 		my $f = $z->{field} or next;

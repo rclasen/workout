@@ -86,7 +86,8 @@ sub process {
 
 	my $i;
 
-	INPUT: while( $i = $self->_fetch ){
+	INPUT: while( $i = $self->src->next ){
+		$self->{cntin}++;
 		foreach my $f ( @{ $self->{fields} } ){
 			defined $i->$f or next INPUT;
 		}

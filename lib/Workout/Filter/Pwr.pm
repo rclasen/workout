@@ -134,8 +134,9 @@ sub fields_io {
 sub process {
 	my $self = shift;
 
-	my $i = $self->_fetch
+	my $i = $self->src->next
 		or return;
+	$self->{cntin}++;
 
 	my $o = $i->clone({
 		prev	=> $self->last,

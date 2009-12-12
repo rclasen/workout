@@ -76,7 +76,7 @@ get/set the delta that's added to all chunks.
 sub process {
 	my( $self ) = @_;
 
-	my $i = $self->_fetch
+	my $i = $self->src->next
 		or return;
 
 	$i->clone({

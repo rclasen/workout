@@ -613,8 +613,9 @@ sub set_nsum {
 sub process {
 	my( $self ) = @_;
 
-	my $d = $self->_fetch
+	my $d = $self->src->next
 		or return;
+	$self->{cntin}++;
 
 	$self->{chunk_first} ||= $d;
 	$self->{chunk_last} = $d;
