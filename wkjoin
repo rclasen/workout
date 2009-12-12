@@ -1,0 +1,103 @@
+#!/usr/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+use strict;
+use warnings;
+use Workout;
+use Getopt::Long;
+
+# TODO: pod
+
+# concatenate multiple workouts
+
+my $ftype;
+my $opt_verbose;
+my $debug;
+
+my $needhelp;
+my $wanthelp;
+
+if( ! GetOptions(
+	"help|h!"	=> \$wanthelp,
+	"ftype=s"	=> \$ftype,
+	"verbose|v!"	=> \$opt_verbose,
+	"debug!"	=> \$debug,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <output file> <intput file1> ...
+concatenate workout files of same type.
+
+Input files must not overlap. They're ordered by time automatically. All
+files have to use the same type and recording intervall as the first
+specified input file. Meta information (Note, Slope, ...) is taken from
+the last input file.
+
+--help              this help
+--ftype=<type>      file type
+--debug             enable debuging output
+
+EOF
+	exit 0;
+}
+
+if( @ARGV <= 2 ){
+	print STDERR "in- and output filename required\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "use --help for usage info\n";
+	exit 1;
+}
+
+my $ofname = shift;
+
+$ftype ||= lc( ($ofname =~ /\.([^.]+)$/)[0] );
+
+my $dst = Workout::file_new( {
+	ftype	=> $ftype,
+	debug	=> $debug,
+} );
+
+my @sources;
+foreach my $fname ( @ARGV ){
+	$opt_verbose && print "reading ", $fname,"... \n";
+	push @sources, {
+		fname	=> $fname,
+		wk	=> Workout::file_read( $fname, {
+			ftype	=> $ftype,
+			debug	=> $debug,
+		}),
+	};
+}
+
+$dst->recint( $sources[0]{wk}->recint );
+
+my $last_end;
+foreach my $src ( sort {
+	$a->{wk}->time_start <=> $b->{wk}->time_start;
+
+} @sources ){
+	$opt_verbose && print "adding data from ", $src->{fname},"... \n";
+	eval { $dst->from( $src->{wk} ) };
+	if( my $err = $@ ){
+		print STDERR "failed to add ", $src->{fname}, ": ", $err;
+		exit 1;
+	}
+
+}
+
+$opt_verbose && print "writing ", $ofname ,"... \n";
+$dst->write( $ofname );
+
+

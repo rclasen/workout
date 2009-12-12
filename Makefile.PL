@@ -22,6 +22,7 @@ WriteMakefile(
 	wkdump
 	wkhisto
 	wkinfo
+	wkjoin
 	wkmerge
 	wkmodify
 	wkplot

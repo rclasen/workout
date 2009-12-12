@@ -15,9 +15,6 @@ use Getopt::Long;
 
 # TODO: pod
 
-# TODO: convert + concatenate multiple workouts
-
-# TODO: optional filter Smooth 
 # TODO: optional filter Pwr calc
 my $itype;
 my $otype;
