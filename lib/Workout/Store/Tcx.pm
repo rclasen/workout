@@ -160,6 +160,7 @@ sub new {
 		gcalc	=> Geo::Distance->new,
 		actnote	=> undef,
 		lapnote	=> undef,
+		laps	=> [],
 		pt	=> {}, # current point
 		lpt	=> undef, # last point
 		field_use	=> {},
@@ -222,11 +223,18 @@ sub end_node {
 		$self->{lpt} = undef;
 
 	} elsif( $name eq 'lap' ){
-		# TODO: marker?
+		if( my $endtime = $self->{Store}->time_end ){
+			push @{ $self->{laps} }, {
+				note	=> $self->{lapnote},
+				end	=> $endtime,
+			};
+		}
 		$self->{lapnote} = undef;
 
 	} elsif( $name eq 'activity' ){
 		$self->{Store}->note( $self->{actnote} );
+		$self->{Store}->mark_new_laps( $self->{laps} );
+		$self->{laps} = [];
 
 	}
 }
@@ -383,6 +391,7 @@ sub do_write {
 	} $self->fields_io;
 
 	my $stime = _time2str($self->time_start);
+	my $laps = $self->laps;
 
 	# TODO: Sport = Biking|Running|Other
 
@@ -394,87 +403,93 @@ sub do_write {
 <Id>$stime</Id>
 EOHEAD
 
-	# TODO: marker -> lap?
+	foreach my $lap (@$laps){
 
-	my $info = $self->info;
+		my $info = $lap->info;
+		my $ltime = _time2str($info->time_start);
 
-	print $fh "<Lap StartTime=\"", $stime, "\">\n",
-		"<TotalTimeSeconds>", $info->dur, "</TotalTimeSeconds>\n",
-		"<DistanceMeters>", ($info->dist || 0), "</DistanceMeters>\n",
-		"<MaximumSpeed>", ($info->spd_max || 0), "</MaximumSpeed>\n",
-		"<Calories>", int( ($info->work || 0) / 1000 ), "</Calories>\n";
+		print $fh "<Lap StartTime=\"", $ltime, "\">\n",
+			"<TotalTimeSeconds>", $info->dur, "</TotalTimeSeconds>\n",
+			"<DistanceMeters>", ($info->dist || 0), "</DistanceMeters>\n",
+			"<MaximumSpeed>", ($info->spd_max || 0), "</MaximumSpeed>\n",
+			"<Calories>", int( ($info->work || 0) / 1000 ), "</Calories>\n";
 
-	print $fh "<AverageHeartRateBpm>\n",
-		"<Value>", int($info->hr_avg || 0), "</Value>\n",
-		"</AverageHeartRateBpm>\n",
-		"<MaximumHeartRateBpm>\n",
-		"<Value>", int($info->hr_max || 0), "</Value>\n",
-		"</MaximumHeartRateBpm>\n"
-		if $write{hr};
+		print $fh "<AverageHeartRateBpm>\n",
+			"<Value>", int($info->hr_avg || 0), "</Value>\n",
+			"</AverageHeartRateBpm>\n",
+			"<MaximumHeartRateBpm>\n",
+			"<Value>", int($info->hr_max || 0), "</Value>\n",
+			"</MaximumHeartRateBpm>\n"
+			if $write{hr};
 
-	# TODO: Intensity = Active|Resting
-	print $fh "<Intensity>Active</Intensity>\n";
+		# TODO: Intensity = Active|Resting
+		print $fh "<Intensity>Active</Intensity>\n";
 
-	print $fh "<Cadence>", int($info->cad_avg || 0), "</Cadence>\n"
-		if $write{cad};
+		print $fh "<Cadence>", int($info->cad_avg || 0), "</Cadence>\n"
+			if $write{cad};
 
-	print $fh "<TriggerMethod>Manual</TriggerMethod>\n",
-		"<Track>\n";
+		print $fh "<TriggerMethod>Manual</TriggerMethod>\n",
+			"<Track>\n";
 
-	my $it = $self->iterate;
-	my $odo = 0;
+		my $it = $lap->iterate;
+		my $odo = 0;
 
-	while( my $c = $it->next ){
-		$odo += $c->dist || 0;
+		while( my $c = $it->next ){
+			$odo += $c->dist || 0;
 
-		print $fh "<Trackpoint>\n",
-			"<Time>", _time2str($c->time),"</Time>\n";
+			print $fh "<Trackpoint>\n",
+				"<Time>", _time2str($c->time),"</Time>\n";
 
-		print $fh "<Position>\n",
-			"<LatitudeDegrees>", $c->lat,"</LatitudeDegrees>\n",
-			"<LongitudeDegrees>", $c->lon,"</LongitudeDegrees>\n",
-			"</Position>\n" if ( $write{lon} || $write{lat} )
-			&& defined $c->lon && defined $c->lat;
-		
-		print $fh "<AltitudeMeters>", $c->ele,"</AltitudeMeters>\n"
-			if $write{ele} && defined $c->ele;
+			print $fh "<Position>\n",
+				"<LatitudeDegrees>", $c->lat,"</LatitudeDegrees>\n",
+				"<LongitudeDegrees>", $c->lon,"</LongitudeDegrees>\n",
+				"</Position>\n" if ( $write{lon} || $write{lat} )
+				&& defined $c->lon && defined $c->lat;
 
-		print $fh "<DistanceMeters>", $odo,"</DistanceMeters>\n"
-			if $write{dist};
-		
-		if( $write{hr} && 0 < (my $hr = int($c->hr || 0)) ){
-			print $fh "<HeartRateBpm>\n",
-				"<Value>", $hr,"</Value>\n",
-				"</HeartRateBpm>\n";
+			print $fh "<AltitudeMeters>", $c->ele,"</AltitudeMeters>\n"
+				if $write{ele} && defined $c->ele;
+
+			print $fh "<DistanceMeters>", $odo,"</DistanceMeters>\n"
+				if $write{dist};
+
+			if( $write{hr} && 0 < (my $hr = int($c->hr || 0)) ){
+				print $fh "<HeartRateBpm>\n",
+					"<Value>", $hr,"</Value>\n",
+					"</HeartRateBpm>\n";
+			}
+
+			print $fh "<Cadence>", $c->cad,"</Cadence>\n"
+				if $write{cad} && defined $c->cad;
+
+			# TODO: SensorState = Absent|Present
+			print $fh "<SensorState>Present</SensorState>\n";
+
+			print $fh "<Extensions>\n",
+				"<TPX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
+				"<Watts>", $c->pwr, "</Watts>\n",
+				"</TPX>\n",
+				"</Extensions>\n"
+				if $write{work} && defined $c->pwr;
+
+			print $fh "</Trackpoint>\n";
 		}
-		
-		print $fh "<Cadence>", $c->cad,"</Cadence>\n"
-			if $write{cad} && defined $c->cad;
 
-		# TODO: SensorState = Absent|Present
-		print $fh "<SensorState>Present</SensorState>\n";
+		print $fh "</Track>\n",
+			"<Notes>", ($lap->note || ''), "</Notes>\n";
 
 		print $fh "<Extensions>\n",
-			"<TPX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
-			"<Watts>", $c->pwr, "</Watts>\n",
-			"</TPX>\n",
+			"<LX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
+			"<AvgWatts>", $info->pwr_avg, "</AvgWatts>\n",
+			"</LX>\n",
 			"</Extensions>\n"
-			if $write{work} && defined $c->pwr;
-	
-		print $fh "</Trackpoint>\n";
+			if $write{work} && defined $info->pwr_avg;
+
+		print $fh "</Lap>\n";
 	}
 
-	print $fh "</Track>\n";
+	print $fh "<Notes>", ($self->note || ''), "</Notes>\n";
 
-	print $fh "<Extensions>\n",
-		"<LX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
-		"<AvgWatts>", $info->pwr_avg, "</AvgWatts>\n",
-		"</LX>\n",
-		"</Extensions>\n"
-		if $write{work} && defined $info->pwr_avg;
-
-	print $fh "</Lap>\n",
-		"<Notes>", ($self->note || ''), "</Notes>\n";
+	# TODO: write marker as extension?
 
 	print $fh "</Activity>\n",
 		"</Activities>\n",
