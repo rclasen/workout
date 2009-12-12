@@ -70,6 +70,8 @@ get/set the list of fields that must be defined.
 
 =cut
 
+sub cap_block { 1; };
+
 sub fields_io {
 	my $self = shift;
 

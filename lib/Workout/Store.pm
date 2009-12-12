@@ -45,6 +45,8 @@ sub process {
 }
 
 sub stores { $_[0]->src; }
+sub recint { $_[0]->recint; }
+sub cap_block { $_[0]->cap_block; }
 
 
 # TODO: rewrite individual Workout::Store::* as input/output filters

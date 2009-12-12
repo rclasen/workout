@@ -86,6 +86,27 @@ sub stores { $_[0]->src->stores };
 
 
 
+=head2 recint
+
+return the recording interval of chunks that are pulled off this iterator.
+
+=cut
+
+sub recint { $_[0]->src->recint };
+
+
+
+=head2 cap_block
+
+returns the blocking capability of this iterator - i.e. if you have to
+expect gaps between chunks pulled of this iterator.
+
+=cut
+
+sub cap_block { $_[0]->src->recint };
+
+
+
 =head2 cntin
 
 number of chunks passed into this iterator

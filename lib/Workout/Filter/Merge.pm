@@ -83,6 +83,10 @@ master chunks.
 
 =cut
 
+sub recint { $_[0]->master->recint; }
+
+sub cap_block { $_[0]->master->cap_block; }
+
 sub stores {
 	my( $self ) = @_;
 	( $self->SUPER::stores, $self->master->stores );

@@ -63,6 +63,8 @@ sub new {
 	$self;
 }
 
+sub cap_block { 0; };
+
 sub process {
 	my( $self ) = @_;
 
