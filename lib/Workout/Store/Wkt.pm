@@ -130,6 +130,7 @@ sub parse_params {
 			or croak "unsupported version: $v";
 	
 	} elsif( $k eq 'note' ){
+		$v =~ s/\\n/\n/g;
 		$self->note( $v );
 
 	} elsif( $k eq 'columns' ){
@@ -160,8 +161,11 @@ sub parse_chunks {
 sub parse_markers {
 	my( $self, $l ) = @_;
 
-	$l =~ /$re_mark/
+	my( $start, $end, $note ) = $l =~ /$re_mark/
 		or croak "invalid marker syntax: $l";
+
+	$note =~ s/\\n/\n/g;
+
 	# TODO: skip marker outside the chunk range
 	$self->mark_new( {
 		start	=> $1,
@@ -182,7 +186,10 @@ sub do_write {
 	print $fh "[Params]\n";
 	print $fh "Version=1\n";
 	print $fh "Columns=", join(",", @fields), "\n";
-	print $fh "Note=", $self->note, "\n" if $self->note;
+	if( my $note = $self->note ){
+		$note =~ s/\n/\\n/g;
+		print $fh "Note=", $note, "\n"
+	}
 
 
 	print $fh "[Chunks]\n";
@@ -195,10 +202,13 @@ sub do_write {
 
 	print $fh "[Markers]\n";
 	foreach my $mk ( @{$self->marks} ){
+		my $note = $mk->note || '';
+		$note =~ s/\n/\\n/g;
+
 		print $fh join( "\t", 
 			$mk->start	|| 0,
 			$mk->end	|| '',
-			$mk->note	|| '',
+			$note,
 		), "\n";
 	}
 }
