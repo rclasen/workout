@@ -110,6 +110,16 @@ sub new {
 	});
 }
 
+sub from_store {
+	my( $self, $store ) = @_;
+
+	$self->SUPER::from_store( $store );
+
+	foreach my $f (qw( athlete tz )){
+		$self->$f( $store->$f ) if $store->can( $f );
+	}
+}
+
 
 =head1 METHODS
 
