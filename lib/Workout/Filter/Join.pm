@@ -32,7 +32,7 @@ with fake chunks.
 use 5.008008;
 use strict;
 use warnings;
-use base 'Workout::Filter::Base';
+use base 'Workout::Filter::BaseQueue';
 use Carp;
 
 our $VERSION = '0.01';
@@ -101,7 +101,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Filter::Base
+Workout::Filter::BaseQueue
 
 =head1 AUTHOR
 
