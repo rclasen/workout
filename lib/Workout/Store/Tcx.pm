@@ -248,6 +248,7 @@ sub end_trackpoint {
 	return unless $pt->{time};
 	#print STDERR "end_trackpoint $pt->{time}\n";
 
+	# TODO: calc dur from <Lap StartTime="...">
 	my $dur = 0.015;
 	my $dist = $pt->{odo} || 0;
 
@@ -268,7 +269,8 @@ sub end_trackpoint {
 			++$self->{field_use}{dist};
 		}
 
-		$pt->{work} = $pt->{pwr} * $dur if $lpt;
+		$pt->{work} = $pt->{pwr} * $dur
+			if $lpt && defined $pt->{pwr};
 	}
 
 	return if $dur < 0.01;
@@ -389,6 +391,7 @@ sub do_write {
 	my %write = map {
 		$_ => 1;
 	} $self->fields_io;
+	$self->debug( "writing fields: ", join(",", keys %write ) );
 
 	my $stime = _time2str($self->time_start);
 	my $laps = $self->laps;
