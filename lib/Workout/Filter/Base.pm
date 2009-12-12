@@ -41,40 +41,8 @@ sub new {
 	$iter->isa( 'Workout::Iterator' )
 		or $iter = $iter->iterate( $a );
 
-	$a ||= {};
-	$class->SUPER::new( $iter, {
-		%$a,
-		queue	=> [],
-	});
+	$class->SUPER::new( $iter, $a );
 }
-
-# TODO: POD
-
-sub _push {
-	my $self = shift;
-	push @{$self->{queue}}, @_;
-}
-
-sub _pop {
-	my $self = shift;
-	pop @{$self->{queue}};
-}
-
-sub _fetch {
-	my( $self ) = @_;
-
-	if( my $r = $self->_pop ){
-		return $r;
-	}
-
-	if( my $r = $self->src->next ){
-		$self->{cntin}++;
-		return $r;
-	}
-
-	return;
-}
-
 
 1;
 __END__
