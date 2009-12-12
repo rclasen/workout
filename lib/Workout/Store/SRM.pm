@@ -223,6 +223,16 @@ sub do_write {
 
 		my $first = $self->chunk_time2idx( $m->start );
 		my $last = $self->chunk_time2idx( $m->end );
+
+		# TODO: hack. find better way to find chunk by start time
+		my $fchunk = $self->chunk_get_idx( $first );
+		if( $fchunk->time == $m->start ){
+			++$first;
+		}
+
+		$self->debug( "write mark ". $first ." ". $last
+			." ". $fchunk->stime );
+
 		print $fh pack( 'Z255Cvvvvvvv', 
 			encode('cp850',($m->note||'')),
 			1,			# active
@@ -240,9 +250,10 @@ sub do_write {
 	# blocks
 
 	foreach my $b ( @$blocks ){
-		$self->debug( "write block ". $b->[0]->time ." ". @$b );
+		my $delta = ($b->[0]->time - $wtime) * 100;
+		$self->debug( "write block ". $b->[0]->time ." @". $delta ." ". @$b );
 		print $fh pack( 'Vv', 
-			($b->[0]->time - $wtime) * 100,
+			$delta,
 			scalar @$b,
 		) or croak "failed to write recording block";
 	}
