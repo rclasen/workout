@@ -143,7 +143,10 @@ sub mark_end {
 
 =head2 note
 
-get the descriptional text of this lap.
+get the descriptional text for all Marker that caused this lap. Each
+marker's note is prefixed with "start: " or "end: " - depending on which
+timestamp of both timestamps relate to this Lap. All prefixed notes are
+joined with ";".
 
 =cut
 
