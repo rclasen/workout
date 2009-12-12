@@ -72,30 +72,31 @@ my $dst = Workout::file_new( {
 my @sources;
 foreach my $fname ( @ARGV ){
 	$opt_verbose && print "reading ", $fname,"... \n";
-	push @sources, {
-		fname	=> $fname,
-		wk	=> Workout::file_read( $fname, {
-			ftype	=> $ftype,
-			debug	=> $debug,
-		}),
-	};
+	push @sources, Workout::file_read( $fname, {
+		ftype	=> $ftype,
+		debug	=> $debug,
+	});
 }
 
-$dst->recint( $sources[0]{wk}->recint );
+my $recint = $sources[0]->recint;
+$dst->recint( $recint );
 
-my $last_end;
-foreach my $src ( sort {
-	$a->{wk}->time_start <=> $b->{wk}->time_start;
+my @sorted = sort {
+	$a->time_start <=> $b->time_start;
+} @sources;
 
-} @sources ){
-	$opt_verbose && print "adding data from ", $src->{fname},"... \n";
-	eval { $dst->from( $src->{wk} ) };
-	if( my $err = $@ ){
-		print STDERR "failed to add ", $src->{fname}, ": ", $err;
-		exit 1;
-	}
 
-}
+my $iter = Workout::filter('Concat', shift @sorted, {
+	debug	=> $debug,
+	sources	=> \@sorted,
+});
+
+$iter = Workout::filter('Join', $iter, {
+	debug	=> $debug,
+	recint	=> $recint,
+}) if ! $dst->cap_block;
+
+$dst->from( $iter );
 
 $opt_verbose && print "writing ", $ofname ,"... \n";
 $dst->write( $ofname );
