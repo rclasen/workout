@@ -478,10 +478,10 @@ sub do_read {
 	# min=369
 
 	if( $block_cknext < $ckcnt ){
-		warn "inconsistency: block chunks < total";
+		carp "inconsistency: block chunks < total";
 
 	} elsif( $block_cknext > $ckcnt ){
-		warn "inconsistency: block chunks > total, truncating last blocks";
+		carp "inconsistency: block chunks > total, truncating last blocks";
 
 		my $extra = $block_cknext - $ckcnt;
 		foreach my $blk ( reverse @blocks ){
@@ -511,7 +511,7 @@ sub do_read {
 			my $stime = $prev_block->{stime} 
 				- $blk->{ckcnt} * ( $self->recint + 1);
 
-			warn( "fixing block "
+			carp( "fixing block "
 				. $blk->{stime}
 				. " start time to "
 				. $stime
@@ -539,8 +539,8 @@ sub do_read {
 		$ckread = $self->read_srm( $fh, \@blocks, $temperature );
 	}
 
-	$ckread < $ckcnt && warn "cannot read all data chunks ($ckread/$ckcnt)";
-	$ckread > $ckcnt && warn "found more data chunks as expeced ($ckread/$ckcnt)";
+	$ckread < $ckcnt && carp "cannot read all data chunks ($ckread/$ckcnt)";
+	$ckread > $ckcnt && carp "found more data chunks as expeced ($ckread/$ckcnt)";
 
 	############################################################
 	# add marker
@@ -576,7 +576,7 @@ sub read_srm {
 				$cktime = $blk->{stime};
 
 			} else {
-				warn "found extra chunk";
+				carp "found extra chunk";
 				$cktime += $self->recint;
 			}
 
@@ -628,7 +628,7 @@ sub read_srm7 {
 				$cktime = $blk->{stime};
 
 			} else {
-				warn "found extra chunk";
+				carp "found extra chunk";
 				$cktime += $self->recint;
 			}
 

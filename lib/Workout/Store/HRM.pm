@@ -306,7 +306,7 @@ sub parse_inttime {
 
 	if( 0 == ($self->{blockline} % 5) ){
 		if( $l !~ /$re_lap0/ ){
-			warn "invalid lap time in line $.";
+			carp "invalid lap time in line $.";
 			return;
 		}
 
@@ -322,7 +322,7 @@ sub parse_intnotes {
 	my( $self, $l ) = @_;
 
 	if( $l !~ /$re_lapnote/ ){
-		warn "skipping invalid lap note line $.";
+		carp "skipping invalid lap note line $.";
 		return;
 	}
 
@@ -330,7 +330,7 @@ sub parse_intnotes {
 	my $note = $2;
 
 	if( ($lap < 0) || ($lap >= @{ $self->{laps} }) ){
-		warn "skipping note for unknown lap $lap at line $.";
+		carp "skipping note for unknown lap $lap at line $.";
 		return;
 	}
 
