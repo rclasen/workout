@@ -67,7 +67,8 @@ our %fields_supported = map { $_ => 1; } qw{
 	work
 };
 
-our $re_fieldsep = qr/\s*,\s*/;
+our $re_fieldsep = qr/,/;
+our $re_trim = qr/^\s+(.*)\s*$/;
 our $re_stripnl = qr/[\r\n]+$/;
 
 __PACKAGE__->mk_accessors( keys %defaults );
@@ -85,6 +86,7 @@ sub new {
 
 	$a||={};
 	$class->SUPER::new({
+		%defaults,
 		%$a,
 		fields_supported	=> {
 			%fields_supported,
@@ -112,6 +114,10 @@ sub do_read {
 	my( $self, $fh, $fname ) = @_;
 
 	binmode( $fh, ':crlf:encoding(windows-1252)' );
+
+
+
+	# get header:
 
 	my $distconv;
 
@@ -153,22 +159,36 @@ sub do_read {
 
 	}
 
+
+	# guess recint
+
 	my @data;
 	while( defined($line = <$fh>) ){
 		$line =~ s/$re_stripnl//;
 
 		push @data, [ map {
+			s/$re_trim/$1/;
 			$_ eq '' ? undef : $_;
 		} split( /$re_fieldsep/, $line ) ];
 	}
 
-	# TODO: only allow certain recints: 1, 1.26, ...
-	# otherwise recints vary too much.
-
 	my $dur = 60 * $data[-1][0];
-	my $recint = int( 100 * $dur / scalar @data) / 100;
+	my $recint = int( 100 * $dur / (1+ scalar @data) ) / 100;
+
+	# TODO: other "known" recints
+	foreach my $known ( 1.26, int($recint) ){
+		if( abs($recint - $known) <= 0.04 ){
+			$recint = $known;
+			last;
+		}
+	}
 	$self->recint( $recint );
 	$self->debug( "guessed recint: $recint" );
+
+
+
+
+	# guess start time
 
 	my $stime;
 
@@ -183,9 +203,8 @@ sub do_read {
 			_(\d\d)		# hour
 			_(\d\d)		# minute
 			_(\d\d)		# second
-			\.[^.]$/x ){
+			\.[^.]+$/x ){
 
-		$self->debug( "found start time in filename" );
 		$stime = DateTime->new(
 			year	=> $1,
 			month	=> $2,
@@ -194,24 +213,41 @@ sub do_read {
 			minute	=> $5,
 			second	=> $6,
 			time_zone	=> $self->tz,
-		);
+		)->hires_epoch;
+		$self->debug( "found start time in filename: ". $stime );
 
 	} else {
-		$self->debug( "falling back to current time as start time");
 		$stime = time - $dur;
+		$self->debug( "no start time, using ". $stime );
 
 	}
 
+
+
+	# add chunks:
+
+	my $elapsed = 0;
 	my $lodo = 0;
-	my $time = $stime;
 	my $lapid = 0;
 	my @laps;
+	my $inconsistent;
 	foreach my $chunk ( @data ){
-		$time += $recint;
+
+		$elapsed += $recint;
+		if( abs($elapsed - $chunk->[0] * 60) > 0.03 ){
+			$inconsistent ||= $chunk->[0];
+		}
+
+		my $time = $stime + $elapsed;
 
 		my $dist = defined( $chunk->[4] )
 			? ( ($chunk->[4] - $lodo) * $distconv )
 			: undef;
+
+		my $work;
+		if( defined $chunk->[3] && $chunk->[3] >= 0 ){
+			$work = $recint * $chunk->[3];
+		}
 
 		$self->chunk_add( Workout::Chunk->new({
 			time	=> $time,
@@ -219,9 +255,7 @@ sub do_read {
 			dist	=> $dist,
 			cad	=> $chunk->[5],
 			hr	=> $chunk->[6],
-			work	=> defined( $chunk->[3] )
-				? $recint * $chunk->[3]
-				: undef,
+			work	=> $work,
 		}));
 
 		if( $chunk->[7] && $lapid != $chunk->[7] ){
@@ -235,10 +269,12 @@ sub do_read {
 		$lodo = $chunk->[4];
 	}
 
+	$inconsistent && carp "file has inconsistent timestamps: ".  $inconsistent;
+
 	if( @laps ){
 		push @laps, {
 			note	=> $lapid,
-			end	=> $time,
+			end	=> $stime + $elapsed,
 		};
 
 		$self->mark_new_laps( \@laps );
@@ -260,7 +296,7 @@ sub do_write {
 
 	my $lapid = 0;
 	my $iter = $self->iterate;
-	my $time = 0;
+	my $elapsed = 0;
 	my $odo = 0;
 	while( my $c = $iter->next ){
 
@@ -272,12 +308,12 @@ sub do_write {
 
 		++$lapid if $nextid;
 
-		$time += $c->dur;
+		$elapsed += $c->dur;
 		$odo += ($c->dist || 0);
 
 		# TODO: is it really necessary to limit the float precision?
 		print $fh join(",",
-			sprintf('%8.3f', $time / 60),
+			sprintf('%8.3f', $elapsed / 60),
 			'           ',
 			$c->spd ? sprintf('%6.1f', $c->spd * 3.6)
 				: '      ',
