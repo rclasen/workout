@@ -395,6 +395,7 @@ sub do_write {
 
 	my $stime = _time2str($self->time_start);
 	my $laps = $self->laps;
+	my $odo = 0;
 
 	# TODO: Sport = Biking|Running|Other
 
@@ -435,7 +436,6 @@ EOHEAD
 			"<Track>\n";
 
 		my $it = $lap->iterate;
-		my $odo = 0;
 
 		while( my $c = $it->next ){
 			$odo += $c->dist || 0;
