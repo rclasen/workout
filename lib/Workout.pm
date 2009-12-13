@@ -87,18 +87,21 @@ use Module::Pluggable
 
 our $VERSION = '0.13';
 
-# TODO: support multiple stores per ftype
-
-our %ftype;
+our %file_types;
 
 foreach my $store ( __PACKAGE__->stores ){
 	eval "require $store";
 	if( my $err = $@ ){
 		croak $err;
 	}
+	next unless $store->isa('Workout::Store');
 	next unless $store->can('filetypes');
-	foreach my $ft ( $store->filetypes ){
-		$ftype{$ft} = $store;
+
+	my @ftypes = $store->filetypes;
+	push @{$file_types{''}}, $store if @ftypes;
+
+	foreach my $ft ( @ftypes ){
+		push @{$file_types{lc $ft}}, $store;
 	}
 }
 
@@ -114,21 +117,28 @@ startup.
 =cut
 
 sub file_types {
-	return \%ftype;
+	return \%file_types;
 }
 
-sub file_type_class {
-	my( $type ) = @_;
+=head2 file_type_name( $file_name )
 
-	exists $ftype{lc $type}
-		or croak "unsupported filetype: $type";
+returns file type based on file extension
 
-	return $ftype{lc $type};
+=cut
+
+sub file_type_name {
+	my( $fname ) = @_;
+
+	$fname =~ /\.([^.]+)$/
+		or return;
+
+	return $1 if exists $file_types{lc $1};
+
+	return;
 }
 
 
-
-=head2 file_read( $fname, \%arg )
+=head2 file_read( $source, \%arg )
 
 Instantiates a Workout::Store using it's read() constructor. The Store
 class is guessed from the file extension unless specified manually. The
@@ -137,12 +147,50 @@ argument hash is passed to it's constructor.
 =cut
 
 sub file_read {
-	my( $fname, $a ) = @_;
+	my( $source, $a ) = @_;
 
-	my $class = &file_type_class( $a->{ftype} 
-		|| ($fname =~ /\.([^.]+)$/ )[0]
-		|| "" );
-	$class->read( $fname, $a );	
+	my $ftype = '';
+	if( defined $a->{ftype} ){
+		$ftype = $a->{ftype};
+
+	} elsif( ! ref $source && $source =~ /\.([^.]+)$/ ){
+		$ftype = $1 if exists $file_types{lc $1};
+
+	}
+
+	exists $file_types{lc $ftype}
+		or croak "no such filetype: $ftype";
+
+	my $classes = $file_types{lc $ftype};
+
+	# exact filetype match found:
+	if( @$classes == 1 ){
+		my $class = $classes->[0];
+		$a->{debug} && print STDERR "reading with store ", $class,"\n";
+		return $class->read( $source, $a );
+	}
+
+	# multiple matches found, start guessing:
+	ref $source
+		and croak "filetype detection requires a filename";
+
+	foreach my $class ( @$classes ){
+		$a->{debug} && print STDERR "attempting read with store ", $class,"\n";
+
+		my $store = eval {
+			$class->read( $source, $a );
+		};
+		if( my $err = $@ ){
+			$a->{debug} && print STDERR "store failed: ", $err;
+
+		} else {
+			return $store;
+		}
+
+	}
+
+	croak "unsupported filetype";
+	return;
 }
 
 
@@ -157,9 +205,20 @@ hash is passed to it's constructor.
 sub file_new {
 	my( $a ) = @_;
 
-	my $class = &file_type_class( $a->{ftype} 
-		|| "" );
-	$class->new( $a );	
+	my $ftype = 'wkt';
+	if( defined $a->{ftype} ){
+		$ftype = $a->{ftype};
+	}
+
+	exists $file_types{lc $ftype}
+		or croak "no such filetype: $ftype";
+
+	my $classes = $file_types{lc $ftype};
+
+	my $class = $classes->[0];
+	$a->{debug} && print STDERR "new store: ", $class,"\n";
+
+	$class->new( $a );
 }
 
 
