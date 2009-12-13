@@ -32,19 +32,16 @@ my $needhelp;
 my $wanthelp;
 
 if( ! GetOptions(
-	'input|i=s'	=> \$itype,
-
-	'start=s'	=> \$start,
-	'delta=i'	=> \$delta,
-	'note=s'	=> \$note,
-
-	'slope=i'	=> \$slope,
-	'circum=i'	=> \$circum,
-	'zeropos=i'	=> \$zeropos,
 	'athlete=s'	=> \$athletename,
-
+	'circum=i'	=> \$circum,
 	'debug!'	=> \$debug,
-	'help|h!'	=> \$wanthelp,
+	'delta|d=i'	=> \$delta,
+	'help!'		=> \$wanthelp,
+	'itype=s'	=> \$itype,
+	'note=s'	=> \$note,
+	'slope=i'	=> \$slope,
+	'start=s'	=> \$start,
+	'zeropos=i'	=> \$zeropos,
 )){
 	$needhelp++;
 }
@@ -54,19 +51,19 @@ if( $wanthelp ){
 $0 [opt] <input file>
 modify workout attributes
 
- --start=<yyyy-mm-dd h:m:s> set new start time
- --delta=<sec>       add delta to start time
+Options:
+--start=<yyyy-mm-dd h:m:s> set new start time
+--delta=<sec>       add delta to start time
 
- --note=<n>          set note
+--note=<n>          set note
 
- --slope=<x>         set slope (SRM)
- --circum=<x>        set wheel circumference (SRM)
- --zeropos=<x>       set zero offset (SRM)
- --athlete=<name>    set athlete name (SRM)
+--slope=<x>         set slope (SRM)
+--circum=<x>        set wheel circumference (SRM)
+--zeropos=<x>       set zero offset (SRM)
+--athlete=<name>    set athlete name (SRM)
 
- --debug             enable debuging output
- --help              this help
-
+--debug             enable debuging output
+--help              this help
 EOF
 	exit 0;
 }
@@ -81,9 +78,9 @@ if( $needhelp ){
 	exit 1;
 }
 
-my $file = shift;
+my $fname = shift;
 
-my $src = Workout::file_read( $file, {
+my $src = Workout::file_read( $fname, {
 	ftype	=> $itype,
 	debug	=> $debug,
 } );
@@ -126,6 +123,6 @@ foreach my $attr ( qw( note slope circum zeropos athletename )){
 	$src->$attr( $v );
 }
 
-$src->write( "$file.wkmodify" );
-unlink $file or die "unlink $file failed: $!"; 
-rename "$file.wkmodify", $file;
+$src->write( "$fname.wkmodify" );
+unlink $fname or die "unlink $fname failed: $!"; 
+rename "$fname.wkmodify", $fname;

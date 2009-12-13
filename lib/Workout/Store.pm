@@ -441,6 +441,8 @@ sub chunk_time2idx {
 	$self->_chunk_time2idx( $time, 0, $last );
 }
 
+# TODO: convert from recursion -> loop
+
 # quicksearch
 sub _chunk_time2idx {
 	my( $self, $time, $idx1, $idx2 ) = @_;

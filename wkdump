@@ -26,12 +26,12 @@ my $needhelp;
 my $wanthelp;
 
 if( ! GetOptions(
-	"input|i=s"	=> \$itype,
-	"fields|f=s"	=> \@fields,
-	"recint|r=i"	=> \$recint,
-	"join|j"	=> \$join,
 	"debug!"	=> \$debug,
-	"help|h!"	=> \$wanthelp,
+	"fields=s"	=> \@fields,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \$itype,
+	"join!"		=> \$join,
+	"recint=i"	=> \$recint,
 )){
 	$needhelp++;
 }
@@ -41,11 +41,12 @@ if( $wanthelp ){
 $0 [opt] <input file>
 dump workout file as tab seperated list
 
+--join              join blocks
+--recint=<sec>      resample data to this interval
+--fields=<n,n..>    dump specified fields
+
 --debug             enable debuging output
 --help              this help
---join              join blocks
---recint|-r=<sec>   resample data to this interval
---fields|-f=<n,n..> dump specified fields
 
 please look at Workout::Chunk for supported fields
 
@@ -71,9 +72,9 @@ if( @fields ){
 	# TODO: use fields_io() or fields_used()
 }
 
-my $ifile = shift;
+my $ifname = shift;
 
-my $src = Workout::file_read( $ifile, {
+my $src = Workout::file_read( $ifname, {
 	ftype	=> $itype,
 	debug	=> $debug,
 } );

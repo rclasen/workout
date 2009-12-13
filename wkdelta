@@ -29,17 +29,19 @@ my $recint;
 my $field = 'spd';
 my $opt_save;
 my $opt_gui;
+my @itype;
 
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
-	"help|h!"	=> \$wanthelp,
-	"recint|r=i"	=> \$recint,
 	"delta|d=i"	=> \$delta,
-	"gui|g!"	=> \$opt_gui,
-	"field|f=s"	=> \$field,
-	"save|s!"	=> \$opt_save,
+	"field=s"	=> \$field,
+	"gui!"		=> \$opt_gui,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \@itype,
+	"recint=i"	=> \$recint,
+	"save!"		=> \$opt_save,
 )){
 	$needhelp++;
 }
@@ -50,14 +52,15 @@ $0 [opt] <fname1> [<fname2>]
 interactively determine time delta between multiple recordings for one workout
 
 Options:
---delta|-d=<d>      initial delta for first file
---save|-s           save delta to first file
+--itype=<a>,<b>  file types
+--delta=<d>      initial delta for first file
+--save           save delta to first file
 
---gui|-g            interactively determine delta between two files
---recint|-r=<s>     smoothen input data (speeds up gui, too)
---field|-f=<f>      field to plot
+--gui            interactively determine delta between two files
+--recint=<s>     smoothen displayed data (makes it faster, too)
+--field=<f>      field to plot (spd, ele, hr, pwr, cad, ...)
 
---help              this cruft
+--help           this cruft
 EOF
 	exit 0;
 }
@@ -94,12 +97,13 @@ if( $needhelp ){
 	exit 1;
 }
 
+@itype = split(/,/,join(',',@itype)) if @itype;
 
-my $wk1 = get_wk( $f1 );
+my $wk1 = get_wk( $f1, $itype[0] );
 
 my $gui_canceled;
 if( $opt_gui ) {
-	my $wk2 = get_wk( $f2 );
+	my $wk2 = get_wk( $f2, $itype[1] );
 	Gtk2->init;
 	&show_chart( $field, $wk1, $wk2 );
 }
@@ -122,9 +126,9 @@ if( $delta && $opt_save ){
 
 
 sub get_wk {
-	my( $fname ) = @_;
+	my( $fname, $itype ) = @_;
 
-	my $wk = Workout::file_read( $fname );
+	my $wk = Workout::file_read( $fname, { ftype	=> $itype, });
 	$wk = Workout::filter( 'Join', $wk, { recint => $recint });
 	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
 	$wk;

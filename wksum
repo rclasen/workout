@@ -17,14 +17,16 @@ use Workout;
 
 my $debug;
 my $ftp;
+my $itype;
 
 my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
-	"ftp=i"		=> \$ftp,
 	"debug!"	=> \$debug,
-	"help|h!"	=> \$wanthelp,
+	"ftp=i"		=> \$ftp,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \$itype,
 )){
 	$needhelp++;
 }
@@ -33,9 +35,13 @@ if( $wanthelp ){
 	print <<EOF;
 $0 [opt] <fname>
 calculate some fancy data from Workout data
+
 Options:
---debug             enable debuging output
+--itype=<type>      input file type for all files
+
 --ftp=<w>           threshold power (W)
+
+--debug             enable debuging output
 --help              this cruft
 EOF
 	exit 0;
@@ -55,6 +61,7 @@ my %info;
 foreach my $fname ( @ARGV ){
 	$debug && print STDERR "reading $fname...\n";
 	my $src = Workout::file_read( $fname, { 
+		ftype	=> $itype,
 		debug	=> $debug, 
 	} );
 	my $if = Workout::filter( 'Info', $src, {

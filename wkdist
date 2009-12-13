@@ -20,6 +20,7 @@ use MyChart::Gtk;
 my $recint;
 my @delta;
 my @fields;
+my @itype;
 
 my $wanthelp;
 my $needhelp;
@@ -31,10 +32,11 @@ my $needhelp;
 # TODO: suppress plots during block gaps
 
 if( ! GetOptions(
-	"recint|r=i"	=> \$recint,
-	"fields|f=s"	=> \@fields,
 	"delta|d=s"	=> \@delta,
-	"help|h!"	=> \$wanthelp,
+	"fields=s"	=> \@fields,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \@itype,
+	"recint=i"	=> \$recint,
 )){
 	$needhelp++;
 }
@@ -45,10 +47,13 @@ $0 [opt] <fname> ...
 display data distribution chart of workout(s)
 
 Options:
---help                this cruft
---recint=<sec>|-r     resample data to recint before plotting
---fields=<f1>,...|-f  fields to plot: ele, spd, cad, hr, pwr
+--itype=<type>,...    file types for input files
+
 --delta=<d1>,...      per file time-shift in seconds
+--fields=<f1>,...     fields to plot: ele, spd, cad, hr, pwr
+--recint=<sec>        resample data to recint before plotting
+
+--help                this cruft
 EOF
 	exit 0;
 }
@@ -65,6 +70,8 @@ if( grep { ! /^-?\d+$/ } @delta ){
 	print STDERR "invalid delta\n";
 	$needhelp++;
 }
+
+@itype = split(/,/,join(',',@itype)) if @itype;
 
 if( ! @ARGV ){
 	print STDERR "missing input files\n";
@@ -104,8 +111,9 @@ my $graph = MyChart::Gtk->new(
 
 foreach my $fname ( @ARGV ){
 	my $d = shift @delta;
+	my $t = shift @itype;
 
-	my $wk = Workout::file_read( $fname );
+	my $wk = Workout::file_read( $fname, { ftype => $t } );
 	$wk = Workout::filter( 'Timeshift', $wk, { delta => $d }) if $d;
 	$wk = Workout::filter( 'Resample', $wk, { recint => $recint }) if $recint;
 

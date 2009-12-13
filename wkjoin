@@ -16,7 +16,8 @@ use Getopt::Long;
 
 # concatenate multiple workouts
 
-my $ftype;
+my $itype;
+my $otype;
 my $opt_verbose;
 my $debug;
 
@@ -24,10 +25,11 @@ my $needhelp;
 my $wanthelp;
 
 if( ! GetOptions(
-	"help|h!"	=> \$wanthelp,
-	"ftype=s"	=> \$ftype,
-	"verbose|v!"	=> \$opt_verbose,
 	"debug!"	=> \$debug,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \$itype,
+	"otype=s"	=> \$otype,
+	"verbose|v!"	=> \$opt_verbose,
 )){
 	$needhelp++;
 }
@@ -42,10 +44,12 @@ files have to use the same type and recording intervall as the first
 specified input file. Meta information (Note, Slope, ...) is taken from
 the last input file.
 
---help              this help
---ftype=<type>      file type
---debug             enable debuging output
+Options:
+--itype=<type>      input file type
+--otype=<type>      output file type
 
+--debug             enable debuging output
+--help              this help
 EOF
 	exit 0;
 }
@@ -62,24 +66,26 @@ if( $needhelp ){
 
 my $ofname = shift;
 
-$ftype ||= lc( ($ofname =~ /\.([^.]+)$/)[0] );
-
-my $dst = Workout::file_new( {
-	ftype	=> $ftype,
-	debug	=> $debug,
-} );
-
 my @sources;
 foreach my $fname ( @ARGV ){
 	$opt_verbose && print "reading ", $fname,"... \n";
 	push @sources, Workout::file_read( $fname, {
-		ftype	=> $ftype,
+		ftype	=> $itype,
 		debug	=> $debug,
 	});
 }
 
+$otype ||= Workout::file_type_name( $ofname );
+$otype ||= ($sources[0]->filetypes)[0];
+
 my $recint = $sources[0]->recint;
-$dst->recint( $recint );
+
+my $dst = Workout::file_new( {
+	ftype	=> $otype,
+	recint	=> $recint,
+	debug	=> $debug,
+
+});
 
 my @sorted = sort {
 	$a->time_start <=> $b->time_start;

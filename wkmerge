@@ -26,6 +26,7 @@ use Workout::Athlete;
 my $join;
 my $skip;
 my $recint;
+my @itype;
 my $otype;
 my $delta = 0;
 my @fields;
@@ -36,13 +37,14 @@ my $needhelp;
 
 if( ! GetOptions(
 	"debug!"	=> \$debug,
-	"type=s"	=> \$otype,
-	"recint|r=i"	=> \$recint,
-	"join|j"	=> \$join,
-	"skip!"		=> \$skip,
-	"fields|f=s"	=> \@fields,
 	"delta|d=i"	=> \$delta,
-	"help|h!"	=> \$wanthelp,
+	"fields=s"	=> \@fields,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \@itype,
+	"join!"		=> \$join,
+	"otype=s"	=> \$otype,
+	"recint=i"	=> \$recint,
+	"skip!"		=> \$skip,
 )){
 	$needhelp++;
 }
@@ -53,12 +55,16 @@ $0 [opt] <fname1> <fname2> <dst-fname>
 prepare workout data for mailing it to the trainer
 
 Options:
---debug             enable debuging output
---recint|-r=<int>   output sampling interval (default=fname1's)
---fields|-f=<n,n..> fields to pick from fname2
---delta|-d=<d>      time difference of fname2
+--itype=<a>,<b>     input file types
+--delta=<d>         time difference of fname2
+--fields=<n,n..>    fields to pick from fname2
+
+--otype=<c>         output file type
+--recint=<int>      output sampling interval (default=fname1's)
 --join              join blocks
 --skip              skip chunks where essential fields are missing
+
+--debug             enable debuging output
 --help              this cruft
 EOF
 	exit 0;
@@ -82,6 +88,8 @@ if( ! $ofname ){
 	$needhelp++;
 }
 
+@itype = split(/,/,join(',',@itype)) if @itype;
+
 if( @fields ){
 	@fields = split(/,/,join(',',@fields));
 } else {
@@ -101,7 +109,7 @@ if( $needhelp ){
 	exit 1;
 }
 
-$otype ||= lc( ($ofname =~ /\.([^.]+)$/)[0] );
+$otype ||= Workout::file_type_name( $ofname );
 
 my $dst = Workout::file_new( { 
 	debug	=> $debug,
@@ -117,6 +125,7 @@ if( ! $join and $join = ! $dst->cap_block ){
 
 # read wk1
 my $wk1 = Workout::file_read( $sfname, {
+	ftype	=> $itype[0],
 	debug	=> $debug,
 });
 my $it1 = $wk1->iterate;
@@ -153,6 +162,7 @@ $it1 = Workout::filter('Resample', $it1, {
 
 # read wk2
 my $wk2 = Workout::file_read( $gfname, {
+	ftype	=> $itype[1],
 	debug	=> $debug,
 });
 
@@ -189,9 +199,6 @@ $iter = Workout::filter( 'SkipUndef', $iter, {
 $dst->from( $iter );
 
 # write dst
-open( my $fh, '>', $ofname )
-	or die "open '$ofname': $!";
-$dst->write( $fh );
-close( $fh );
+$dst->write( $ofname );
 
 1;

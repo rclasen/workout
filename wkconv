@@ -15,6 +15,7 @@ use Getopt::Long;
 
 # TODO: pod
 
+# TODO: optionally limit timespan to write
 # TODO: optional filter Pwr calc
 my $itype;
 my $otype;
@@ -29,15 +30,15 @@ my $needhelp;
 my $wanthelp;
 
 if( ! GetOptions(
-	"help|h!"	=> \$wanthelp,
-	"input|i=s"	=> \$itype,
-	"output|o=s"	=> \$otype,
-	"recint|r=i"	=> \$recint,
-	"join|j!"	=> \$join,
-	"skip!"		=> \$skip,
-	"verbose|v!"	=> \$opt_verbose,
-	"fields|f=s"	=> \@fields,
 	"debug!"	=> \$debug,
+	"fields=s"	=> \@fields,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \$itype,
+	"join!"		=> \$join,
+	"otype=s"	=> \$otype,
+	"recint=i"	=> \$recint,
+	"skip!"		=> \$skip,
+	"verbose!"	=> \$opt_verbose,
 )){
 	$needhelp++;
 }
@@ -47,15 +48,17 @@ if( $wanthelp ){
 $0 [opt] <input file> <output file>
 convert workout files between formats
 
---help              this help
---input|-i=<type>   input file type
---output|-o=<type>  input file type
+Options:
+--itype=<type>      input file type
+
+--otype=<type>      input file type
 --join              join blocks
 --skip              skip chunks where essential fields are missing
---recint|-r=<int>   sampling interval
---fields|-f=<n,n..> write only specified fields
---debug             enable debuging output
+--recint=<int>      sampling interval
+--fields=<n,n..>    write only specified fields
 
+--debug             enable debuging output
+--help              this help
 EOF
 	exit 0;
 }
@@ -74,13 +77,12 @@ if( $needhelp ){
 	exit 1;
 }
 	
-my( $ifile, $ofile ) = @ARGV;
+my( $ifname, $ofname ) = @ARGV;
 
-$itype ||= lc( ($ifile =~ /\.([^.]+)$/)[0] );
-$otype ||= lc( ($ofile =~ /\.([^.]+)$/)[0] );
+$otype ||= Workout::file_type_name( $ofname );
 
 
-my $src = Workout::file_read( $ifile, { 
+my $src = Workout::file_read( $ifname, { 
 	ftype	=> $itype,
 	debug	=> $debug,
 } );
@@ -139,7 +141,7 @@ my $res = $iter = Workout::filter('Resample', $iter, {
 
 $dst->from( $iter );
 $dst->fields_io( @fields ) if @fields;
-$dst->write( $ofile );
+$dst->write( $ofname );
 
 if( $opt_verbose ){
 	print "input=", $srci->cntin, "\n";

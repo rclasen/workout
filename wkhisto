@@ -43,10 +43,10 @@ my $wanthelp;
 my $needhelp;
 
 if( ! GetOptions(
-	"set=s"		=> \$set,
-	"input|i=s"	=> \$itype,
 	"debug!"	=> \$debug,
-	"help|h!"	=> \$wanthelp,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \$itype,
+	"set=s"		=> \$set,
 )){
 	$needhelp++;
 }
@@ -55,10 +55,12 @@ if( $wanthelp ){
 	print <<EOF;
 $0 [opt] <fname>
 calculate some fancy data from Workout data
+
 Options:
---debug             enable debuging output
---input|-i=<type>   input file type
+--itype=<type>      input file type
 --set=<set>         zone definition to use (histo|zone)
+
+--debug             enable debuging output
 --help              this cruft
 EOF
 	exit 0;
