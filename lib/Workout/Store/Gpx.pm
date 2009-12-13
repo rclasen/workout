@@ -163,14 +163,8 @@ sub end_trkpt {
 
 	return unless $pt->{time};
 
-	foreach my $a ( values %$attr ){
-		if( lc $a->{LocalName} eq 'lon' ){
-			$pt->{lon} = $a->{Value};
-
-		} elsif( lc $a->{LocalName} eq 'lat' ){
-			$pt->{lat} = $a->{Value};
-		}
-	}
+	$pt->{lon} = $attr->{'{}lon'}{Value};
+	$pt->{lat} = $attr->{'{}lat'}{Value};
 	my $dur = 0.015;
 	my $dist = 0;
 
