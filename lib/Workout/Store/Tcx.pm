@@ -158,6 +158,9 @@ sub new {
 		%$a,
 		nodes	=> \%nodes,
 		gcalc	=> Geo::Distance->new,
+		time	=> 0,
+		odo	=> 0,
+		trackcnt	=> 0,
 		actnote	=> undef,
 		lapnote	=> undef,
 		laps	=> [],
@@ -221,6 +224,7 @@ sub end_node {
 
 	} elsif( $name eq 'track' ){
 		$self->{lpt} = undef;
+		++$self->{trackcnt};
 
 	} elsif( $name eq 'lap' ){
 		if( my $endtime = $self->{Store}->time_end ){
@@ -230,11 +234,14 @@ sub end_node {
 			};
 		}
 		$self->{lapnote} = undef;
+		$self->{trackcnt} = 0;
 
 	} elsif( $name eq 'activity' ){
 		$self->{Store}->note( $self->{actnote} );
 		$self->{Store}->mark_new_laps( $self->{laps} );
 		$self->{laps} = [];
+		$self->{odo} = 0;
+		$self->{time} = 0;
 
 	}
 }
@@ -248,18 +255,40 @@ sub end_trackpoint {
 	return unless $pt->{time};
 	#print STDERR "end_trackpoint $pt->{time}\n";
 
-	# TODO: calc dur from <Lap StartTime="...">
+	my $lpt = $self->{lpt};
+
+
+	# get duration:
+
 	my $dur = 0.015;
-	my $dist = $pt->{odo} || 0;
+	if( ! $lpt && ! $self->{trackcnt} ){
+		my $laptimeattr = $self->{stack}[1]{attr}{'{}StartTime'}{Value};
+		my $laptime = _str2time( $laptimeattr );
 
-	if( defined( my $lpt = $self->{lpt} ) ){
-		$dur = $pt->{time} - $lpt->{time};
+		$self->{time} = $laptime;
+	}
 
-		if( defined $pt->{odo} && defined $lpt->{odo} ){
-			$dist = $pt->{odo} - $lpt->{odo};
-			++$self->{field_use}{dist};
+	if( defined $self->{time}
+		&& $self->{time} <= $pt->{time} ){
 
-		} elsif( defined $pt->{lon} && defined $pt->{lat}
+		$dur = $pt->{time} - $self->{time};
+	}
+
+	$self->{time} = $pt->{time};
+
+
+	# get distance:
+
+	my $dist;
+	if( defined $pt->{odo} && defined $self->{odo}
+		&& $pt->{odo} >= $self->{odo} ){
+
+		$dist = $pt->{odo} - $self->{odo};
+		++$self->{field_use}{dist};
+
+	} elsif( $lpt ){
+
+		if( defined $pt->{lon} && defined $pt->{lat}
 			&& defined $lpt->{lon} && defined $lpt->{lat} ){
 
 			$dist = $self->{gcalc}->distance( 'meter',
@@ -269,14 +298,25 @@ sub end_trackpoint {
 			++$self->{field_use}{dist};
 		}
 
-		$pt->{work} = $pt->{pwr} * $dur
-			if $lpt && defined $pt->{pwr};
 	}
 
-	return if $dur < 0.01;
+	$self->{odo} = $pt->{odo}
+		if defined $pt->{odo};
+	delete $pt->{odo};
 
+
+	# get work:
+
+	$pt->{work} = $pt->{pwr} * $dur
+		if defined $pt->{pwr};
 	delete $pt->{pwr};
-	# delete $pt->{odo}; # needed for next pt to calc dist
+
+
+	# add:
+
+	$self->{lpt} = $pt;
+
+	return if $dur < 0.01;
 
 	$self->{Store}->chunk_add( Workout::Chunk->new({
 		%$pt,
@@ -284,7 +324,6 @@ sub end_trackpoint {
 		dist    => $dist,
 	}) );
 
-	$self->{lpt} = $pt;
 }
 
 sub end_document {
