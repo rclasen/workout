@@ -539,17 +539,38 @@ sub do_read {
 		$ckread = $self->read_srm( $fh, \@blocks, $temperature );
 	}
 
-	$ckread < $ckcnt && carp "cannot read all data chunks ($ckread/$ckcnt)";
-	$ckread > $ckcnt && carp "found more data chunks as expeced ($ckread/$ckcnt)";
+	if( $ckread <= 0 ){
+		croak "no chunks found";
+
+	} elsif( $ckread < $ckcnt ){
+		carp "cannot read all data chunks ($ckread/$ckcnt)";
+
+	} elsif( $ckread > $ckcnt ){
+		carp "found more data chunks as expeced ($ckread/$ckcnt)";
+
+	}
 
 	############################################################
 	# add marker
 
 	foreach my $mark ( @marker ){
-		my $first = $self->chunk_get_idx( $mark->{ckfirst} )
-			or next;
-		my $last = $self->chunk_get_idx( $mark->{cklast} )
-			or next;
+		if( $mark->{ckfirst} >= $ckread ){
+			carp "fixing marker start offset ". $mark->{ckfirst};
+			$mark->{ckfirst} = $ckread -1;
+		}
+
+		if( $mark->{cklast} >= $ckread ){
+			carp "fixing marker end offset ". $mark->{cklast};
+			$mark->{cklast} = $ckread -1;
+		}
+
+		my $first = $self->chunk_get_idx( $mark->{ckfirst} );
+		my $last = $self->chunk_get_idx( $mark->{cklast} );
+
+		if( ! $first || ! $last ){
+			carp "failed to build marker ".  $mark->{ckfirst};
+			next;
+		}
 
 		$self->mark_new({
 			start	=> $first->stime,
