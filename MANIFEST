@@ -15,6 +15,8 @@ lib/Workout/Chart/Source.pm
 lib/Workout/Chart/Workout.pm
 lib/Workout/Chunk.pm
 lib/Workout/Filter/Base.pm
+lib/Workout/Filter/BaseQueue.pm
+lib/Workout/Filter/Concat.pm
 lib/Workout/Filter/FTP.pm
 lib/Workout/Filter/Info.pm
 lib/Workout/Filter/Join.pm
@@ -22,20 +24,26 @@ lib/Workout/Filter/Max.pm
 lib/Workout/Filter/Merge.pm
 lib/Workout/Filter/Pwr.pm
 lib/Workout/Filter/Resample.pm
+lib/Workout/Filter/SkipUndef.pm
 lib/Workout/Filter/Timeshift.pm
 lib/Workout/Filter/Timespan.pm
 lib/Workout/Filter/Zone.pm
 lib/Workout/Iterator.pm
+lib/Workout/Lap.pm
 lib/Workout/Marker.pm
 lib/Workout/Store.pm
 lib/Workout/Store/Gpx.pm
 lib/Workout/Store/HRM.pm
 lib/Workout/Store/Memory.pm
+lib/Workout/Store/Powertap.pm
 lib/Workout/Store/SRM.pm
+lib/Workout/Store/Tcx.pm
 lib/Workout/Store/Wkt.pm
+lib/Workout/XmlDescent.pm
 LICENSE
 Makefile.PL
-MANIFEST			This list of files
+MANIFEST
+MANIFEST.SKIP
 README
 t/Workout-Store.t
 wkconv

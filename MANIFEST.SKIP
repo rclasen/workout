@@ -1,0 +1,11 @@
+/todo($|/)
+\.bak$
+\.old$
+\.swp$
+^Makefile$
+^[^/]*-stamp$
+^\.git($|/)
+^debian/[^/]*\.log$
+^debian/[^/]*\.substvars$
+^debian/.*/
+^debian/files$
