@@ -90,10 +90,10 @@ our $VERSION = '0.13';
 our %file_types;
 
 foreach my $store ( __PACKAGE__->stores ){
-	eval "require $store";
-	if( my $err = $@ ){
-		croak $err;
-	}
+	# ignore broken stores:
+	eval "require $store"
+		or next;
+
 	next unless $store->isa('Workout::Store');
 	next unless $store->can('filetypes');
 
