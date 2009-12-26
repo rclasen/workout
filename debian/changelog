@@ -1,3 +1,9 @@
+workout (0.15~git0) unstable; urgency=low
+
+  * prepared next release
+
+ -- Rainer Clasen <bj@zuto.de>  Thu, 31 Dec 2009 11:56:00 +0100
+
 workout (0.14) unstable; urgency=low
 
   * clarified optional dependencies
