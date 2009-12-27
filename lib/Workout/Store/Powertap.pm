@@ -240,9 +240,19 @@ sub do_read {
 
 		my $time = $stime + $elapsed;
 
-		my $dist = defined( $chunk->[4] )
+		my $dist = defined( $chunk->[4] ) && $chunk->[4] >=0
 			? ( ($chunk->[4] - $lodo) * $distconv )
 			: undef;
+
+		my $cad;
+		if( defined $chunk->[5] && $chunk->[5] >= 0 ){
+			$cad = $chunk->[5];
+		}
+
+		my $hr;
+		if( defined $chunk->[6] && $chunk->[6] > 0 ){
+			$hr = $chunk->[6];
+		}
 
 		my $work;
 		if( defined $chunk->[3] && $chunk->[3] >= 0 ){
@@ -253,8 +263,8 @@ sub do_read {
 			time	=> $time,
 			dur	=> $recint,
 			dist	=> $dist,
-			cad	=> $chunk->[5],
-			hr	=> $chunk->[6],
+			cad	=> $cad,
+			hr	=> $hr,
 			work	=> $work,
 		}));
 
