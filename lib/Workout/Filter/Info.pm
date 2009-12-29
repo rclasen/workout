@@ -649,6 +649,7 @@ sub process {
 
 
 	if( ($d->pwr||0) > $self->pwrmin
+		|| ($d->cad||0) > 0
 		|| ($d->spd||0) > $self->spdmin ){
 
 		$self->{dur_mov} += $d->dur;
