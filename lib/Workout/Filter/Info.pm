@@ -652,11 +652,10 @@ sub process {
 		|| ($d->spd||0) > $self->spdmin ){
 
 		$self->{dur_mov} += $d->dur;
-		$self->set_asum( $d, 'hr' );
 	}
 
 	$self->set_nsum( $d, qw( cad ));
-	$self->set_asum( $d, qw( cad temp ));
+	$self->set_asum( $d, qw( hr cad temp ));
 	$self->set_max( $d, qw( pwr torque hr cad spd vspd accel temp ele grad ));
 	$self->set_min( $d, qw( temp ele ));
 	$self->set_zmin( $d, qw( hr ));
