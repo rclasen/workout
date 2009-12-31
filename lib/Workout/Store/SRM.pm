@@ -34,7 +34,7 @@ Workout::Store and implements do_read/_write methods.
 
 
 package Workout::Store::SRM;
-use 5.008008;
+use 5.9.1;
 use strict;
 use warnings;
 use base 'Workout::Store';
@@ -317,7 +317,7 @@ sub write_srm7 {
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
 
-		print $fh pack( 'vCClls', 
+		print $fh pack( 'vCCl<l<s',
 			$c->pwr||0,
 			$c->cad||0,
 			$c->hr||0,
@@ -658,7 +658,7 @@ sub read_srm7 {
 		}
 		$ckread++;
 
-		@_ = unpack( 'vCClls', $buf ); # TODO: not bit-gender safe
+		@_ = unpack( 'vCCl<l<s', $buf );
 		my $chunk = Workout::Chunk->new( {
 			time	=> $cktime,
 			dur	=> $self->recint,
