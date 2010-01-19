@@ -34,7 +34,7 @@ Workout::Store and implements do_read/_write methods.
 
 
 package Workout::Store::SRM;
-use 5.9.1;
+use 5.008008;
 use strict;
 use warnings;
 use base 'Workout::Store';
@@ -42,7 +42,6 @@ use Carp;
 use DateTime;
 use Encode;
 use Workout::Filter::Info;
-
 
 our $VERSION = '0.01';
 
@@ -55,6 +54,21 @@ my %magic_tag = (
 	SRM6	=> 6,
 	SRM7	=> 7,
 );
+
+our $chunk7fmt;
+
+if( $] > 5.009001 ){
+	# perl supports byte-swapping itself:
+	$chunk7fmt = 'vCCl<l<s';
+
+} elsif( pack('l',0x04030201) eq "\x01\x02\x03\x04" ){
+	# little endian doesn't need swapping:
+	$chunk7fmt = 'vCClls';
+
+} else {
+	croak "require perl v5.9.1 except on little-endian machines";
+}
+
 
 sub filetypes {
 	return "srm";
@@ -317,7 +331,7 @@ sub write_srm7 {
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
 
-		print $fh pack( 'vCCl<l<s',
+		print $fh pack( $chunk7fmt,
 			$c->pwr||0,
 			$c->cad||0,
 			$c->hr||0,
@@ -658,7 +672,7 @@ sub read_srm7 {
 
 		$ckread++;
 
-		@_ = unpack( 'vCCl<l<s', $buf );
+		@_ = unpack( $chunk7fmt, $buf );
 		my $chunk = Workout::Chunk->new( {
 			time	=> $cktime,
 			dur	=> $self->recint,
