@@ -38,7 +38,7 @@ if( ! GetOptions(
 	"fields=s"	=> \@fields,
 	"help!"		=> \$wanthelp,
 	"itype=s"	=> \@itype,
-	"recint=i"	=> \$recint,
+	"recint=f"	=> \$recint,
 )){
 	$needhelp++;
 }

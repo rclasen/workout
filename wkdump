@@ -31,7 +31,7 @@ if( ! GetOptions(
 	"help!"		=> \$wanthelp,
 	"itype=s"	=> \$itype,
 	"join!"		=> \$join,
-	"recint=i"	=> \$recint,
+	"recint=f"	=> \$recint,
 )){
 	$needhelp++;
 }

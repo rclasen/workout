@@ -43,7 +43,7 @@ if( ! GetOptions(
 	"itype=s"	=> \@itype,
 	"join!"		=> \$join,
 	"otype=s"	=> \$otype,
-	"recint=i"	=> \$recint,
+	"recint=f"	=> \$recint,
 	"skip!"		=> \$skip,
 )){
 	$needhelp++;

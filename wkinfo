@@ -39,7 +39,7 @@ if( ! GetOptions(
 	"marker!"	=> \$domarks,
 	"maxint!"	=> \$domax,
 	"pwr!"		=> \$dopwr,
-	"recint=i"	=> \$recint,
+	"recint=f"	=> \$recint,
 )){
 	$needhelp++;
 }

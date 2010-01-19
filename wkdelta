@@ -40,7 +40,7 @@ if( ! GetOptions(
 	"gui!"		=> \$opt_gui,
 	"help!"		=> \$wanthelp,
 	"itype=s"	=> \@itype,
-	"recint=i"	=> \$recint,
+	"recint=f"	=> \$recint,
 	"save!"		=> \$opt_save,
 )){
 	$needhelp++;

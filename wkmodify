@@ -39,7 +39,7 @@ if( ! GetOptions(
 	'help!'		=> \$wanthelp,
 	'itype=s'	=> \$itype,
 	'note=s'	=> \$note,
-	'slope=i'	=> \$slope,
+	'slope=f'	=> \$slope,
 	'start=s'	=> \$start,
 	'zeropos=i'	=> \$zeropos,
 )){
