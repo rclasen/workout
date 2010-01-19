@@ -383,6 +383,13 @@ sub do_read {
 		." recint: ". $self->recint
 		."=". $_[3] ."/". $_[4] );
 
+	if( $blockcnt <= 0 ){
+		# blocks carry the timestamps. So we can't recover
+		# properly even if there are chunks.
+		carp "empty file: no data blocks";
+		return;
+	}
+
 	############################################################
 	# read marker @86
 
@@ -585,25 +592,19 @@ sub read_srm {
 
 	my $ckread = 0;
 
-	my $blk;
 	my $buf;
-	my $cktime;
+	my $blk = shift @$blocks;
+	my $cktime = $blk->{stime};
 
 	while( CORE::read( $fh, $buf, 5 ) == 5 ){
 
-		if( ! $ckread || $ckread > $blk->{cklast} ){
-			if( @$blocks  ){
-				$blk = shift @$blocks;
-				$cktime = $blk->{stime};
+		$cktime += $self->recint if $ckread;
 
-			} else {
-				carp "found extra chunk";
-				$cktime += $self->recint;
-			}
-
-		} else {
-			$cktime += $self->recint;
+		while( $ckread > $blk->{cklast} && @$blocks ){
+			$blk = shift @$blocks;
+			$cktime = $blk->{stime};
 		}
+
 		$ckread++;
 
 		@_ = unpack( 'CCCCC', $buf );
@@ -624,6 +625,11 @@ sub read_srm {
 		$self->chunk_add( $chunk );
 	}
 
+	if( $ckread > $blk->{cklast} + 1){
+		carp "found extra chunks: ".
+			$ckread ." > ". ($blk->{cklast} + 1);
+	}
+
 	$self->fields_io( qw(
 		time dur work cad hr dist
 	));
@@ -637,25 +643,19 @@ sub read_srm7 {
 
 	my $ckread = 0;
 
-	my $blk;
 	my $buf;
-	my $cktime;
+	my $blk = shift @$blocks;
+	my $cktime = $blk->{stime};
 
 	while( CORE::read( $fh, $buf, 14 ) == 14 ){
 
-		if( ! $ckread || $ckread > $blk->{cklast} ){
-			if( @$blocks  ){
-				$blk = shift @$blocks;
-				$cktime = $blk->{stime};
+		$cktime += $self->recint if $ckread;
 
-			} else {
-				carp "found extra chunk";
-				$cktime += $self->recint;
-			}
-
-		} else {
-			$cktime += $self->recint;
+		while( $ckread > $blk->{cklast} && @$blocks ){
+			$blk = shift @$blocks;
+			$cktime = $blk->{stime};
 		}
+
 		$ckread++;
 
 		@_ = unpack( 'vCCl<l<s', $buf );
@@ -671,6 +671,11 @@ sub read_srm7 {
 		});
 
 		$self->chunk_add( $chunk );
+	}
+
+	if( $ckread > $blk->{cklast} + 1){
+		carp "found extra chunks: ".
+			$ckread ." > ". ($blk->{cklast} + 1);
 	}
 
 	$self->fields_io( qw(
