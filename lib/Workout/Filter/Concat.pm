@@ -112,10 +112,11 @@ sub process {
 	my( $self ) = shift;
 
 	my $n;
-	while( $self->{srcidx} < $#{$self->{sources}} ){
+	while( $self->{srcidx} <= $#{$self->{sources}} ){
 		$n = $self->{sources}[$self->{srcidx}]->next
 			and last;
 
+		$self->debug( "Concat: next store" );
 		++$self->{srcidx};
 	}
 
