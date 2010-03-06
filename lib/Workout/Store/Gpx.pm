@@ -190,7 +190,7 @@ sub end_trkpt {
 sub end_document {
 	my( $self ) = @_;
 
-	my @fields = $self->{Store}->fields_essential, 'dist';
+	my @fields = ( $self->{Store}->fields_essential, 'dist' );
 	push @fields, 'ele' if $self->{has_ele};
 
 	$self->{Store}->fields_io( @fields );
