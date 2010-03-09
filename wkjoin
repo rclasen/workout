@@ -87,6 +87,17 @@ my $dst = Workout::file_new( {
 
 });
 
+if( $recint && ! $dst->cap_block ){
+	my $mod = $sources[0]->time_start % $recint;
+	foreach my $in ( @sources ){
+		if( $mod != ( $in->time_start % $recint ) ){
+			print STDERR "block start time doesn't fit n*recint: ",
+				$in->time_start, "\n";
+			exit 1;
+		}
+	}
+}
+
 my @sorted = sort {
 	$a->time_start <=> $b->time_start;
 } @sources;
