@@ -938,15 +938,48 @@ adds $delta to all chunks and markers in this store.
 =cut
 
 sub time_add_delta {
-	my( $self, $delta ) = @_;
+	my( $self, $delta, $start, $end ) = @_;
+
+	$start ||= $self->time_start;
+	$end ||= $self->time_end;
+
+	# check/ensure time consistency
+	my $idxstart = $self->chunk_time2idx( $start );
+	my $ckprev = $idxstart == 0 ? undef
+		: $self->chunk_get_idx( $idxstart -1 );
+	my $ckstart = $self->chunk_get_idx( $idxstart );
+
+	my $idxend = $self->chunk_time2idx( $end );
+	my( $ckend, $cknext ) = $self->chunk_get_idx( $idxend, $idxend + 1 );
+
+	if( $delta > 0 ){
+		if( $cknext && $ckend->time + $delta > $cknext->stime ){
+			croak "invalid delta, causing overlap";
+		}
+
+		if( $ckprev && ! $self->cap_block ){
+			croak "Store doesn't support gaps";
+		}
+
+	} else {
+		if( $ckprev && $ckstart->stime + $delta < $ckprev->time ){
+			croak "invalid delta, causing overlap";
+		}
+
+		if( $cknext && ! $self->cap_block ){
+			croak "Store doesn't support gaps";
+		}
+	}
 
 	my $iter = $self->iterate;
 	while( my $c = $iter->next ){
-		$c->time( $c->time + $delta );
+		if( $start < $c->time  && $c->time <= $end ){
+			$c->time( $c->time + $delta );
+		}
 	}
 
 	foreach my $m ( @{ $self->marks } ){
-		$m->time_add_delta( $delta );
+		$m->time_add_delta( $delta, $start, $end );
 	}
 }
 

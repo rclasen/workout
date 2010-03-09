@@ -141,11 +141,20 @@ adds $delta to this marker.
 
 =cut
 
-
 sub time_add_delta {
-	my( $self, $delta ) = @_;
-	$self->{start} += $delta;
-	$self->{end} += $delta;
+	my( $self, $delta, $start, $end ) = @_;
+
+	if( ( ! $start || $start <= $self->{start} )
+		&& ( ! $end || $self->{start} < $end ) ){
+
+		$self->{start} += $delta;
+	}
+	
+	if( ( ! $start || $start < $self->{end} )
+		&& ( ! $end || $self->{end} <= $end ) ){
+
+		$self->{end} += $delta;
+	}
 }
 
 1;

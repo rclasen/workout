@@ -46,6 +46,7 @@ MANIFEST
 MANIFEST.SKIP
 README
 t/Workout-Store.t
+wkblocks
 wkconv
 wkdelta
 wkdist

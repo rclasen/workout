@@ -1,0 +1,178 @@
+#!/usr/bin/perl -w
+#
+# Copyright (c) 2008 Rainer Clasen
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms described in the file LICENSE included in this
+# distribution.
+#
+
+# TODO: pod
+
+use strict;
+use warnings;
+use Workout;
+use Getopt::Long;
+use File::Temp qw/tempfile/;
+
+
+my $itype;
+
+my $debug;
+my $needhelp;
+my $wanthelp;
+
+if( ! GetOptions(
+	'debug!'	=> \$debug,
+	'help!'		=> \$wanthelp,
+	'itype=s'	=> \$itype,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <input file>
+modify workout block timestamps
+
+Options:
+--debug             enable debuging output
+--help              this help
+EOF
+	exit 0;
+}
+
+if( @ARGV != 1 ){
+	print STDERR "you need to specify a single input file\n";
+	$needhelp++;
+}
+
+if( $needhelp ){
+	print STDERR "use --help for usage info\n";
+	exit 1;
+}
+
+my $fname = shift;
+
+my $src = Workout::file_read( $fname, {
+	ftype	=> $itype,
+	debug	=> $debug,
+} );
+
+my $blocks = $src->block_marks;
+my $tstamps = [ map { $_->start } @$blocks ];
+
+my $tmpfname = (tempfile)[1]
+	or die "tempfile: $!";
+
+while( 1 ){
+	&write_list( $tmpfname, $tstamps, $blocks );
+	system( $ENV{EDITOR} || 'vi', $tmpfname ) == 0
+		or die "editor died: $!";
+
+	$tstamps = &read_list( $tmpfname )
+		or die "failed to read timestamps";
+
+	my $reply;
+	do {
+		print "what shall I do?\n",
+			"a - adjust times\n",
+			"e - edit list\n",
+			"q - quit\n";
+
+		$reply = <STDIN>;
+		chomp $reply;
+
+	} while( $reply !~ /^[aq]$/ );
+
+	if( $reply eq 'q' ){
+		last;
+
+	} elsif( $reply eq 'e' ){
+		# do nothing
+
+	} elsif( $reply eq 'a' ){
+		my $modified;
+
+		foreach my $i ( 0 .. $#$blocks ){
+			next unless $tstamps->[$i];
+
+			my $delta = $tstamps->[$i] - $blocks->[$i]->start;
+			next unless $delta;
+
+			$debug && print STDERR "adjusting blk=$i delta=$delta @",
+				$blocks->[$i]->start, "\n";
+
+			$modified++;
+			$src->time_add_delta( $delta,
+				$blocks->[$i]->start,
+				$blocks->[$i]->end );
+		}
+
+		if( $modified ){
+			$src->write( "$fname.wkblocks" );
+			unlink $fname or die "unlink $fname failed: $!"; 
+			rename "$fname.wkblocks", $fname;
+		}
+
+		last;
+	}
+}
+
+sub write_list {
+	my( $fname, $list, $blocks ) = @_;
+
+	my $last;
+	open( my $fh, '>', $fname )
+		or die "open: $!";
+	foreach my $i ( 0..$#$blocks ){
+		if( $last ){
+			print $fh " "x24, "# gap: ", ( $blocks->[$i]->start
+				- $last ), " sec\n";
+		}
+		$last = $blocks->[$i]->end;
+
+		print $fh DateTime->from_epoch(
+			epoch	=> $list->[$i],
+			time_zone	=> 'local',
+		)->strftime('%F %T.%1N')," 0 # ",
+		DateTime->from_epoch(
+			epoch	=> $blocks->[$i]->start,
+			time_zone	=> 'local',
+		)->strftime('%F %T.%1N')," -> ",
+		DateTime->from_epoch(
+			epoch	=> $blocks->[$i]->end,
+			time_zone	=> 'local',
+		)->strftime('%F %T.%1N'),"\n";
+	}
+	close( $fh );
+}
+
+sub read_list {
+	my( $fname ) = @_;
+
+	my @list;
+	open( my $fh, '<', $fname )
+		or die "open: $!";
+	while(<$fh>){
+		chomp;
+		
+		next if /^\s*(?:#.*)?$/;
+		/^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+\.\d+)(?:\s+([-.\d]+))?/
+			or die "invalid input";
+
+		my $d = DateTime->new(
+			time_zone	=> 'local',
+			year		=> $1,
+			month		=> $2,
+			day		=> $3,
+			hour		=> $4,
+			minute		=> $5,
+			second		=> $6,
+		);
+		$d->add( seconds => $7 ) if $7;
+		push @list, $d->hires_epoch;
+	}
+	close( $fh );
+	return \@list;
+}

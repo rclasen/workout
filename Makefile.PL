@@ -16,6 +16,7 @@ WriteMakefile(
 	    'Encode'		=> undef,
     }, # e.g., Module::Name => 1.1
     'EXE_FILES'       => [qw(
+	wkblocks
 	wkconv
 	wkdelta
 	wkdist
