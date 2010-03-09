@@ -27,6 +27,7 @@ WriteMakefile(
 	wkmodify
 	wkplot
 	wkpmc
+	wksplit
 	wksum
     )],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005

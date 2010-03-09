@@ -95,6 +95,17 @@ get/set end time of this marker (unix timestamp)
 
 get/set the descriptional text of this marker.
 
+=head2 dur
+
+get duration of marker
+
+=cut
+
+sub dur {
+	my( $self ) = @_;
+	$self->end - $self->start;
+}
+
 =head2 iterate
 
 returns an iterator for the chunks covered by this marker.

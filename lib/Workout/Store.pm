@@ -683,6 +683,36 @@ sub blocks {
 
 
 
+=head2 block_marks
+
+returns array/-ref of Workout::Marker with continuous chunks. i.e. workout
+is split at gaps / block boundaries.
+
+=cut
+
+sub block_marks {
+	my( $self ) = @_;
+
+	my @blocks;
+
+	my $iter = $self->iterate;
+	while( my $c = $iter->next ){
+		if( $c->isfirst || $c->isblockfirst ){
+			push @blocks, Workout::Marker->new({
+				store	=> $self,
+				start	=> $c->stime,
+				end	=> $c->time,
+			}),
+
+		} else {
+			$blocks[-1]->end( $c->time );
+		}
+	}
+
+	wantarray ? @blocks : \@blocks;
+}
+
+
 =head2 marks
 
 returns array/-ref (depending on context) with Workout::Marker in this store.

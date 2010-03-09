@@ -1,0 +1,118 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use Workout;
+use Getopt::Long;
+
+# - TODO: split workout at specified time
+# - auto-split workouts at gaps of defined length,
+# - automagically drop too short workouts.
+
+my $debug;
+my $fnpat;
+my $gap = 2 * 3600;
+my $len = 30;
+my $itype;
+my $otype;
+
+my $needhelp;
+my $wanthelp;
+
+if( ! GetOptions(
+	"debug!"	=> \$debug,
+	"fnpat=s"	=> \$fnpat,
+	"gap=i"		=> \$gap,
+	"help!"		=> \$wanthelp,
+	"itype=s"	=> \$itype,
+	"len=i"		=> \$len,
+	"otype=s"	=> \$otype,
+)){
+	$needhelp++;
+}
+
+if( $wanthelp ){
+	print <<EOF;
+$0 [opt] <input file>
+split input file at gaps, filter out short blocks with "noise"
+
+Options:
+--debug             enable debuging output
+--fnpat=<pattern>   filename pattern (see man strptime)
+--gap=<sec>         maximum gap within one workout
+--help              this help
+--itype=<type>      input file type
+--len=<sec>         minimum lenght of consecutive recording
+--otype=<type>      output file type
+
+EOF
+	exit 0;
+}
+
+my $ifname = shift;
+if( ! $ifname ){
+	print STDERR "missing input file\n";
+	++$needhelp;
+}
+
+if( $needhelp ){
+	print STDERR "use $0 --help for usage info\n";
+	exit 1;
+}
+
+my $in = Workout::file_read( $ifname, {
+	debug	=> $debug,
+	ftype	=> $itype,
+});
+
+$otype ||= Workout::file_type_name( $ifname );
+$otype ||= ($in->filetypes)[0];
+
+$fnpat ||= '%Y-%m-%d_%H-%M-%S.' . $otype;
+
+
+my $blocks = $in->block_marks;
+
+my @splits;
+
+foreach my $block ( @$blocks ){
+	if( $block->dur > $len ){
+		if( ! @splits || ( $block->start - $splits[-1]{end}) > $gap ){
+
+			$debug && print STDERR "new split @", $block->start,"\n";
+			push @splits, {
+				start	=> $block->start,
+				end	=> $block->end,
+			};
+
+		} else {
+			$splits[-1]{end} = $block->end;
+		}
+	}
+}
+
+foreach my $split ( @splits ){
+	my $out = Workout::file_new( {
+		ftype	=> $otype,
+		recint	=> $in->recint,
+		debug	=> $debug,
+	} );
+
+	my $iter = Workout::filter( 'Timespan', $in, {
+		start	=> $split->{start},
+		end	=> $split->{end},
+		debug	=> $debug,
+	});
+
+	$out->from( $iter );
+
+	my $ofname = DateTime->from_epoch(
+		epoch => $split->{start},
+		time_zone => 'local',
+	)->strftime( $fnpat );
+
+	$out->write( $ofname );
+
+	print $ofname, "\n";
+}
+
