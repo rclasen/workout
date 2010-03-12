@@ -208,7 +208,7 @@ sub do_write {
 
 	}
 	my $note = $self->note || ( $info->temp_avg 
-		? $info->temp_avg ."øC"
+		? sprintf( '%.1f°C', $info->temp_avg )
 		: "");
 	my $blocks = $self->blocks;
 
@@ -385,7 +385,7 @@ sub do_read {
 	$self->note( decode('cp850',$_[7]) );
 	my $temperature;
 
-	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)øC// ){
+	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)[°ø]C// ){
 		$temperature = $1;
 		$temperature =~ s/\,/./;
 	}
