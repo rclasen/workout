@@ -449,6 +449,11 @@ EOHEAD
 	foreach my $lap (@$laps){
 
 		my $info = $lap->info;
+		if( ! $info->time_start ){
+			$self->debug( "skipping empty lap" );
+			next;
+		}
+
 		my $ltime = _time2str($info->time_start);
 
 		print $fh "<Lap StartTime=\"", $ltime, "\">\n",
