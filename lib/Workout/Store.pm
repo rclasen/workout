@@ -764,11 +764,24 @@ Creates a new marker with specified data and adds it to this Store.
 
 sub mark_new {
 	my( $self, $a ) = @_;
-	# TODO: ensure that marker time span is within chunk timespan
-	push @{$self->{mark}}, Workout::Marker->new({
+
+	my %opt = (
 		%$a,
 		store	=> $self,
-	});
+	);
+
+	# ensure that marker time span is within chunk timespan
+	if( $opt{end} > $self->time_end ){
+		$opt{end} = $self->time_end;
+	}
+	if( $opt{start} < $self->time_start ){
+		$opt{start} = $self->time_start;
+	}
+	if( $opt{end} <= $opt{start} ){
+		return;
+	}
+
+	push @{$self->{mark}}, Workout::Marker->new(\%opt);
 }
 
 
