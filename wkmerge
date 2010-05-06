@@ -144,11 +144,6 @@ if( $recint ){
 	}
 }
 
-$it1 = Workout::filter('Timeshift', $it1, { 
-	delta	=> $delta,
-	debug	=> $debug,
-}) if $delta;
-
 $it1 = Workout::filter('Join',  $it1,{
 	recint	=> $recint,
 	debug	=> $debug,
@@ -169,6 +164,11 @@ my $wk2 = Workout::file_read( $gfname, {
 my $it2 = Workout::filter('Join', $wk2, {
 	debug	=> $debug,
 });
+
+$it2 = Workout::filter('Timeshift', $it2, {
+	delta	=> $delta,
+	debug	=> $debug,
+}) if $delta;
 
 if( $dst->can( 'athlete' ) ){
 	if( $wk2->can( 'athlete' ) ){
