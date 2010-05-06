@@ -463,12 +463,13 @@ EOHEAD
 			"<Calories>", int( ($info->work || 0) / 1000 ), "</Calories>\n";
 
 		print $fh "<AverageHeartRateBpm>\n",
-			"<Value>", int($info->hr_avg || 0), "</Value>\n",
-			"</AverageHeartRateBpm>\n",
-			"<MaximumHeartRateBpm>\n",
-			"<Value>", int($info->hr_max || 0), "</Value>\n",
+			"<Value>", int($info->hr_avg ), "</Value>\n",
+			"</AverageHeartRateBpm>\n"
+			if $write{hr} && $info->hr_min && $info->hr_min >= 1;
+		print $fh "<MaximumHeartRateBpm>\n",
+			"<Value>", int($info->hr_max ), "</Value>\n",
 			"</MaximumHeartRateBpm>\n"
-			if $write{hr};
+			if $write{hr} && $info->hr_max && $info->hr_max >= 1;
 
 		# TODO: Intensity = Active|Resting
 		print $fh "<Intensity>Active</Intensity>\n";
