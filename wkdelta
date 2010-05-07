@@ -12,8 +12,6 @@
 
 # TODO: pod
 
-# TODO: update file to use selected delta
-
 use strict;
 use warnings;
 use Getopt::Long;
@@ -66,6 +64,7 @@ EOF
 }
 $opt_gui = exists $ENV{DISPLAY} unless defined $opt_gui;
 
+# TODO: support multiple fields
 if( $field !~ /^(?:ele|spd|cad|hr|pwr)$/ ){
 	print STDERR "invalid field: $field\n";
 	$needhelp++;

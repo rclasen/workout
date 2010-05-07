@@ -17,6 +17,7 @@ sub new {
 		source		=> [],		# workouts
 	});
 
+	# TODO: support multiple fields
 	# TODO: make tics configurable
 	# TODO: make default min/max configurable
 
