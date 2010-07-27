@@ -86,9 +86,8 @@ my $src = Workout::file_read( $fname, {
 } );
 
 if( $start ){
-	if( my( $year,$mon,$day, $hour, $min, $sec ) = 
-		($start =~ /^(?:(\d\d\d\d)-(\d+)-(\d+)\s+)?(\d+):(\d+)(?::(\d+(?:\.\d+)?))?$/ )
-		){
+	if( my( $year,$mon,$day, $hour, $min, $sec, $nsec ) =
+		($start =~ /^(?:(\d\d\d\d)-(\d+)-(\d+)\s+)?(\d+):(\d+)(?::(\d+)(\.\d+)?)?$/ )){
 
 		my $fdate = DateTime->from_epoch(
 			time_zone	=> 'local',
@@ -100,7 +99,8 @@ if( $start ){
 			day	=> $day || $fdate->day,
 			hour	=> $hour,
 			minute	=> $min,
-			second	=> $sec || $fdate->fractional_second,
+			second	=> $sec || $fdate->second,
+			nanosecond => $nsec * 1000000000 || $fdate->nanosecond,
 		);
 
 		$delta = $sdate->hires_epoch - $src->time_start;
