@@ -386,11 +386,12 @@ sub do_write {
 	$self->debug( "writing fields: ", join(",", keys %fields ) );
 
 	my $smode = sprintf('%0d%0d%0d%0d1110',
-		$fields{cad} || 0,
-		$fields{dist} || 0,
-		$fields{ele} || 0,
-		$fields{work} || 0,
+		$fields{dist} ? 1 : 0,
+		$fields{cad} ? 1 : 0,
+		$fields{ele} ? 1 : 0,
+		$fields{work} ? 1 : 0,
 	);
+	$self->debug( "writing smode: ", $smode );
 	my @colfunc = ( sub { int($_[0]->hr||0) } );
 	push @colfunc, sub { int( ($_[0]->spd||0) * 36 +0.5) } if $fields{dist};
 	push @colfunc, sub { int( ($_[0]->cad||0) +0.5) } if $fields{cad};
