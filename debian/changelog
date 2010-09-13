@@ -1,8 +1,29 @@
-workout (0.15~git0) unstable; urgency=low
+workout (0.15) unstable; urgency=low
 
-  * prepared next release
+  * Store::SRM: open files without crlf conversion
+  * Store::HRM: fix writing smode
+  * cope with new DateTime-0.52 restrictions
+  * Store::Tcx: fix writing laps without heartrate
+  * wkmerge: fixed --delta to work as documented
+  * Store::Tcx: skip empty laps
+  * Store: suppress bogus marker
+  * Store::SRM: fixed temperature formatting
+  * added wkblocks
+  * wkjoin: warn about inconsistent start times
+  * added wksplit
+  * Store::Gpx: fix fields_io
+  * Store:Wkt: fix reading subsecond marker
+  * Filter::Concat: fixed to read last file, too
+  * Store::SRM: reintroduced support for perl < 5.9.1
+  * Store::SRM: fix reading with blocks without chunks
+  * wk*: fix getopt type for float options
+  * gitignore: added backup files
+  * Store::SRM: made big-endian safe
+  * Filter::Info: fix moving time to include cad
+  * Filter::Info: fix hr_avg in absence of pwr and cad
+  * Store::Powertap: Properly detect unset values
 
- -- Rainer Clasen <bj@zuto.de>  Thu, 31 Dec 2009 11:56:00 +0100
+ -- Rainer Clasen <bj@zuto.de>  Mon, 13 Sep 2010 15:31:23 +0200
 
 workout (0.14) unstable; urgency=low
 
