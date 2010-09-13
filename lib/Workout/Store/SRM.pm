@@ -165,6 +165,8 @@ sub from_store {
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
+	binmode( $fh );
+
 	############################################################
 	# file header
 
@@ -346,6 +348,7 @@ sub do_read {
 	my( $self, $fh, $fname ) = @_;
 
 	my $buf;
+	binmode( $fh );
 
 	############################################################
 	# file header @0
