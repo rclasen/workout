@@ -43,14 +43,14 @@ use DateTime;
 use Encode;
 use Workout::Filter::Info;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 my %magic_tag = (
 #	OK19	=> 1, # not supported
 #	SRM2	=> 2, # not supported
 #	SRM3	=> 3, # not supported
 #	SRM4	=> 4, # not supported
-#	SRM5	=> 5, # not supported
+	SRM5	=> 5,
 	SRM6	=> 6,
 	SRM7	=> 7,
 );
@@ -148,7 +148,7 @@ set/get name of athlete (as stored in the PowerControl)
 
 =head2 version
 
-set/get file version: 6 or 7
+set/get file version: 5 (read only), 6 or 7
 
 =cut
 
@@ -410,13 +410,6 @@ sub do_read {
 		." recint: ". $self->recint
 		."=". $_[3] ."/". $_[4] );
 
-	if( $blockcnt <= 0 ){
-		# blocks carry the timestamps. So we can't recover
-		# properly even if there are chunks.
-		carp "empty file: no data blocks";
-		return;
-	}
-
 	############################################################
 	# read marker @86
 
@@ -512,7 +505,20 @@ sub do_read {
 	# min=369
 
 	if( $block_cknext < $ckcnt ){
-		carp "inconsistency: block chunks < total";
+		my $stime = $wtime + $self->recint;
+		if( @blocks ){
+			carp "inconsistency: block chunks < total";
+			$stime = $blocks[-1]{etime} + $self->{recint};
+		}
+
+		my $cnt = $ckcnt - $block_cknext;
+		push @blocks, {
+			stime   => $stime,
+			ckcnt   => $cnt,
+			ckfirst => $block_cknext,
+			cklast  => $ckcnt,
+			etime   => $stime + $ckcnt * $self->recint,
+		};
 
 	} elsif( $block_cknext > $ckcnt ){
 		carp "inconsistency: block chunks > total, truncating last blocks";
