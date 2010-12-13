@@ -90,7 +90,7 @@ our %defaults = (
 	zeropos		=> 100,
 	slope		=> 1,
 	athletename	=> 'srm',
-	version		=> 'SRM7',
+	version		=> 7,
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -148,7 +148,7 @@ set/get name of athlete (as stored in the PowerControl)
 
 =head2 version
 
-set/get file version: SRM6 or SRM7
+set/get file version: 6 or 7
 
 =cut
 
@@ -166,6 +166,17 @@ sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
 	binmode( $fh );
+
+	if( ! $self->version ){
+		$self->version( 7 );
+
+	} elsif( $self->version < 6 ){
+		carp "don't know how to write SRM5 files, upgrading to SRM6";
+		$self->version( 6 );
+
+	} elsif( $self->version > 7 ){
+		croak "don't know how to write requested format version";
+	}
 
 	############################################################
 	# file header
@@ -216,8 +227,8 @@ sub do_write {
 
 	$self->debug( "writing ". @$blocks ." blocks, ".
 		$self->mark_count ." marker" );
-	print $fh pack( 'A4vvCCvvx(C/A*@71)', 
-		$self->version || 'SRM6',
+	print $fh pack( 'A3AvvCCvvx(C/A*@71)', 
+		'SRM', $self->version,
 		$days,
 		$self->circum,
 		$r1,
@@ -286,10 +297,10 @@ sub do_write {
 	############################################################
 	# chunks 
 
-	if( $self->version eq 'SRM7' ){
-		$self->write_srm7( $fh );
-	} else {
+	if( $self->version < 7 ){
 		$self->write_srm( $fh );
+	} else {
+		$self->write_srm7( $fh );
 	}
 }
 
@@ -359,17 +370,16 @@ sub do_read {
 		
 	exists $magic_tag{$_[0]}
 		or croak "unrecognized file format";
-	$self->version( $_[0] );
+	my $version = $magic_tag{$_[0]};
+	$self->version( $version );
 
 	my $clen;
-	if( $_[0] eq 'SRM5' ){
+	if( $version < 6 ){
 		$clen = 3;
 
-	} elsif( $_[0] =~ /^SRM[67]$/ ){
+	} else {
 		$clen = 255;
 
-	} else {
-		croak "unsupported file version: $_[0]";
 	}
 
 	my $date = DateTime->new( 
@@ -557,10 +567,10 @@ sub do_read {
 	
 	$self->debug( "starting to read chunks at ", tell $fh );
 
-	if( $self->version eq 'SRM7' ){
-		$ckread = $self->read_srm7( $fh, \@blocks, $temperature );
-	} else {
+	if( $self->version < 7 ){
 		$ckread = $self->read_srm( $fh, \@blocks, $temperature );
+	} else {
+		$ckread = $self->read_srm7( $fh, \@blocks, $temperature );
 	}
 
 	if( $ckread <= 0 ){
