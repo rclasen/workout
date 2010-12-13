@@ -655,12 +655,12 @@ sub read_srm {
 	my( $self, $fh, $blocks, $temperature ) = @_;
 
 	my $ckread = 0;
+	my $ckcnt = $blocks->[-1]{cklast};
 
-	my $buf;
 	my $blk = shift @$blocks;
 	my $cktime = $blk->{stime};
 
-	while( CORE::read( $fh, $buf, 5 ) == 5 ){
+	for( ; $ckread < $ckcnt; ++$ckread ){
 
 		$cktime += $self->recint if $ckread;
 
@@ -669,7 +669,7 @@ sub read_srm {
 			$cktime = $blk->{stime};
 		}
 
-		$ckread++;
+		CORE::read( $fh, my $buf, 5 ) == 5 or last;
 
 		@_ = unpack( 'CCCCC', $buf );
 		my $rspd = ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
@@ -689,9 +689,8 @@ sub read_srm {
 		$self->chunk_add( $chunk );
 	}
 
-	if( $ckread > $blk->{cklast} + 1){
-		carp "found extra chunks: ".
-			$ckread ." > ". ($blk->{cklast} + 1);
+	if( ! eof( $fh ) ){
+		carp "found extra data at end of file"; 
 	}
 
 	$self->fields_io( qw(
