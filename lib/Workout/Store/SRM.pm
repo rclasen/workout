@@ -362,12 +362,24 @@ sub do_read {
 	binmode( $fh );
 
 	############################################################
-	# file header @0
+	# file header @0, 86 bytes
+
+	# id	start	len	what
+	# 0	0	4	4x char	- magic_tag
+	# 1	4	2	uint16- days since 1880-1-1
+	# 2	6	2	uint16 - wheel circum
+	# 3	8	1	uint8 - recint a (a/b)
+	# 4	9	1	uint8 - recint b (a/b)
+	# 5	10	2	block count
+	# 6	12	2	marker count
+	# 7	14	1	pad
+	# 8	15	1	unint8 - comment len
+	# 9	16	70	char* - comment, padded (zero? space?)
 
 	CORE::read( $fh, $buf, 86 ) == 86
 		or croak "failed to read file header";
 	@_ = unpack( 'A4vvCCvvx(C/A*@71)', $buf );
-		
+
 	exists $magic_tag{$_[0]}
 		or croak "unrecognized file format";
 	my $version = $magic_tag{$_[0]};
@@ -411,7 +423,18 @@ sub do_read {
 		."=". $_[3] ."/". $_[4] );
 
 	############################################################
-	# read marker @86
+	# read marker @86, 271 bytes or 18 bytes
+
+	# id	start	len	what
+	# 0	0	3/256	char* string, zero-terminated+padded
+	# 1	256/3	1	uint8/bool - active
+	# 2	257/4	2	uint16 - first chunk index +1
+	# 3	259/6	2	uint16 - last chunk index +1
+	# 4	261/8	2	uint16 - average power * 8
+	# 5	263/10	2	uint16 - average hr * 64
+	# 6	265/12	2	uint16 - average cad * 32 - unused?
+	# 7	267/14	2	uint16 - average speed * $x
+	# 8	269/16	2	uint16 - pwc - unused?
 
 	my @marker;
 	while( $markcnt-- >= 0 ){
@@ -441,6 +464,7 @@ sub do_read {
 
 	############################################################
 	# read recording block info @86 + $marker*(15+$clen=255)
+	# 6 bytes
 
 	my $block_cknext = 0;
 	my @blocks;
@@ -484,6 +508,13 @@ sub do_read {
 
 	############################################################
 	# calibration data, ff @86 + $marker*(15+$clen=255) + $blocks*6
+	# 7 bytes
+
+	# id	start	len	what
+	# 0	0	2	uint16 - zeropos
+	# 1	2	2	uint16 - slope * $something
+	# 2	4	2	uint16 - chunks
+	# 3	6	1	pad, zero
 
 	CORE::read( $fh, $buf, 7 ) == 7
 		or croak "failed to read calibration data";
