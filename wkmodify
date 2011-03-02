@@ -26,6 +26,7 @@ my $slope;
 my $circum;
 my $zeropos;
 my $athletename;
+my $recalc_power;
 
 my $debug;
 my $needhelp;
@@ -39,6 +40,7 @@ if( ! GetOptions(
 	'help!'		=> \$wanthelp,
 	'itype=s'	=> \$itype,
 	'note=s'	=> \$note,
+	'recalc-power!'	=> \$recalc_power,
 	'slope=f'	=> \$slope,
 	'start=s'	=> \$start,
 	'zeropos=i'	=> \$zeropos,
@@ -57,6 +59,7 @@ Options:
 
 --note=<n>          set note
 
+--recalc-power      recalculate power based on new slope/zeropos
 --slope=<x>         set slope (SRM)
 --circum=<x>        set wheel circumference (SRM)
 --zeropos=<x>       set zero offset (SRM)
@@ -84,6 +87,33 @@ my $src = Workout::file_read( $fname, {
 	ftype	=> $itype,
 	debug	=> $debug,
 } );
+
+if( $recalc_power && ($zeropos || $slope) ){
+	my $old_slope = $src->slope;
+	my $old_zeropos = $src->zeropos;
+
+	$slope ||= $old_slope;
+	$zeropos ||= $old_zeropos;
+
+	my $ath = $src->can( 'athlete' )
+		? $src->athlete
+		: Workout::Athlete->new;
+
+	my $dst = $src->new( {
+		athlete	=> $ath,
+		debug	=> $debug,
+		recint	=> $src->recint,
+	} );
+
+	$dst->from( Workout::filter( 'PwrFix', $src, {
+		old_slope	=> $old_slope,
+		new_slope	=> $slope,
+		old_zeropos	=> $old_zeropos,
+		new_zeropos	=> $zeropos,
+	}) );
+
+	$src = $dst;
+}
 
 if( $start ){
 	if( my( $year,$mon,$day, $hour, $min, $sec, $nsec ) =

@@ -1,5 +1,10 @@
 .gitignore
 Changes
+LICENSE
+MANIFEST
+MANIFEST.SKIP
+Makefile.PL
+README
 debian/.gitignore
 debian/changelog
 debian/compat
@@ -23,6 +28,7 @@ lib/Workout/Filter/Join.pm
 lib/Workout/Filter/Max.pm
 lib/Workout/Filter/Merge.pm
 lib/Workout/Filter/Pwr.pm
+lib/Workout/Filter/PwrFix.pm
 lib/Workout/Filter/Resample.pm
 lib/Workout/Filter/SkipUndef.pm
 lib/Workout/Filter/Timeshift.pm
@@ -40,11 +46,6 @@ lib/Workout/Store/SRM.pm
 lib/Workout/Store/Tcx.pm
 lib/Workout/Store/Wkt.pm
 lib/Workout/XmlDescent.pm
-LICENSE
-Makefile.PL
-MANIFEST
-MANIFEST.SKIP
-README
 t/Workout-Store.t
 wkblocks
 wkconv
