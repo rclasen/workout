@@ -42,7 +42,14 @@ our %default = (
 	ftp	=> 0,		# W		Function Threshold Power
 );
 
+our %init = (
+	dur		=> 0,
+	work		=> 0,
+	npwr_sum	=> 0,
+);
+
 __PACKAGE__->mk_accessors( keys %default );
+__PACKAGE__->mk_ro_accessors( keys %init );
 
 =head1 CONSTRUCTOR
 
@@ -64,9 +71,7 @@ sub new {
 		recint		=> 1,
 
 		chunks		=> [],
-		dur		=> 0,
-		work		=> 0,
-		npwr_sum	=> 0,
+		%init,
 	});
 }
 
@@ -77,12 +82,9 @@ sub new {
 returns the total duration of all chunks we've seen so far. So this is the
 total workout duration minus all gaps.
 
-=cut
+=head2 work
 
-sub dur {
-	my( $self ) = @_;
-	$self->{dur};
-}
+returns the total work of all chunks we've seen so far.
 
 =head2 apwr
 
@@ -142,7 +144,7 @@ sub if {
 	$self->npwr / $ftp;
 }
 
-=head2 vi
+=head2 tss
 
 returns the trainig stress score of all chunks
 
