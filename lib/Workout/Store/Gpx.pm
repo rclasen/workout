@@ -338,7 +338,7 @@ EOHEAD
 		}
 
 		print $fh '<trkpt lat="', $c->lat, '" lon="', $c->lon, '">', "\n";
-		print $fh '<ele>', $c->ele, '</ele>',"\n"
+		print $fh '<ele>', int($c->ele), '</ele>',"\n"
 			if $write{ele} && defined $c->ele;
 		print $fh '<time>', _time2str($c->time), '</time>',"\n",
 			'</trkpt>',"\n";
