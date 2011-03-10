@@ -6,6 +6,7 @@ use Workout;
 use Getopt::Long;
 
 # - TODO: split workout at specified time
+# - TODO: optionally split on recint change
 # - auto-split workouts at gaps of defined length,
 # - automagically drop too short workouts.
 
@@ -105,6 +106,7 @@ foreach my $split ( @splits ){
 	});
 
 	$out->from( $iter );
+	$out->recint( $out->chunk_first->dur );
 
 	my $ofname = DateTime->from_epoch(
 		epoch => $split->{start},

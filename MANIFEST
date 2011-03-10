@@ -50,6 +50,7 @@ t/Workout-Store.t
 wkblocks
 wkconv
 wkdelta
+wkdetail
 wkdist
 wkdump
 wkhisto

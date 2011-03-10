@@ -19,6 +19,7 @@ WriteMakefile(
 	wkblocks
 	wkconv
 	wkdelta
+	wkdetail
 	wkdist
 	wkdump
 	wkhisto
