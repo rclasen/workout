@@ -320,6 +320,29 @@ sub write {
 
 recording intervall (fixed). undef when variable intervalls are allowed.
 
+=head2 recint_used
+
+fixed recording intervall as used by chunks. undef, if chunk duration
+varies.
+
+=cut
+
+sub recint_chunks {
+	my( $self ) = @_;
+
+	$self->chunk_count
+		or return;
+
+	my $recint = $self->chunk_first->dur;
+
+	foreach my $c ( @{$self->{chunk}} ){
+		return if $c->dur != $recint;
+	}
+
+	return $recint;
+}
+
+
 =head2 cap_block
 
 block capability. true when gaps between chunks are allowed.

@@ -134,8 +134,8 @@ if( $recint ){
 	$dst->recint( $recint );
 
 } elsif( $dst->recint ){
-	if( $wk1->recint ){
-		$dst->recint( $wk1->recint );
+	if( $wk1->recint_chunks ){
+		$dst->recint( $wk1->recint_chunks );
 		$recint = $dst->recint if $join;
 
 	} else {
