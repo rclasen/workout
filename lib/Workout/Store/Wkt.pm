@@ -56,6 +56,15 @@ our $re_block = qr/^\[(\w+)\]/;
 our $re_value = qr/^\s*(\S+)\s*=\s*(.*)\s*$/;
 our $re_colsep = qr/\s*,\s*/;
 
+our %defaults = (
+	circum		=> 2000,
+	zeropos		=> 100,
+	slope		=> 1,
+	athletename	=> 'wkt',
+);
+__PACKAGE__->mk_accessors( keys %defaults );
+
+
 =head1 CONSTRUCTOR
 
 =head2 new( [ \%arg ] )
@@ -69,6 +78,7 @@ sub new {
 
 	$a||={};
 	$class->SUPER::new({
+		%defaults,
 		%$a,
 		columns		=> [],
 		cap_block	=> 1,
@@ -142,8 +152,21 @@ sub parse_params {
 		$self->fields_io( @cols );
 		$self->{columns} = \@cols;
 
+	} elsif( $k eq 'athlete' ){
+		$self->{athletename} = $v;
+
+	} elsif( $k eq 'circum' ){
+		$self->{circum} = $v;
+
+	} elsif( $k eq 'slope' ){
+		$self->{slope} = $v;
+
+	} elsif( $k eq 'zeropos' ){
+		$self->{zeropos} = $v;
+
+	} elsif( $self->{debug} ){
+		$self->debug( "found unsupported field: $k" );
 	}
-	
 }
 
 sub parse_chunks {
@@ -174,6 +197,16 @@ sub parse_markers {
 	});
 }
 
+sub from_store {
+	my( $self, $store ) = @_;
+
+	$self->SUPER::from_store( $store );
+
+	foreach my $f (qw( circum zeropos slope athletename )){
+		$self->$f( $store->$f ) if $store->can( $f );
+	}
+}
+
 
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
@@ -191,7 +224,18 @@ sub do_write {
 		$note =~ s/\n/\\n/g;
 		print $fh "Note=", $note, "\n"
 	}
-
+	if( my $a = $self->athletename ){
+		print $fh "Athlete=$a\n";
+	}
+	if( my $a = $self->circum ){
+		print $fh "Circum=$a\n";
+	}
+	if( my $a = $self->slope ){
+		print $fh "Slope=$a\n";
+	}
+	if( my $a = $self->zeropos ){
+		print $fh "Zeropos=$a\n";
+	}
 
 	print $fh "[Chunks]\n";
 	my $it = $self->iterate;
