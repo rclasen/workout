@@ -171,7 +171,10 @@ sub read {
 	$self->do_read( $fh, $fname );
 	close($fh) if $fname;
 
-	if( $self->{debug} ){
+	if( ! $self->{debug} ){
+		# do nothing
+
+	} elsif( $self->chunk_count ){
 		my $sdate = DateTime->from_epoch(
 			epoch		=> $self->time_start,
 			time_zone	=> 'local',
@@ -205,6 +208,10 @@ sub read {
 				." ". ($mark->note||'')
 			);
 		}
+
+	} else {
+		$self->debug( "read no chunks" );
+
 	}
 
 	$self;
