@@ -130,72 +130,101 @@ use constant {
 
 };
 
+# encode( $val, $bytes, $big )
 # decode( $buf, $bytes, $big )
 our @base_type = ( { # 0, enum
 		endian	=> 0,
 		bytes	=> 1,
 		decode	=> sub { $_[0] eq pack('C', 0xff)
 			? undef : unpack('C',$_[0] ) },
+		encode	=> sub { pack( 'C',
+			defined $_[0] ? $_[0] : 0xff ) },
 	}, { # 1, sint8
 		endian	=> 0,
 		bytes	=> 1,
 		decode	=> sub { $_[0] eq pack('C', 0x7f)
 			? undef : unpack('c',$_[0] ) },
+		encode	=> sub { pack( 'c',
+			defined $_[0] ? $_[0] : 0x7f ) },
 	}, { # 2, uint8
 		endian	=> 0,
 		bytes	=> 1,
 		decode	=> sub { $_[0] eq pack('C', 0xff)
 			? undef : unpack('C',$_[0] ) },
+		encode	=> sub { pack( 'C',
+			defined $_[0] ? $_[0] : 0xff ) },
 	}, { # 3, sint16
 		endian	=> 1,
 		bytes	=> 2,
 		decode	=> sub { $_[0] eq pack( $_[2] ? 's>' : 's<', 0x7fff )
 			? undef : unpack( $_[2] ? 's>' : 's<', $_[0] ) },
+		encode	=> sub { pack( $_[2] ? 's>' : 's<',
+			defined $_[0] ? $_[0] : 0x7fff ) },
 	}, { # 4, uint16
 		endian	=> 1,
 		bytes	=> 2,
 		decode	=> sub { $_[0] eq pack( 'S', 0xffff )
 			? undef : unpack( $_[2] ? 'S>' : 'S<', $_[0] ) },
+		encode	=> sub { pack( $_[2] ? 'S>' : 'S<',
+			defined $_[0] ? $_[0] : 0xffff ) },
 	}, { # 5, sint32
 		endian	=> 1,
 		bytes	=> 4,
 		decode	=> sub { $_[0] eq pack( $_[2] ? 'l>' : 'l<', 0x7fffffff )
 			? undef : unpack( $_[2] ? 'S>' : 'S<', $_[0] ) },
+		encode	=> sub { pack( $_[2] ? 'l>' : 'l<',
+			defined $_[0] ? $_[0] : 0x7fffffff ) },
 	}, { # 6, uint32
 		endian	=> 1,
 		bytes	=> 4,
 		decode	=> sub { $_[0] eq pack( 'L', 0xffffffff )
 			? undef : unpack( $_[2] ? 'L>' : 'L<', $_[0] ) },
+		encode	=> sub { pack( $_[2] ? 'L>' : 'L<',
+			defined $_[0] ? $_[0] : 0xffffffff ) },
 	}, { # 7, string
 		endian	=> 0,
 		bytes	=> 1,
 		decode	=> sub { unpack('C', $_[0]) == 0x00
 			? undef : unpack( 'U'.$_[1], $_[0] ) },
+		encode	=> sub { pack( 'U'.$_[1],
+			defined $_[0] ? $_[0] : '' ) },
 	}, { # 8, float32
 		endian	=> 1,
 		bytes	=> 4,
 		decode	=> sub { $_[0] eq pack( 'L', 0xffffffff )
 			? undef : unpack( $_[2] ? 'f>' : 'f<', $_[0] ) },
+		encode	=> sub { defined $_[0]
+			? pack( $_[2] ? 'f>' : 'f<', $_[0] )
+			: pack( 'L', 0xffffffff ) },
 	}, { # 9, float64
 		endian	=> 1,
 		bytes	=> 8,
 		decode	=> sub { $_[0] eq pack( 'L2', 0xffffffff, 0xffffffff )
 			? undef : unpack( $_[2] ? 'd>' : 'd<', $_[0] ) },
+		encode	=> sub { defined $_[0]
+			? pack( $_[2] ? 'd>' : 'd<', $_[0] )
+			: pack( 'L2', 0xffffffff, 0xffffffff ) },
 	}, { # 10, uint8z
 		endian	=> 0,
 		bytes	=> 1,
 		decode	=> sub { $_[0] eq pack('x')
 			? undef : unpack('C',$_[0] ) },
+		encode	=> sub { pack( 'C',
+			defined $_[0] ? $_[0] : 0x00 ) },
 	}, { # 11, uint16z
 		endian	=> 1,
 		bytes	=> 2,
 		decode	=> sub { $_[0] eq pack( 'x2' )
 			? undef : unpack( $_[2] ? 'S>' : 'S<', $_[0] ) },
+		encode	=> sub { pack( $_[2] ? 'S>' : 'S<',
+			defined $_[0] ? $_[0] : 0x0000 ) },
 	}, { # 12, uint32z
 		endian	=> 1,
 		bytes	=> 4,
 		decode	=> sub { $_[0] eq pack( 'x4')
 			? undef : unpack( $_[2] ? 'L>' : 'L<', $_[0] ) },
+		encode	=> sub { pack( $_[2] ? 'L>' : 'L<',
+			defined $_[0] ? $_[0] : 0x00000000 ) },
 	}, { # 13, byte
 		endian	=> 1,
 		bytes	=> 1,
@@ -203,9 +232,16 @@ our @base_type = ( { # 0, enum
 			? undef : wantarray
 				? unpack( 'C'.$_[1], $_[0] )
 				: unpack( 'a'.$_[1], $_[0] ) },
+		encode	=> sub { defined $_[0]
+			? pack( 'C', 0xff) x $_[1]
+			: ref( $_[0] )
+				? pack( 'C'.$_[1], @{$_[0]} )
+				: pack( 'a'.$_[1], $_[0] ) },
 	},
 );
 
+#########################################################
+# de-/constructor
 
 sub new {
 	my( $proto, %a ) = @_;
@@ -224,13 +260,21 @@ sub new {
 		close	=> 0,
 		fh	=> undef,
 		fsize	=> 0,
+		buf	=> undef,
 
 		last_timestamp	=> 0,
 		last_delta	=> 0,
 	}, ref $proto || $proto;
 
-	$self->_read( $a{from} )
-		if exists $a{from} || defined $a{from};
+	if( exists $a{from} || defined $a{from} ){
+		$self->_read( $a{from} );
+
+	} elsif( exists $a{to} || defined $a{to} ){
+		$self->_write( $a{to} );
+
+	} else {
+		croak "missing from/to";
+	}
 
 	return $self;
 }
@@ -249,6 +293,13 @@ sub debug {
 
 sub close {
 	my( $self ) = @_;
+
+	if( defined $self->{buf} ){
+		$self->_write_header;
+		print { $self->{fh} } $self->{buf};
+		$self->_write_crc;
+	}
+
 	close( $self->{fh} ) if $self->{close};
 }
 
@@ -456,7 +507,7 @@ sub _decode_data {
 		}
 	}
 
-	$self->debug( "data $layout_id/$layout->{message}, len=$layout->{len}, delta=". ($delta||'-') .", time=".  ($tstamp||'-') );
+	#$self->debug( "data $layout_id/$layout->{message}, delta=". ($delta||'-') .", time=".  ($tstamp||'-') );
 
 	return {
 		message	=> $layout->{message},
@@ -469,12 +520,85 @@ sub _decode_data {
 
 1;
 
-__END__
 
 ############################################################
-# TODO: write
+# write
 
-sub define {
+sub _write {
+	my( $self, $to ) = @_;
+
+	if( ref $to ){
+		$self->{fh} = $to;
+
+	} else {
+		open( my $fh, '>', $to )
+			or croak "open failed: $!";
+
+		$self->{fh} = $fh;
+		$self->{close} = 1;
+	}
+
+	binmode( $self->{fh} );
+
+	$self->{buf} = '';
+}
+
+sub _write_header {
+	my( $self ) = @_;
+
+	my $size = length $self->{buf};
+	print { $self->{fh} }  pack( 'CCvVA4',
+		12, $self->{protocol_version},
+		$self->{profile_version}, $size, '.FIT' );
+
+}
+
+sub _crc { # TODO
+	my( $self, $data, $crc ) = @_;
+
+	return 0;
+}
+
+sub _write_crc {
+	my( $self ) = @_;
+
+	my $crc = $self->_crc( $self->{buf} );
+	print { $self->{fh} } pack( 'v', $crc );
+}
+
+sub _add_normrec {
+	my( $self, $define, $id, $payload ) = @_;
+
+	my $rhead = ( $id & 0x0f )
+		| ( ( $define ? 1 : 0) << 6 );
+
+	$self->{buf} .= pack( 'C', $rhead )
+		. $payload;
+}
+
+sub _add_comprec {
+	my( $self, $id, $tstamp, $payload ) = @_;
+
+	croak "missing _add_comprec";
+
+	my $delta; # TODO _add_comprec
+	my $rhead = 0x80
+		| ( ($id & 0x03) << 5 )
+		| ($delta & 0x1f);
+
+	$self->{buf} .= pack( 'C', $rhead )
+		. $payload;
+}
+
+# %a:
+#  id		-> layout_id, - optional
+#  message	-> global message type
+#  compress	-> write data with compressed timestamp headers
+#  fields	-> list of href
+#    field	-> field type id
+#    size	-> array/string size, defaults to 1
+#    base	-> field base type number
+sub define_raw {
 	my( $self, %a ) = @_,
 
 	my $id;
@@ -488,21 +612,85 @@ sub define {
 		$id = $self->{layout_id}++;
 	}
 
+	my $big = 0; # always use little endian
+	my $packed = pack( 'xCvC',
+		$big,
+		$a{message},
+		scalar @{$a{fields}} );
+
+	my @fields;
+	foreach my $f ( @{$a{fields}} ){
+		$self->debug( " define $id/$f->{field}: base=$f->{base}, size=".
+			($f->{size}||'-') );
+
+		$f->{base} < $#base_type
+			or croak "invalid base type $f->{base} for field $f->{field}";
+
+		my $type = $base_type[$f->{base}];
+
+		my $bytes = ($f->{size}||1) * $type->{bytes};
+
+		my $base = $f->{base} & 0x1f;
+		$base |= 0x80 if $type->{endian};
+
+		$packed .= pack( 'CCC',
+			$f->{field},
+			$bytes,
+			$base );
+
+		push @fields, {
+			field	=> $f->{field},
+			bytes	=> $f->{bytes},
+			encode	=> $type->{encode},
+		}
+	}
+
 	# remember data layout
 	$self->{layout}{$id} = {
 		compress	=> $a{compress} || 0,
 		message	=> $a{message},
-		fields	=> $a{fields},
+		fields	=> \@fields,
+		big	=> $big,
 	};
 
-	# TODO write + remember data message layout
+	$self->debug( "defined $id, fields=". @{$a{fields}} );
+
+	$self->_add_normrec( 1, $id, $packed );
 
 	return $id;
 }
 
 sub data {
-	my( $self, $id, @data ) = @_;
-	# TODO write data according to previous definition
+	my( $self, $id ) = splice( @_, 0, 2 );
+
+	exists $self->{layout}{$id}
+		or croak "unknown layout id: $id";
+
+	my $layout = $self->{layout}{$id};
+
+	my $packed;
+	my $tstamp;
+	foreach my $i ( 0.. $#{$layout->{fields}} ){
+		my $f = $layout->{fields}[$i];
+
+		if( $f->{field} == 253 ){
+			$tstamp = $_[$i];
+			if( $layout->{compressed} && $self->{last_timestamp} ){;
+				next;
+			}
+		}
+
+		$packed .= $f->{encode}->( $_[$i], $f->{bytes}, $layout->{big} );
+	}
+
+	if( $layout->{compressed} ){
+		$self->_add_comprec( $id, $tstamp, $packed );
+
+	} else {
+		$self->_add_normrec( 0, $id, $packed );
+	}
+
+	return 1;
 }
 
 1;

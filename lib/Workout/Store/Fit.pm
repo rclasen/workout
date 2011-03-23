@@ -116,13 +116,154 @@ sub new {
 #	}
 #}
 
-#sub do_write {
-#	my( $self, $fh, $fname ) = @_;
-#
-#	binmode( $fh );
-#	#TODO
-#
-#}
+sub do_write {
+	my( $self, $fh, $fname ) = @_;
+
+	my $fit = Workout::Fit->new(
+		to	=> $fh,
+		debug	=> $self->{debug},
+	) or croak "initializing Fit failed";
+
+	defined $fit->define_raw(
+		id	=> 0,
+		message	=> FIT_MSG_FILE_ID,
+		fields	=> [{
+			field	=> 0, # file_type
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 1, # manufacturer
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 2, # product
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 3, # serial
+			base	=> FIT_UINT32Z,
+		}],
+	) or return;
+	$fit->data( 0, FIT_FILE_ACTIVITY,
+		$self->{manufacturer}, $self->{product}, $self->{serial} )
+		or return;
+
+	defined $fit->define_raw(
+		id	=> 1,
+		message	=> FIT_MSG_FILE_CREATOR,
+		fields	=> [{
+			field	=> 0, # sw version
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 1, # hw version
+			base	=> FIT_UINT8,
+		}],
+	) or return;
+	$fit->data( 1, $self->{soft_version}, $self->{hard_version} )
+		or return;
+
+
+	my %io = map {
+		$_ => 1,
+	} $self->fields_io;
+
+	my $dist;
+
+	my @fields = ({
+		field	=> 253, # timestamp
+		base	=> FIT_UINT32,
+	});
+	my @data = ( sub { $_[0]->time - TIME_OFFSET} );
+
+	if( $io{lon} || $io{lat} ){
+		push @fields, {
+			field	=> 1, # lon
+			base	=> FIT_SINT32,
+		}, {
+			field	=> 0, # lat
+			base	=> FIT_SINT32,
+		};
+
+		push @data,
+			sub { $_[0]->lon * SEMI_DEG},
+			sub { $_[0]->lat * SEMI_DEG};
+	}
+
+	if( $io{dist} ){
+		push @fields, {
+			field	=> 5, # dist
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 6, # spd
+			base	=> FIT_UINT16,
+		};
+
+		push @data,
+			sub { $dist * 100 },
+			sub { $_[0]->spd * 1000 };
+	}
+
+	if( $io{ele} ){
+		push @fields, {
+			field	=> 2, # altitude
+			base	=> FIT_UINT16,
+		};
+
+		push @data, sub { ( $_[0]->ele + 500) * 5};
+	}
+
+	if( $io{work} ){
+		push @fields, {
+			field	=> 7, # pwr
+			base	=> FIT_UINT16,
+		};
+
+		push @data, sub { $_[0]->pwr };
+	}
+
+	if( $io{hr} ){
+		push @fields, {
+			field	=> 3, # hr
+			base	=> FIT_UINT8,
+		};
+
+		push @data, sub { $_[0]->hr };
+	}
+
+	if( $io{cad} ){
+		push @fields, {
+			field	=> 4, # cad
+			base	=> FIT_UINT8,
+		};
+
+		push @data, sub { $_[0]->cad };
+	}
+
+	if( $io{temp} ){
+		push @fields, {
+			field	=> 13, # temp
+			base	=> FIT_SINT8,
+		};
+
+		push @data, sub { $_[0]->temp };
+	}
+
+	defined $fit->define_raw(
+		id	=> 2,
+		message	=> FIT_MSG_RECORD,
+		fields	=> \@fields,
+	) or return;
+
+	my $it = $self->iterate;
+	while( my $row = $it->next ){
+		$dist += $row->dist;
+		$fit->data( 2, map { $_->( $row ) } @data );
+	}
+
+	# TODO: lap
+	# TODO: session
+	# TODO: activity
+
+	$fit->close
+		or return;
+}
 
 
 sub do_read {
