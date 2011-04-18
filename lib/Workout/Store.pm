@@ -424,6 +424,8 @@ sub fields_io {
 		$self->{fields_io} = {
 			map { $_ => 1 } @_, keys %{$self->{fields_essential}},
 		};
+		$self->debug( "fields_io set: ". join( " ", keys
+			%{$self->{fields_io}}) );
 
 	} else {
 		keys %{$self->{fields_io}};
