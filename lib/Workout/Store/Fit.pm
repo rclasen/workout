@@ -362,7 +362,6 @@ sub do_read {
 				if( $ck->{pwr} ){
 					$ck->{work} = $ck->{pwr} * $ck->{dur};
 					++$self->{field_use}{work};
-					delete $ck->{pwr};
 				}
 
 				if( $ck->{dist} ){
@@ -376,6 +375,9 @@ sub do_read {
 				#} elsif( defined($ck->{lon}) && defined($ck->{lat} ) ){
 
 				}
+
+				delete $ck->{pwr};
+				delete $ck->{spd};
 
 				my $chunk = Workout::Chunk->new( $ck );
 				$self->chunk_add( $chunk );
