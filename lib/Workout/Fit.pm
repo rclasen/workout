@@ -171,7 +171,7 @@ our @base_type = ( { # 0, enum
 		endian	=> 1,
 		bytes	=> 4,
 		decode	=> sub { $_[0] eq pack( $_[2] ? 'l>' : 'l<', 0x7fffffff )
-			? undef : unpack( $_[2] ? 'S>' : 'S<', $_[0] ) },
+			? undef : unpack( $_[2] ? 'l>' : 'l<', $_[0] ) },
 		encode	=> sub { pack( $_[2] ? 'l>' : 'l<',
 			defined $_[0] ? $_[0] : 0x7fffffff ) },
 	}, { # 6, uint32
