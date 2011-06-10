@@ -385,7 +385,7 @@ sub do_read {
 			}
 
 			$rec_last_time = $ck->{time};
-			$rec_last_dist = $dist;
+			$rec_last_dist = $dist if defined $dist;
 
 		############################################################
 		# lap message
