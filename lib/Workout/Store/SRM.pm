@@ -728,7 +728,7 @@ sub read_srm7 {
 			work	=> $_[0] * $self->recint,
 			cad	=> $_[1],
 			hr	=> $_[2],
-			dist	=> $_[3] / 1000 * $self->recint,
+			dist	=> $_[3] < 0 ? undef :  $_[3] / 1000 * $self->recint,
 			ele	=> $_[4],
 			temp	=> $_[5] / 10,
 		});
