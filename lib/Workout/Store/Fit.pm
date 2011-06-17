@@ -293,7 +293,10 @@ sub do_read {
 
 			foreach my $f ( @{$msg->{fields}} ){
 
-				if( $f->{field} == 0 ){
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 0 ){
 					$ck->{lat} = $f->{val} / SEMI_DEG;
 					++$self->{field_use}{lat};
 
@@ -379,8 +382,10 @@ sub do_read {
 				delete $ck->{pwr};
 				delete $ck->{spd};
 
-				my $chunk = Workout::Chunk->new( $ck );
-				$self->chunk_add( $chunk );
+				if( $ck->{dur} ){
+					my $chunk = Workout::Chunk->new( $ck );
+					$self->chunk_add( $chunk );
+				}
 
 			}
 
