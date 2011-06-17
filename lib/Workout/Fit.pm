@@ -441,7 +441,9 @@ sub _decode_define {
 		if( $bnum < @base_type ){
 			$dat{decode} = $base_type[$bnum]{decode};
 		} else {
-			croak "unknown base type: $bnum";
+			# TODO: handle/ignore unknown base types
+			#warn "unknown base type: $bnum";
+			$dat{decode} = sub { undef; };
 		}
 
 		$self->debug( " $layout_id=$message/$field -> base=$bnum" );
