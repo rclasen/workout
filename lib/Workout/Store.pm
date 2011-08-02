@@ -504,7 +504,7 @@ sub chunk_idx2time {
 	if( $idx >= $self->chunk_count 
 		|| $idx < 0 ){
 
-		croak "index is out of range";
+		croak "index $idx is out of range";
 	}
 	$self->{chunk}[$idx]->time;
 }
@@ -564,7 +564,7 @@ sub chunk_get_idx {
 
 	$idx2 ||= $idx1;
 	$idx1 <= $idx2
-		or croak "inverse index span";
+		or croak "inverse index span $idx1-$idx2";
 
 
 	@{$self->{chunk}}[$idx1 .. $idx2];
@@ -583,7 +583,7 @@ sub chunk_get_time {
 
 	$time2 ||= $time1;
 	$time1 <= $time2
-		or croak "inverse time span";
+		or croak "inverse time span $time1-$time2";
 
 	$self->chunk_get_idx( 
 		$self->chunk_idx( $time1 ),
@@ -606,7 +606,7 @@ sub chunk_del_idx {
 
 	$idx2 ||= $idx1;
 	$idx1 <= $idx2
-		or croak "inverse index span";
+		or croak "inverse index span $idx1-$idx2";
 
 	# TODO: nuke marker outside the resulting time span
 	# TODO: update ->prev
@@ -626,7 +626,7 @@ sub chunk_del_time {
 
 	$time2 ||= $time1;
 	$time1 <= $time2
-		or croak "inverse time span";
+		or croak "inverse time span $time1-$time2";
 
 	$self->chunk_del_idx( 
 		$self->chunk_idx( $time1 ),
@@ -675,8 +675,12 @@ sub chunk_check {
 		}
 	}
 
+	if( $c->dur <= 0 ){
+		croak "duration <= 0 at ". $c->time;
+	}
+
 	if( $self->recint && abs($self->recint - $c->dur) > 0.1 ){
-		croak "duration doesn't match recint";
+		croak "duration doesn't match recint at ". $c->time;
 	}
 
 	my $l = $self->chunk_last
