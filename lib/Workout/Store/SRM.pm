@@ -310,17 +310,6 @@ sub write_srm {
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
 
-		# lsb byte order...
-		#
-		# c0       c1       c2
-		# 11111111 11111111 11111111 bits
-		#
-		# -------- ----3210 ba987654 pwr
-		#              0x0f     0xff
-		#
-		# -6543210 a987---- -------- speed
-		#     0x7f 0xf0
-
 		my $spd = int(($c->spd||0) * 26/3 * 3.6);
 		my $pwr = int($c->pwr||0);
 
@@ -366,14 +355,14 @@ sub do_read {
 
 	# id	start	len	what
 	# 0	0	4	4x char	- magic_tag
-	# 1	4	2	uint16- days since 1880-1-1
+	# 1	4	2	uint16 - days since 1880-1-1
 	# 2	6	2	uint16 - wheel circum
 	# 3	8	1	uint8 - recint a (a/b)
 	# 4	9	1	uint8 - recint b (a/b)
-	# 5	10	2	block count
-	# 6	12	2	marker count
-	# 7	14	1	pad
-	# 8	15	1	unint8 - comment len
+	# 5	10	2	uint16 - block count
+	# 6	12	2	uint16 - marker count
+	# 7	14	1	uint8 - pad
+	# 8	15	1	uint8 - comment len
 	# 9	16	70	char* - comment, padded (zero? space?)
 
 	CORE::read( $fh, $buf, 86 ) == 86
@@ -436,6 +425,8 @@ sub do_read {
 	# 7	267/14	2	uint16 - average speed * $x
 	# 8	269/16	2	uint16 - pwc - unused?
 
+	$self->debug( "starting to read $markcnt*",$clen+15,"byte marker at ", tell $fh );
+
 	my @marker;
 	while( $markcnt-- >= 0 ){
 		CORE::read( $fh, $buf, $clen + 15 ) == $clen + 15
@@ -465,6 +456,12 @@ sub do_read {
 	############################################################
 	# read recording block info @86 + $marker*(15+$clen=255)
 	# 6 bytes
+
+	# id	start	len	what
+	# 0	0	4	uint32 - time since midnight
+	# 1	4	2	uint16 - num of chunks
+
+	$self->debug( "starting to read $blockcnt*6byte blocks at ", tell $fh );
 
 	my $block_cknext = 0;
 	my @blocks;
@@ -515,6 +512,8 @@ sub do_read {
 	# 1	2	2	uint16 - slope * $something
 	# 2	4	2	uint16 - chunks
 	# 3	6	1	pad, zero
+
+	$self->debug( "starting to read 7byte calibration at ", tell $fh );
 
 	CORE::read( $fh, $buf, 7 ) == 7
 		or croak "failed to read calibration data";
@@ -602,7 +601,7 @@ sub do_read {
 
 	my $ckread;
 	
-	$self->debug( "starting to read chunks at ", tell $fh );
+	$self->debug( "starting to read $ckcnt chunks at ", tell $fh );
 
 	if( $self->version < 7 ){
 		$ckread = $self->read_srm( $fh, \@blocks, $temperature );
@@ -669,6 +668,25 @@ sub read_srm {
 			$cktime = $blk->{stime};
 		}
 
+		# id	start	len	what
+		# 0	0	1	uint8 - c0
+		# 1	1	1	uint8 - c1
+		# 2	2	1	uint8 - c2
+		# 3	3	1	uint8 - cadence
+		# 4	4	1	uint8 - heartrate
+
+		# lsb byte order...
+		#
+		# c0       c1       c2
+		# 11111111 11111111 11111111 bits
+		#
+		# -------- ----3210 ba987654 pwr
+		#              0x0f     0xff
+		#
+		# -6543210 a987---- -------- speed
+		#     0x7f 0xf0
+
+
 		CORE::read( $fh, my $buf, 5 ) == 5 or last;
 
 		@_ = unpack( 'CCCCC', $buf );
@@ -720,6 +738,14 @@ sub read_srm7 {
 		}
 
 		$ckread++;
+
+		# id	start	len	what
+		# 0	0	2	uint16 - power
+		# 1	2	1	uint8 - cadence
+		# 2	3	1	uint8 - heartrate
+		# 3	4	4	int32 - speed
+		# 4	8	4	int32 - elevation
+		# 5	12	2	int16 - temperature
 
 		@_ = unpack( $chunk7fmt, $buf );
 		my $chunk = Workout::Chunk->new( {
