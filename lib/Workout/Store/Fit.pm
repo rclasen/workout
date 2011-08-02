@@ -291,6 +291,15 @@ sub do_read {
 				time => $msg->{timestamp} + TIME_OFFSET,
 			};
 
+			if( defined $rec_last_time
+				&& $rec_last_time >= $ck->{time} ){
+
+				$self->debug( "backward time step, "
+					."skipping record at ". $ck->{time} );
+
+				next;
+			}
+
 			foreach my $f ( @{$msg->{fields}} ){
 
 				if( ! defined $f->{val} ){
