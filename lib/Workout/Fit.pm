@@ -350,14 +350,19 @@ sub _unpack {
 sub _check_header {
 	my( $self ) = @_;
 
-	my( $hsize, $proto, $profile, $dsize, $magic ) =
-		$self->_unpack( 12, 'CCvVA4' )
+	my( $hsize, $proto ) =
+		$self->_unpack( 2, 'CC' )
+		or croak "failed to read header start: $!";
+
+	$hsize >= 12
+		or croak "invalid header length: $hsize";
+
+	my( $profile, $dsize, $magic, $minor ) =
+		$self->_unpack( $hsize - 2, 'vVA4v' )
 		or croak "failed to read header: $!";
 
-	$self->debug( "hsize=$hsize, proto=$proto, profile=$profile, magic=$magic, data=$dsize" );
+	$self->debug( "hsize=$hsize, proto=$proto, profile=$profile, minor=$minor, magic=$magic, data=$dsize" );
 
-	$hsize == 12
-		or croak "invalid header length: $hsize";
 #	$proto == 1
 #		or carp "unknown proto version: $proto";
 #	$profile == 1
