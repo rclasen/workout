@@ -693,13 +693,14 @@ sub read_srm {
 		my $rspd = ( (($_[1]&0xf0) <<3) | ($_[0]&0x7f) );
 		my $spd	= 3.0 / 26 * $rspd;
 		my $pwr	= ( $_[1] & 0x0f) | ( $_[2] << 4 );
+		my $hr = $_[4] > 20 ? $_[4] : undef;
 
 		my $chunk = Workout::Chunk->new( {
 			time	=> $cktime,
 			dur	=> $self->recint,
 			temp	=> $temperature,
 			cad	=> $_[3],
-			hr	=> ($_[4] || undef),
+			hr	=> $hr,
 			dist	=> $spd/3.6 * $self->recint,
 			work	=> $pwr * $self->recint,
 		});
@@ -753,7 +754,7 @@ sub read_srm7 {
 			dur	=> $self->recint,
 			work	=> $_[0] * $self->recint,
 			cad	=> $_[1],
-			hr	=> $_[2],
+			hr	=> $_[2] < 20 ? undef : $_[2],
 			dist	=> $_[3] < 0 ? undef :  $_[3] / 1000 * $self->recint,
 			ele	=> $_[4],
 			temp	=> $_[5] / 10,
