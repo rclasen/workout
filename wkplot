@@ -127,10 +127,6 @@ foreach my $fname ( @ARGV ){
 		debug => $debug,
 		delta => $d,
 	}) if $d;
-	$wk = Workout::filter( 'Join', $wk, {
-		debug => $debug,
-		recint => $recint,
-	});
 	$wk = Workout::filter( 'Resample', $wk, {
 		debug => $debug,
 		recint => $recint,
