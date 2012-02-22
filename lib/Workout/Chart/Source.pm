@@ -29,6 +29,13 @@ sub set_workout {
 
 	while( my $c = $iter->next ){
 		my %r;
+
+		if( ! $c->isfirst && $c->isblockfirst ){
+			push @dat, {
+				time => $c->stime,
+			};
+		}
+
 		foreach( @ds ){
 			$r{$_} = $c->$_;
 			next unless defined $r{$_};
