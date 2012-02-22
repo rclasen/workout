@@ -11,6 +11,7 @@ our %color = (
 	hr	=> [qw/ 1 0 0 /], # red
 	cad	=> [qw/ 0 0 1 /], # blue
 	pwr	=> [qw/ 0 1 0 /], # green
+	grad	=> [qw/ 1 0 1 /], # purple
 );
 
 our %default = (
@@ -95,6 +96,17 @@ sub new {
 		scale_label	=> 'Speed (km/h)',
 	}) if grep { /^spd$/ } @{$self->fields};
 
+	$self->add_scale( grad	=> {
+		position	=> 1,
+		min		=> 0,
+		max		=> 20,
+		tic_step	=> 2,
+		label_fmt	=> '%d',
+		label_fg	=> $self->{color}{grad},
+		scale_label_fg	=> $self->{color}{grad},
+		scale_label	=> 'Gradient (%)',
+	}) if grep { /^grad$/ } @{$self->fields};
+
 	# right axis
 
 	$self->add_scale( hr	=> {
@@ -133,7 +145,7 @@ sub new {
 
 	# TODO: fields: temp, torque, deconv, vspd, grad, accel
 	foreach my $f ( @{ $self->fields} ){
-		next if $f =~ /^(?:ele|spd|hr|cad|pwr)$/;
+		next if $f =~ /^(?:ele|spd|hr|cad|pwr|grad)$/;
 		print STDERR "adding non-default scale: $f\n";
 
 		$self->add_scale( $f	=> {
@@ -173,6 +185,15 @@ sub add_workout {
 		line_style	=> $self->{line_style},
 	}) if grep { /^spd$/ } @$fields;
 
+	# grad
+	$self->add_plot({
+		legend	=> 'Gradient'. $suffix,
+		ycol	=> 'grad',
+		source	=> $s,
+		color	=> $self->{color}{grad},
+		line_style	=> $self->{line_style},
+	}) if grep { /^grad$/ } @$fields;
+
 	# cad
 	$self->add_plot({
 		legend	=> 'Cadence'. $suffix,
@@ -202,7 +223,7 @@ sub add_workout {
 	}) if grep { /^pwr$/ } @$fields;
 
 	foreach my $f ( @{ $self->fields} ){
-		next if $f =~ /^(?:ele|spd|hr|cad|pwr)$/;
+		next if $f =~ /^(?:ele|spd|hr|cad|pwr|grad)$/;
 		print STDERR "adding non-default plot: $f\n";
 
 		$self->add_plot( {
