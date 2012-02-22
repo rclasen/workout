@@ -361,7 +361,8 @@ sub _check_header {
 		$self->_unpack( $hsize - 2, 'vVA4v' )
 		or croak "failed to read header: $!";
 
-	$self->debug( "hsize=$hsize, proto=$proto, profile=$profile, minor=$minor, magic=$magic, data=$dsize" );
+	$self->debug( "hsize=$hsize, proto=$proto, profile=$profile, minor="
+		.($minor||'-').", magic=$magic, data=$dsize" );
 
 #	$proto == 1
 #		or carp "unknown proto version: $proto";

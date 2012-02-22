@@ -426,13 +426,15 @@ sub do_read {
 		# session message
 
 		} elsif( $msg->{message} == FIT_MSG_SESSION ){ # TODO: session
-			$self->debug( "found session" );
+			$self->debug( "found session @"
+				.($msg->{timestamp} + TIME_OFFSET) );
 
 		############################################################
 		# activity message
 
 		} elsif( $msg->{message} == FIT_MSG_ACTIVITY ){ # TODO: activity
-			$self->debug( "found activity" );
+			$self->debug( "found activity @"
+				.($msg->{timestamp} + TIME_OFFSET) );
 
 		############################################################
 		# file_id message
@@ -484,6 +486,10 @@ sub do_read {
 				."sw=".  ($self->{soft_version}||'-') .", "
 				."hw=".  ($self->{hard_version}||'-') );
 
+		} else {
+			$self->debug( "found message: "
+				.$msg->{message} ." @"
+				.($msg->{timestamp} + TIME_OFFSET) );
 		}
 	}
 	$fit->close;
