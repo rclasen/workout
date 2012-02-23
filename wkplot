@@ -87,6 +87,20 @@ if( $needhelp ){
 }
 
 
+my $wkdb = Workout->new;
+my %tresh;
+foreach my $f ( @fields ){
+	my %a;
+
+	foreach my $n ( qw( min max tic_step tic_num tic_at label_fmt ) ){
+		my $v = $wkdb->config("chart_${f}_$n");
+		next unless defined $v;
+		$a{$n} = $v;
+	}
+
+	$tresh{$f} = \%a;
+}
+
 my $title = "wkplot: ". $ARGV[0];
 $title .= ", ..." if @ARGV > 1;
 
@@ -109,7 +123,7 @@ $win->add( $box );
 # graph
 my $chart = Workout::Chart::Workout->new({
 	xscale	=> 'time',
-	fields	=> \@fields,
+	fields	=> \%tresh,
 	debug	=> $debug,
 });
 my $graph = MyChart::Gtk->new(
@@ -132,7 +146,7 @@ foreach my $fname ( @ARGV ){
 		recint => $recint,
 	}) if $recint;
 
-	$chart->add_workout( $wk, \@fields );
+	$chart->add_workout( $wk );
 }
 
 $box->pack_start( $graph, 1, 1, 0 );

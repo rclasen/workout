@@ -96,6 +96,8 @@ if( $needhelp ){
 	exit 1;
 }
 
+my $wkdb = Workout->new;
+
 @itype = split(/,/,join(',',@itype)) if @itype;
 
 my $wk1 = get_wk( $f1, $itype[0] );
@@ -157,9 +159,14 @@ sub show_chart {
 	$win->add( $box );
 
 	# graph
-	my $chart = Workout::Chart::Delta->new({
-		field	=> $field,
-	});
+	my %a = ( field	=> $field );
+	foreach my $n ( qw( min max tic_step tic_num tic_at label_fmt ) ){
+		my $v = $wkdb->config("chart_${field}_$n");
+		next unless defined $v;
+		$a{$n} = $v;
+	}
+
+	my $chart = Workout::Chart::Delta->new(\%a);
 	my $graph = MyChart::Gtk->new(
 		chart	=> $chart,
 	);
