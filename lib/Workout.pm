@@ -80,10 +80,14 @@ package Workout;
 use 5.008008;
 use strict;
 use warnings;
+use base 'Class::Accessor::Fast';
 use Carp;
 use Module::Pluggable
 	search_path     => 'Workout::Store',
 	sub_name        => 'stores';
+use File::Spec;
+use File::HomeDir;
+use File::ShareDir;
 
 our $VERSION = '0.15';
 
@@ -238,6 +242,77 @@ sub filter {
 	}
 	"Workout::Filter::$type"->new( @_ );
 }
+
+our %defaults_ro = (
+	datadir	=> File::Spec->catfile(
+		File::HomeDir->my_data, ".wkdb" ),
+);
+
+__PACKAGE__->mk_ro_accessors( keys %defaults_ro );
+
+sub new {
+	my( $proto, $a ) = @_;
+	my $self = $proto->SUPER::new( {
+		%defaults_ro,
+		( $a ? %$a : () ),
+	} );
+
+	-d $self->datadir || mkdir $self->datadir
+		or croak "mkdir: $!";
+
+	$self;
+}
+
+sub cfgname {
+	my $self = shift;
+	File::Spec->catfile($self->datadir,'config');
+}
+
+sub backupdir {
+	my $self = shift;
+	File::Spec->catfile( $self->datadir, 'backup' );
+}
+
+sub _cfg_read {
+	my $self = shift;
+
+	my $fn = $self->cfgname;
+	open( my $fh, "<", $fn )
+		or return {};
+
+	my %cfg;
+
+	while( defined( my $line = <$fh> ) ){
+		next if $line =~ /^#/;
+		next if $line =~ /^\s*$/;
+		$line =~ /^(\w+)="(.*)"\s*$/
+			or croak "config $fn, line $.: syntax error";
+
+		$cfg{$1} = $2;
+	}
+
+	close $fh;
+
+	return \%cfg;
+}
+
+
+# TODO: config defaults
+
+sub config {
+	my $self = shift;
+	$self->{config} ||= $self->_cfg_read;
+
+	if( ! @_ ){
+		return $self->{config};
+	}
+
+	exists $self->{config}{$_[0]}
+		or return undef;
+
+	return $self->{config}{$_[0]}
+}
+
 
 
 1;
