@@ -277,8 +277,8 @@ sub do_write {
 	# blocks
 
 	foreach my $b ( @$blocks ){
-		my $delta = ($b->[0]->time - $wtime) * 100;
-		$self->debug( "write block ". $b->[0]->time ." @". $delta ." ". @$b );
+		my $delta = ($b->[0]->stime - $wtime) * 100;
+		$self->debug( "write block ". $b->[0]->stime ." @". $delta ." ". @$b );
 		print $fh pack( 'Vv', 
 			$delta,
 			scalar @$b,
@@ -661,12 +661,12 @@ sub read_srm {
 
 	for( ; $ckread < $ckcnt; ++$ckread ){
 
-		$cktime += $self->recint if $ckread;
-
 		while( $ckread > $blk->{cklast} && @$blocks ){
 			$blk = shift @$blocks;
 			$cktime = $blk->{stime};
 		}
+
+		$cktime += $self->recint;
 
 		# id	start	len	what
 		# 0	0	1	uint8 - c0
@@ -731,12 +731,13 @@ sub read_srm7 {
 
 	while( CORE::read( $fh, $buf, 14 ) == 14 ){
 
-		$cktime += $self->recint if $ckread;
 
 		while( $ckread > $blk->{cklast} && @$blocks ){
 			$blk = shift @$blocks;
 			$cktime = $blk->{stime};
 		}
+
+		$cktime += $self->recint;
 
 		$ckread++;
 
