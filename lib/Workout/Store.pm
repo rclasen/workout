@@ -432,6 +432,20 @@ sub fields_io {
 	}
 }
 
+=head2 have_fields_io( <field> ... )
+
+returns subset of fields that were read / are written
+
+=cut
+
+sub have_fields_io {
+	my $self = shift;
+
+	grep {
+		exists $self->{fields_io}{$_};
+	} @_;
+}
+
 
 
 =head2 iterate
