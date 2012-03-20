@@ -68,12 +68,6 @@ our %defaults = (
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
-# conversion constants:
-use constant {
-	TIME_OFFSET	=> 631065600,	# timegm(0, 0, 0, 31, 11, 1989);
-	SEMI_DEG	=> 2 ** 31 / 180,
-};
-
 
 =head1 CONSTRUCTOR
 
@@ -170,7 +164,7 @@ sub do_write {
 		field	=> 253, # timestamp
 		base	=> FIT_UINT32,
 	});
-	my @data = ( sub { $_[0]->time - TIME_OFFSET} );
+	my @data = ( sub { $_[0]->time - FIT_TIME_OFFSET} );
 
 	if( $io{lon} || $io{lat} ){
 		push @fields, {
@@ -182,8 +176,8 @@ sub do_write {
 		};
 
 		push @data,
-			sub { $_[0]->lon * SEMI_DEG},
-			sub { $_[0]->lat * SEMI_DEG};
+			sub { $_[0]->lon * FIT_SEMI_DEG},
+			sub { $_[0]->lat * FIT_SEMI_DEG};
 	}
 
 	if( $io{dist} ){
@@ -288,7 +282,7 @@ sub do_read {
 		if( $msg->{message} == FIT_MSG_RECORD ){ # record
 			my $dist;
 			my $ck = {
-				time => $msg->{timestamp} + TIME_OFFSET,
+				time => $msg->{timestamp} + FIT_TIME_OFFSET,
 			};
 
 			if( defined $rec_last_time
@@ -306,11 +300,11 @@ sub do_read {
 					# do nothing
 
 				} elsif( $f->{field} == 0 ){
-					$ck->{lat} = $f->{val} / SEMI_DEG;
+					$ck->{lat} = $f->{val} / FIT_SEMI_DEG;
 					++$self->{field_use}{lat};
 
 				} elsif( $f->{field} == 1 ){
-					$ck->{lon} = $f->{val} / SEMI_DEG;
+					$ck->{lon} = $f->{val} / FIT_SEMI_DEG;
 					++$self->{field_use}{lon};
 
 				} elsif( $f->{field} == 2 ){
@@ -406,11 +400,11 @@ sub do_read {
 
 		} elsif( $msg->{message} == FIT_MSG_LAP ){ # lap
 			my $start;
-			my $end = $msg->{timestamp} + TIME_OFFSET;
+			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
 
 			foreach my $f ( @{$msg->{fields}} ){
 				if( $f->{field} == 2 ){
-					$start = $f->{val} + TIME_OFFSET;
+					$start = $f->{val} + FIT_TIME_OFFSET;
 
 				} # else ignore
 			}
@@ -427,14 +421,14 @@ sub do_read {
 
 		} elsif( $msg->{message} == FIT_MSG_SESSION ){ # TODO: session
 			$self->debug( "found session @"
-				.($msg->{timestamp} + TIME_OFFSET) );
+				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 
 		############################################################
 		# activity message
 
 		} elsif( $msg->{message} == FIT_MSG_ACTIVITY ){ # TODO: activity
 			$self->debug( "found activity @"
-				.($msg->{timestamp} + TIME_OFFSET) );
+				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 
 		############################################################
 		# file_id message
@@ -489,7 +483,7 @@ sub do_read {
 		} else {
 			$self->debug( "found message: "
 				.$msg->{message} ." @"
-				.($msg->{timestamp} + TIME_OFFSET) );
+				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 		}
 	}
 	$fit->close;

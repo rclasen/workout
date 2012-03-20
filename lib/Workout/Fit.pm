@@ -9,6 +9,9 @@ BEGIN {
 	@ISA = qw( Exporter );
 	%EXPORT_TAGS = (
 		types	=> [ qw(
+			FIT_TIME_OFFSET
+			FIT_SEMI_DEG
+
 			FIT_ENUM
 			FIT_SINT8
 			FIT_UINT8
@@ -73,6 +76,9 @@ BEGIN {
 # defines / data structurs / constants
 
 use constant {
+	FIT_TIME_OFFSET	=> 631065600,	# timegm(0, 0, 0, 31, 11, 1989);
+	FIT_SEMI_DEG	=> 2 ** 31 / 180,
+
 	FIT_ENUM	=> 0,
 	FIT_SINT8	=> 1,
 	FIT_UINT8	=> 2,
@@ -589,7 +595,7 @@ sub _add_comprec {
 
 	croak "missing _add_comprec";
 
-	my $delta; # TODO _add_comprec
+	my $delta; # TODO implement _add_comprec
 	my $rhead = 0x80
 		| ( ($id & 0x03) << 5 )
 		| ($delta & 0x1f);
