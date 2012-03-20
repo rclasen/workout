@@ -659,6 +659,8 @@ sub read_srm {
 	my $blk = shift @$blocks;
 	my $cktime = $blk->{stime};
 
+	my %io;
+
 	for( ; $ckread < $ckcnt; ++$ckread ){
 
 		while( $ckread > $blk->{cklast} && @$blocks ){
@@ -705,6 +707,11 @@ sub read_srm {
 			work	=> $pwr * $self->recint,
 		});
 
+		$_[3] > 0 && ++$io{cad};
+		$hr > 20 && ++$io{hr};
+		$spd > 0 && ++$io{dist};
+		$pwr > 0 && ++$io{work};
+
 		$self->chunk_add( $chunk );
 	}
 
@@ -712,9 +719,7 @@ sub read_srm {
 		carp "found extra data at end of file"; 
 	}
 
-	$self->fields_io( qw(
-		time dur work cad hr dist
-	));
+	$self->fields_io( qw( time dur ), keys %io );
 
 	$ckread;
 }
@@ -728,6 +733,8 @@ sub read_srm7 {
 	my $buf;
 	my $blk = shift @$blocks;
 	my $cktime = $blk->{stime};
+
+	my %io;
 
 	while( CORE::read( $fh, $buf, 14 ) == 14 ){
 
@@ -761,6 +768,13 @@ sub read_srm7 {
 			temp	=> $_[5] / 10,
 		});
 
+		$_[0] > 0 && ++$io{work};
+		$_[1] > 0 && ++$io{cad};
+		$_[2] >= 20 && ++$io{hr};
+		$_[3] > 0 && ++$io{dist};
+		$_[4] > 0 && ++$io{ele};
+		$_[5] != 0 && ++$io{temp};
+
 		$self->chunk_add( $chunk );
 	}
 
@@ -769,9 +783,7 @@ sub read_srm7 {
 			$ckread ." > ". ($blk->{cklast} + 1);
 	}
 
-	$self->fields_io( qw(
-		time dur work cad hr dist ele temp
-	));
+	$self->fields_io( qw( time dur ), keys %io );
 
 	$ckread;
 }
