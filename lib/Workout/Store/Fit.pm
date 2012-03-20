@@ -154,6 +154,28 @@ sub do_write {
 		or return;
 
 
+
+	# timer events
+
+	defined $fit->define_raw(
+		id	=> 3,
+		message	=> FIT_MSG_EVENT,
+		fields	=> [{
+			field	=> 253, # end timestamp
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 0, # event -> 0 timer
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 1, # event_type -> 0 start / 4 stop
+			base	=> FIT_ENUM,
+		}],
+	) or return;
+	$fit->data( 3, $self->time_start + FIT_TIME_OFFSET, 0, 0 );
+
+
+	# Data
+
 	my %io = map {
 		$_ => 1,
 	} $self->fields_io;
@@ -247,9 +269,17 @@ sub do_write {
 
 	my $it = $self->iterate;
 	while( my $row = $it->next ){
+
+		if( $row->isblockfirst ){
+			$fit->data( 3, $row->prev->time, 0, 4 );
+			$fit->data( 3, $row->stime, 0, 0 );
+		}
+
 		$dist += $row->dist;
 		$fit->data( 2, map { $_->( $row ) } @data );
 	}
+
+	$fit->data( 3, $self->time_end + FIT_TIME_OFFSET, 0, 4 );
 
 	# TODO: lap
 	# TODO: session
@@ -394,6 +424,41 @@ sub do_read {
 
 			$rec_last_time = $ck->{time};
 			$rec_last_dist = $dist if defined $dist;
+
+		############################################################
+		# event message
+
+		} elsif( $msg->{message} == FIT_MSG_EVENT ){ # event
+			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
+			my( $event, $etype );
+
+			foreach my $f ( @{$msg->{fields}} ){
+				if( $f->{field} == 0 ){
+					$event = $f->{val};
+
+				} elsif( $f->{field} == 1 ){
+					$etype = $f->{val};
+
+				}
+			}
+
+			if( ! defined $event ){
+				# do nothing
+
+			} elsif( $event == 0 ){ # timer events
+				if( ! defined $etype ){
+					# do nothing
+
+				} elsif( $etype == 0
+					|| $etype == 1
+					|| $etype == 4 ){ # start/stop
+
+					if( ! $rec_last_time || $rec_last_time < $end ){
+						$rec_last_time = $end;
+					}
+				}
+			}
+
 
 		############################################################
 		# lap message
