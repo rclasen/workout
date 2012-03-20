@@ -118,6 +118,10 @@ sub do_write {
 		debug	=> $self->{debug},
 	) or croak "initializing Fit failed";
 
+	# TODO: notes??
+
+	# header
+
 	defined $fit->define_raw(
 		id	=> 0,
 		message	=> FIT_MSG_FILE_ID,
@@ -281,14 +285,112 @@ sub do_write {
 
 	$fit->data( 3, $self->time_end + FIT_TIME_OFFSET, 0, 4 );
 
-	# TODO: lap
-	# TODO: session
-	# TODO: activity
+	# laps
+
+	defined $fit->define_raw(
+		id	=> 4,
+		message	=> FIT_MSG_LAP,
+		fields	=> [{
+			field	=> 254, # lap number 
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 253, # end timestamp
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 2, # start timestamp
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 0, # event -> 9 lap
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 1, # event_type -> 1 stop
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 24, # lap_trigger -> 1 manual
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 26, # event_group -> undef
+			base	=> FIT_UINT8,
+		}],
+	) or return;
+
+	my $laps = 0;
+	foreach my $m ( sort { $a->end <=> $b->end } $self->marks ){
+		$fit->data( 4, $laps++,
+			$m->end - FIT_TIME_OFFSET, $m->start - FIT_TIME_OFFSET,
+			9, 1, 1, undef );
+	}
+
+
+	# summary
+
+	# session
+	defined $fit->define_raw(
+		id	=> 5,
+		message	=> FIT_MSG_SESSION,
+		fields	=> [{
+			field	=> 254, # session number 
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 253, # end timestamp
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 2, # start timestamp
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 0, # event -> 8 session
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 1, # event_type -> 1 stop
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 25, # first lap idx -> 0
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 26, # lap count -> $laps
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 27, # event_group -> undef
+			base	=> FIT_UINT8,
+		}, {
+			field	=> 28, # session_trigger -> 0 activity end
+			base	=> FIT_ENUM,
+		}],
+	) or return;
+	$fit->data( 5,
+		0, $self->time_end - FIT_TIME_OFFSET, $self->time_start - FIT_TIME_OFFSET,
+		8, 1, 0, $laps, undef, 0 );
+
+	# activity
+	defined $fit->define_raw(
+		id	=> 6,
+		message	=> FIT_MSG_ACTIVITY,
+		fields	=> [{
+			field	=> 253, # end timestamp
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 1, # num sessions
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 2, # activity type -> 0 manual
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 3, # event -> 26 activity
+			base	=> FIT_ENUM,
+		}, {
+			field	=> 4, # event_type -> 1 stop
+			base	=> FIT_ENUM,
+		}],
+	) or return;
+	$fit->data( 6,
+		$self->time_end - FIT_TIME_OFFSET, 1, 0, 26, 1 );
+
 
 	$fit->close
 		or return;
-}
 
+	return 1;
+}
 
 sub do_read {
 	my( $self, $fh, $fname ) = @_;
