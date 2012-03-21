@@ -42,8 +42,10 @@ lib/Workout/Store.pm
 lib/Workout/Store/Fit.pm
 lib/Workout/Store/Gpx.pm
 lib/Workout/Store/HRM.pm
+lib/Workout/Store/Json.pm
 lib/Workout/Store/Memory.pm
 lib/Workout/Store/Powertap.pm
+lib/Workout/Store/Pwx.pm
 lib/Workout/Store/SRM.pm
 lib/Workout/Store/Tcx.pm
 lib/Workout/Store/Wkt.pm
