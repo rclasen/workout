@@ -283,6 +283,19 @@ sub _time2str {
 		: $d->strftime( '%Y-%m-%dT%H:%M:%SZ' );
 }
 
+sub protect {
+	my $s = shift;
+
+	$s ||= '';
+
+	$s =~ s/&/&amp;/g;
+	$s =~ s/</&lt;/g;
+	$s =~ s/>/&gt;/g;
+	$s =~ s/"/&quot;/g;
+
+	$s;
+}
+
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
@@ -312,7 +325,6 @@ sub do_write {
 	}
 
 	my $now = _time2str( time );
-	my $note = $self->note || '';
 
 	my %write = map {
 		$_ => 1;
@@ -326,9 +338,9 @@ sub do_write {
 <time>$now</time>
 <bounds maxlat="$maxlat" maxlon="$maxlon" minlat="$minlat" minlon="$minlon" />
 <trk>
-<cmt>$note</cmt>
-<trkseg>
 EOHEAD
+	print $fh " <cmt>", &protect( $self->note ), "</cmt>\n",
+		" <trkseg>\n";
 
 	$it = $self->iterate;
 	while( my $c = $it->next ){

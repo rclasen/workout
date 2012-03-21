@@ -419,6 +419,19 @@ sub _time2str {
 		: $d->strftime( '%Y-%m-%dT%H:%M:%SZ' );
 }
 
+sub protect {
+	my $s = shift;
+
+	$s ||= '';
+
+	$s =~ s/&/&amp;/g;
+	$s =~ s/</&lt;/g;
+	$s =~ s/>/&gt;/g;
+	$s =~ s/"/&quot;/g;
+
+	$s;
+}
+
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
@@ -523,7 +536,7 @@ EOHEAD
 		}
 
 		print $fh "</Track>\n",
-			"<Notes>", ($lap->note || ''), "</Notes>\n";
+			"<Notes>", &protect($lap->note), "</Notes>\n";
 
 		print $fh "<Extensions>\n",
 			"<LX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
@@ -535,7 +548,7 @@ EOHEAD
 		print $fh "</Lap>\n";
 	}
 
-	print $fh "<Notes>", ($self->note || ''), "</Notes>\n";
+	print $fh "<Notes>", &protect($self->note), "</Notes>\n";
 
 	# TODO: write marker as extension?
 
