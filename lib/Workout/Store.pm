@@ -694,7 +694,8 @@ sub chunk_check {
 	}
 
 	if( $self->recint && abs($self->recint - $c->dur) > 0.1 ){
-		croak "duration doesn't match recint at ". $c->time;
+		croak "duration ". $c->dur ." doesn't match recint ".
+			$self->recint ." at time ". $c->time;
 	}
 
 	my $l = $self->chunk_last
