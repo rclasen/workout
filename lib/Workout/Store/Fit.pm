@@ -202,8 +202,8 @@ sub do_write {
 		};
 
 		push @data,
-			sub { $_[0]->lon * FIT_SEMI_DEG},
-			sub { $_[0]->lat * FIT_SEMI_DEG};
+			sub { defined $_[0]->lon ? $_[0]->lon * FIT_SEMI_DEG : undef },
+			sub { defined $_[0]->lat ? $_[0]->lat * FIT_SEMI_DEG : undef };
 	}
 
 	if( $io{dist} ){
@@ -217,7 +217,7 @@ sub do_write {
 
 		push @data,
 			sub { $dist * 100 },
-			sub { $_[0]->spd * 1000 };
+			sub { defined $_[0]->spd ? $_[0]->spd * 1000 : undef };
 	}
 
 	if( $io{ele} ){
@@ -226,7 +226,7 @@ sub do_write {
 			base	=> FIT_UINT16,
 		};
 
-		push @data, sub { ( $_[0]->ele + 500) * 5};
+		push @data, sub { defined $_[0]->ele ? ( $_[0]->ele + 500) * 5 : undef };
 	}
 
 	if( $io{work} ){
