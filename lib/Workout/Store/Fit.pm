@@ -175,7 +175,7 @@ sub do_write {
 			base	=> FIT_ENUM,
 		}],
 	) or return;
-	$fit->data( 3, $self->time_start + FIT_TIME_OFFSET, 0, 0 );
+	$fit->data( 3, $self->time_start - FIT_TIME_OFFSET, 0, 0 );
 
 
 	# Data
@@ -283,7 +283,7 @@ sub do_write {
 		$fit->data( 2, map { $_->( $row ) } @data );
 	}
 
-	$fit->data( 3, $self->time_end + FIT_TIME_OFFSET, 0, 4 );
+	$fit->data( 3, $self->time_end - FIT_TIME_OFFSET, 0, 4 );
 
 	# laps
 
