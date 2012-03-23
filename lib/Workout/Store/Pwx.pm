@@ -66,6 +66,7 @@ our %nodes = (
 
 	wkathlete	=> {
 		name	=> 'athlete',
+		'*'	=> 'ignore',
 	},
 	athlete	=> undef,
 
