@@ -153,7 +153,7 @@ sub new {
 		%$a,
 		start	=> undef, # start time / epoch
 		dist	=> 0, # total distance
-		time	=> 0, # elapsed seconds
+		ltime	=> 0, # last elapsed seconds
 		sam	=> {}, # current sample / chunk
 		seg	=> {}, # current segment / marker
 		segs	=> [], # finished segments / marker
@@ -235,12 +235,11 @@ sub end_node {
 
 		my $sam = $self->{sam};
 
-		my $dur;
-		if( ! $self->{Store}->chunk_count ){
-			$dur = $sam->{time} - $self->{time};
-			$self->{Store}->recint( $dur );
-		} else {
-			$dur = $self->{Store}->recint;
+		my $dur = $sam->{time} - $self->{ltime};
+		$self->{ltime} = $sam->{time};
+
+		if( $dur < 0.1 ){
+			return;
 		}
 
 		my %c = (
@@ -290,7 +289,6 @@ sub end_node {
 		$self->{Store}->chunk_add( Workout::Chunk->new(\%c) );
 
 		$self->{sam} = {};
-		$self->{time} = $sam->{time};
 
 	} elsif( $name eq 'wksegment' ){
 		push @{$self->{segs}}, $self->{seg};
@@ -348,7 +346,6 @@ our %fields_supported = map { $_ => 1; } qw{
 
 # TODO: other tags: slope, ...
 our %defaults = (
-	recint		=> 1,
 	athletename	=> 'wkt',
 	device		=> 'workout',
 	sporttype	=> 'Bike',
