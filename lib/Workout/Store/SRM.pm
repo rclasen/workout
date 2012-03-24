@@ -41,7 +41,6 @@ use base 'Workout::Store';
 use Carp;
 use DateTime;
 use Encode;
-use Workout::Filter::Info;
 
 our $VERSION = '0.02';
 

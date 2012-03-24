@@ -340,7 +340,6 @@ use warnings;
 use base 'Workout::Store';
 use XML::SAX;
 use Carp;
-use Workout::Filter::Info;
 
 our $VERSION = '0.02';
 
@@ -457,10 +456,7 @@ sub do_write {
 	my $start_time = _time2str( $start );
 	my $note = $self->note || '';
 
-	my $info = Workout::Filter::Info->new( $self->iterate, {
-		debug	=> $self->{debug},
-	});
-	$info->finish;
+	my $info = $self->info;
 
 	my %io = map {
 		$_ => 1;
