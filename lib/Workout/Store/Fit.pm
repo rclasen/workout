@@ -120,6 +120,8 @@ sub do_write {
 
 	# TODO: notes??
 
+	my $info = $self->info;
+
 	# header
 
 	defined $fit->define_raw(
@@ -287,6 +289,7 @@ sub do_write {
 
 	# laps
 
+	# TODO summary data for laps
 	defined $fit->define_raw(
 		id	=> 4,
 		message	=> FIT_MSG_LAP,
@@ -325,10 +328,7 @@ sub do_write {
 	# summary
 
 	# session
-	defined $fit->define_raw(
-		id	=> 5,
-		message	=> FIT_MSG_SESSION,
-		fields	=> [{
+	@fields = ({
 			field	=> 254, # session number 
 			base	=> FIT_UINT16,
 		}, {
@@ -355,11 +355,114 @@ sub do_write {
 		}, {
 			field	=> 28, # session_trigger -> 0 activity end
 			base	=> FIT_ENUM,
-		}],
-	) or return;
-	$fit->data( 5,
+		}, {
+			field	=> 7, # total_elapsed_time
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 8, # total_timer_time
+			base	=> FIT_UINT32,
+		}
+	);
+	@data = ( 5,
 		0, $self->time_end - FIT_TIME_OFFSET, $self->time_start - FIT_TIME_OFFSET,
-		8, 1, 0, $laps, undef, 0 );
+		8, 1, 0, $laps, undef, 0,
+		defined $self->dur ? $self->dur * 1000 : undef,
+		defined $info->dur_mov ? $info->dur_mov * 1000 : undef );
+
+	if( $io{lon} || $io{lat} ){
+		# find first chunk with lon+lat
+		my $iter = $self->iterate;
+		my $c;
+		while( defined( $c = $iter->next )
+			&& ( ! defined $c->lon || !  defined $c->lat ) ){
+			1;
+		};
+
+		if( $c ){
+			$self->debug( "found chunk @". $c->time ." with lon/lat for start_position" );
+			push @fields, {
+				field	=> 4, # start_position_lon
+				base	=> FIT_SINT32,
+			}, {
+				field	=> 3, # start_position_lat
+				base	=> FIT_SINT32,
+			};
+			push @data,
+				defined $c->lon ? $c->lon * FIT_SEMI_DEG : undef,
+				defined $c->lat ? $c->lat * FIT_SEMI_DEG : undef;
+		}
+	}
+
+	if( $io{dist} ){
+		push @fields, {
+			field	=> 9, # total_distance
+			base	=> FIT_UINT32,
+		}, {
+			field	=> 14, # avg_speed
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 15, # max_speed
+			base	=> FIT_UINT16,
+		};
+		push @data,
+			defined $info->dist ? $info->dist * 100 : undef,
+			defined $info->spd_avg ? $info->spd_avg * 1000 : undef,
+			defined $info->spd_max ? $info->spd_max * 1000 : undef;
+	}
+
+	if( $io{ele} ){
+		push @fields, {
+			field	=> 22, # total_ascent
+			base	=> FIT_UINT16,
+		};
+		push @data, $info->incline;
+	}
+
+	if( $io{work} ){
+		push @fields, {
+			field	=> 11, # total_kalories
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 20, # avg_pwr
+			base	=> FIT_UINT16,
+		}, {
+			field	=> 21, # max_pwr
+			base	=> FIT_UINT16,
+		};
+		push @data,
+			defined $info->work ? $info->work / 1000 : undef,
+			$info->pwr_avg,
+			$info->pwr_max;
+	}
+
+	if( $io{hr} ){
+		push @fields, {
+			field	=> 16, # avg_hr
+			base	=> FIT_UINT8,
+		}, {
+			field	=> 17, # max_hr
+			base	=> FIT_UINT8,
+		};
+		push @data, $info->hr_avg, $info->hr_max;
+	}
+
+	if( $io{cad} ){
+		push @fields, {
+			field	=> 18, # avg_cadence
+			base	=> FIT_UINT8,
+		}, {
+			field	=> 19, # max_cadence
+			base	=> FIT_UINT8,
+		};
+		push @data, $info->cad_avg, $info->cad_max;
+	}
+
+	defined $fit->define_raw(
+		id	=> 5,
+		message	=> FIT_MSG_SESSION,
+		fields	=> \@fields,
+	) or return;
+	$fit->data( @data );
 
 	# activity
 	defined $fit->define_raw(
