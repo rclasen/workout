@@ -57,6 +57,7 @@ our %nodes = (
 		athlete	=> 'wkathlete',
 		device	=> 'wkdevice',
 		segment	=> 'wksegment',
+		summarydata	=> 'wksummarydata',
 		sample	=> 'wksample',
 		'*'	=> 'ignore',
 	},
@@ -73,6 +74,14 @@ our %nodes = (
 	wkdevice	=> {
 		'*'	=> 'ignore',
 	},
+
+	wksummarydata	=> {
+		'duration'	=> 'sumdur',
+		'durationstopped'	=> 'sumdurstopped',
+		'*'	=> 'ignore',
+	},
+	sumdur	=> undef,
+	sumdurstopped	=> undef,
 
 	wksegment	=> {
 		'name'	=> 'segname',
@@ -222,6 +231,11 @@ sub end_leaf {
 	} elsif( $name eq 'athlete' ){
 		$self->{Store}->athletename( $node->{cdata} );
 
+	} elsif( $name eq 'sumdur' ){
+		$self->{Store}->sumdur( $node->{cdata} );
+
+	} elsif( $name eq 'sumdurstopped' ){
+		$self->{Store}->sumdurstopped( $node->{cdata} );
 	}
 }
 
@@ -349,6 +363,8 @@ our %defaults = (
 	athletename	=> 'wkt',
 	device		=> 'workout',
 	sporttype	=> 'Bike',
+	sumdur		=> '0',
+	sumdurstopped	=> '0',
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -383,7 +399,7 @@ sub from_store {
 
 	$self->SUPER::from_store( $store );
 
-	foreach my $f (qw( athletename device sporttype )){
+	foreach my $f (qw( athletename device sporttype sumdur sumdurstopped )){
 		$self->$f( $store->$f ) if $store->can( $f );
 	}
 }
