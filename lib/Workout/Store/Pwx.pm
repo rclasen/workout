@@ -372,7 +372,7 @@ sub new {
 		fields_supported	=> {
 			%fields_supported,
 		},
-		cap_block	=> 1,
+		cap_block	=> 0,
 		cap_note	=> 1,
 	});
 	$self;
