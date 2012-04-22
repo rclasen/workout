@@ -158,9 +158,10 @@ sub read_list {
 		chomp;
 		
 		next if /^\s*(?:#.*)?$/;
-		/^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+\.\d+)(?:\s+([-.\d]+))?/
+		/^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)(\.\d+)(?:\s+([-.\d]+))?/
 			or die "invalid input";
 
+		# TODO: handle nanosec properly
 		my $d = DateTime->new(
 			time_zone	=> 'local',
 			year		=> $1,
@@ -169,8 +170,9 @@ sub read_list {
 			hour		=> $4,
 			minute		=> $5,
 			second		=> $6,
+			nanosecond	=> $7 * 1000000000,
 		);
-		$d->add( seconds => $7 ) if $7;
+		$d->add( seconds => $8 ) if $8;
 		push @list, $d->hires_epoch;
 	}
 	close( $fh );
