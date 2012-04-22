@@ -506,7 +506,7 @@ sub do_read {
 
 	my $fit = Workout::Fit->new(
 		from => $fh,
-		debug => $self->{debug},
+		#debug => $self->{debug},
 	) or croak "initializing Fit failed";
 
 	while( my $msg = $fit->get_next ){
@@ -658,6 +658,8 @@ sub do_read {
 					|| $etype == 1
 					|| $etype == 4 ){ # start/stop
 
+					$self->debug( "found start/stop event @". $end );
+
 					if( ! $rec_last_time || $rec_last_time < $end ){
 						$rec_last_time = $end;
 					}
@@ -750,8 +752,12 @@ sub do_read {
 				."sw=".  ($self->{soft_version}||'-') .", "
 				."hw=".  ($self->{hard_version}||'-') );
 
+		} elsif( $msg->{message} == 23 # device_info
+			|| $msg->{message} == 22 ){ # TODO: unknown message
+			# do nothing, calm down
+
 		} else {
-			$self->debug( "found message: "
+			$self->debug( "found unhandled message: "
 				.$msg->{message} ." @"
 				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 		}
