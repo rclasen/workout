@@ -496,6 +496,17 @@ EOHEAD
 		my $it = $lap->iterate;
 
 		while( my $c = $it->next ){
+			if( $c->isblockfirst ){
+				print $fh "<Trackpoint>\n",
+					"<Time>", _time2str($c->stime),"</Time>\n";
+
+				print $fh "<DistanceMeters>", $odo,"</DistanceMeters>\n"
+					if $write{dist};
+
+				print $fh "</Trackpoint>\n";
+
+			}
+
 			$odo += $c->dist || 0;
 
 			print $fh "<Trackpoint>\n",
