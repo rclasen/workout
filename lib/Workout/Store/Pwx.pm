@@ -223,7 +223,7 @@ sub end_leaf {
 		$self->{Store}->debug( "start: ". $self->{start} );
 
 	} elsif( $name eq 'wksport' ){
-		$self->{Store}->sporttype( $node->{cdata} );
+		$self->{Store}->sport( $node->{cdata} );
 
 	} elsif( $name eq 'wkcmt' ){
 		$self->{Store}->note( $node->{cdata} );
@@ -361,7 +361,6 @@ our %fields_supported = map { $_ => 1; } qw{
 our %defaults = (
 	athletename	=> 'wkt',
 	device		=> 'workout',
-	sporttype	=> 'Bike',
 	sumdur		=> '0',
 	sumdurstopped	=> '0',
 );
@@ -398,7 +397,7 @@ sub from_store {
 
 	$self->SUPER::from_store( $store );
 
-	foreach my $f (qw( athletename device sporttype sumdur sumdurstopped )){
+	foreach my $f (qw( athletename device sumdur sumdurstopped )){
 		$self->$f( $store->$f ) if $store->can( $f )
 			&& defined $store->$f;
 	}
@@ -474,7 +473,7 @@ EOHEAD
 		" <athlete>\n",
 		"  <name>", &protect($self->athletename) ,"</name>\n",
 		" </athlete>\n",
-		" <sportType>", &protect($self->sporttype) ,"</sportType>\n",
+		" <sportType>", &protect($self->sport) ,"</sportType>\n",
 		" <cmt>", &protect($note), "</cmt>\n",
 		" <device id=\"", &protect($self->device), "\">\n",
 		"  <make>", &protect($self->device) ,"</make>\n",
