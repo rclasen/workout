@@ -137,7 +137,7 @@ my @fields = sort { $a cmp $b } grep { $fields->{$_} } keys %{$fields};
 
 # TODO: zones/inzone
 
-foreach my $attr (qw( athletename note circum slope zeropos )){
+foreach my $attr (qw( athletename note sport circum slope zeropos )){
 	next unless $src->can( $attr );
 	my $v = $src->$attr or next;
 

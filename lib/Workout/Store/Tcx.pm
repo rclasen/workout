@@ -237,7 +237,10 @@ sub end_node {
 		$self->{trackcnt} = 0;
 
 	} elsif( $name eq 'activity' ){
+		my $sport = $node->{attr}{'{}Sport'}{Value};
+
 		$self->{Store}->note( $self->{actnote} );
+		$self->{Store}->wk_sport( $sport );
 		$self->{Store}->mark_new_laps( $self->{laps} );
 		$self->{laps} = [];
 		$self->{odo} = 0;
@@ -368,6 +371,21 @@ our %fields_supported = map { $_ => 1; } qw{
 	work
 };
 
+our %wk_sport = (
+	Biking		=> 'Bike',
+	Running		=> 'Run',
+	Other		=> undef,
+	# everything else is taken as-is
+);
+
+our %tcx_sport = (
+	Biking		=> 'Biking',
+	Bike		=> 'Biking',
+	Running		=> 'Running',
+	Run		=> 'Running',
+	Other		=> 'Other',
+	# everything else is mapped to 'Other', aswell
+);
 
 =head1 CONSTRUCTOR
 
@@ -376,8 +394,6 @@ our %fields_supported = map { $_ => 1; } qw{
 creates an empty Store.
 
 =cut
-
-# TODO: sport
 
 sub new {
 	my( $class, $a ) = @_;
@@ -392,6 +408,15 @@ sub new {
 		cap_note	=> 1,
 	});
 	$self;
+}
+
+sub wk_sport {
+	my( $self, $sport ) = @_;
+
+	if( $sport && exists $wk_sport{$sport} ){
+		$sport = $wk_sport{$sport};
+	}
+	$self->sport( $sport );
 }
 
 sub do_read {
@@ -451,13 +476,18 @@ sub do_write {
 	my $laps = $self->laps;
 	my $odo = 0;
 
-	# TODO: Sport = Biking|Running|Other
+	my $sport = $self->sport;
+	if( $sport && exists $tcx_sport{$sport} ){
+		$sport = $tcx_sport{$sport};
+	} else {
+		$sport = 'Other';
+	}
 
 	print $fh <<EOHEAD;
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd">
 <Activities>
-<Activity Sport="Biking">
+<Activity Sport="$sport">
 <Id>$stime</Id>
 EOHEAD
 

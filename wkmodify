@@ -21,6 +21,7 @@ my $start;
 
 my $delta;
 my $note;
+my $sport;
 
 my $slope;
 my $circum;
@@ -40,6 +41,7 @@ if( ! GetOptions(
 	'help!'		=> \$wanthelp,
 	'itype=s'	=> \$itype,
 	'note=s'	=> \$note,
+	'sport=s'	=> \$sport,
 	'recalc-power!'	=> \$recalc_power,
 	'slope=f'	=> \$slope,
 	'start=s'	=> \$start,
@@ -58,6 +60,7 @@ Options:
 --delta=<sec>       add delta to start time
 
 --note=<n>          set note
+--sport=<n>         set sport
 
 --recalc-power      recalculate power based on new slope/zeropos
 --slope=<x>         set slope (SRM)
@@ -146,7 +149,7 @@ if( $start ){
 
 
 $delta && $src->time_add_delta( $delta );
-foreach my $attr ( qw( note slope circum zeropos athletename )){
+foreach my $attr ( qw( note sport slope circum zeropos athletename )){
 	my $v = eval "\$$attr";
 	next unless defined $v;
 	next unless $src->can( $attr );

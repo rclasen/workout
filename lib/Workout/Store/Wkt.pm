@@ -155,6 +155,9 @@ sub parse_params {
 	} elsif( $k eq 'athlete' ){
 		$self->{athletename} = $v;
 
+	} elsif( $k eq 'sport' ){
+		$self->{sport} = $v;
+
 	} elsif( $k eq 'circum' ){
 		$self->{circum} = $v;
 
@@ -227,6 +230,9 @@ sub do_write {
 	}
 	if( my $a = $self->athletename ){
 		print $fh "Athlete=$a\n";
+	}
+	if( my $a = $self->sport ){
+		print $fh "Sport=$a\n";
 	}
 	if( my $a = $self->circum ){
 		print $fh "Circum=$a\n";

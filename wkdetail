@@ -19,6 +19,7 @@ my $itype;
 
 my $opt_start;
 my $opt_note;
+my $opt_sport;
 my $opt_slope;
 my $opt_circum;
 my $opt_zeropos;
@@ -34,6 +35,7 @@ if( ! GetOptions(
 	'help!'		=> \$wanthelp,
 	'itype=s'	=> \$itype,
 	'note!'		=> \$opt_note,
+	'sport!'		=> \$opt_sport,
 	'slope!'	=> \$opt_slope,
 	'start!'	=> \$opt_start,
 	'zeropos!'	=> \$opt_zeropos,
@@ -49,6 +51,7 @@ print workout details
 Options:
 --start             start time in seconds since 1970-1-1
 --note              workout note
+--sport             workout sport
 
 --slope             get slope (SRM)
 --circum            get wheel circumference (SRM)
@@ -84,6 +87,10 @@ if( $opt_start ){
 
 if( $opt_note ){
 	print $src->note, "\n";
+}
+
+if( $opt_sport ){
+	print $src->sport, "\n";
 }
 
 if( $opt_slope ){
