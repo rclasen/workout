@@ -242,17 +242,20 @@ sub do_write {
 
 
 	my $num = 0;
-	print $fh "\t\t\"INTERVALS\":[\n";
-	foreach my $mk ( @{$self->marks} ){
-		print $fh ",\n" if $num++;
 
-		print $fh "\t\t\t{ ",
-			"\"NAME\":", &protect( $mk->note || $num ), ",",
-			"\"START\":", ($mk->start - $start), ",",
-			"\"STOP\":", ($mk->end - $start ), "",
-			" }";
+	if( my @marks = $self->marks ){
+		print $fh "\t\t\"INTERVALS\":[\n";
+		foreach my $mk ( @marks ){
+			print $fh ",\n" if $num++;
+
+			print $fh "\t\t\t{ ",
+				"\"NAME\":", &protect( $mk->note || $num ), ",",
+				"\"START\":", ($mk->start - $start), ",",
+				"\"STOP\":", ($mk->end - $start ), "",
+				" }";
+		}
+		print $fh "\n\t\t],\n";
 	}
-	print $fh "\n\t\t],\n";
 
 	my $it = $self->iterate;
 	$num = 0;
