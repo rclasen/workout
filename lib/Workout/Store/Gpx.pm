@@ -243,6 +243,7 @@ sub new {
 
 	$a ||= {};
 	my $self = $class->SUPER::new( {
+		sport	=> undef,
 		%$a,
 		fields_essential	=> {
 			%fields_essential,

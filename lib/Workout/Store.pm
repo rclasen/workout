@@ -86,6 +86,7 @@ __PACKAGE__->mk_accessors(qw(
 	recint
 
 	note
+	sport
 ));
 
 
@@ -123,6 +124,7 @@ sub new {
 
 	$a ||= {};
 	my $self = $class->SUPER::new({
+		sport		=> 'Bike',
 		cap_block	=> 1,
 		cap_note	=> 1,
 		fields_essential	=> {},
@@ -266,6 +268,7 @@ sub from_store {
 	}
 
 	$self->note( $store->note );
+	$self->sport( $store->sport );
 }
 
 

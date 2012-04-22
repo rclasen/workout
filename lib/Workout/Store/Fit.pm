@@ -77,6 +77,8 @@ creates an empty Store.
 
 =cut
 
+# TODO: sport
+
 sub new {
 	my( $class,$a ) = @_;
 

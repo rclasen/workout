@@ -55,6 +55,7 @@ sub filetypes {
 }
 
 our %defaults = (
+	sport	=> undef,
 	athlete	=> undef,
 	tz	=> 'local',
 	recint	=> 5,
@@ -89,6 +90,8 @@ __PACKAGE__->mk_accessors( keys %defaults );
 creates an empty Store.
 
 =cut
+
+# TODO: sport
 
 sub new {
 	my( $class, $a ) = @_;

@@ -113,6 +113,7 @@ sub do_read {
 
 	if( my $t = $r->{TAGS} ){
 		$self->note( $t->{Notes} ) if exists $t->{Notes};
+		$self->sport( $t->{Sport} ) if exists $t->{Sport};
 
 		if( exists $t->{"Athlete Name"} && $t->{"Athlete Name"} ){
 			$self->athletename( $t->{"Athlete Name"} );
@@ -248,6 +249,9 @@ sub do_write {
 
 	print $fh "\t\t\"TAGS\":{\n",
 		"\t\t\t\"Athlete Name\":", &protect( $self->athletename ),",\n";
+
+	print $fh "\t\t\t\"Sport\":", &protect( $self->sport ),",\n"
+		if $self->sport;
 
 	#print $fh "\t\t\t\"Device Info\":", &protect( $self->TODO ),",\n";
 
