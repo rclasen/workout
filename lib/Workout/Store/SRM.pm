@@ -708,7 +708,7 @@ sub read_srm {
 		});
 
 		$_[3] > 0 && ++$io{cad};
-		$hr > 20 && ++$io{hr};
+		defined $hr && ++$io{hr};
 		$spd > 0 && ++$io{dist};
 		$pwr > 0 && ++$io{work};
 
