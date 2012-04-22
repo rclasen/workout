@@ -189,8 +189,9 @@ sub from_store {
 
 	$self->SUPER::from_store( $store );
 
-	foreach my $f (qw( athletename )){
-		$self->$f( $store->$f ) if $store->can( $f );
+	foreach my $f (qw( athletename circum zeropos slope )){
+		$self->$f( $store->$f ) if $store->can( $f )
+			&& defined $store->$f;
 	}
 }
 
