@@ -51,6 +51,9 @@ sub filetypes {
 our %defaults = (
 	recint		=> 1,
 	athletename	=> '',
+	circum          => undef,
+	zeropos         => undef,
+	slope           => undef,
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -108,10 +111,18 @@ sub do_read {
 	my $recint = $r->{RECINTSECS};
 	$self->recint( $recint );
 
-$DB::single++;
 	if( my $t = $r->{TAGS} ){
 		$self->note( $t->{Notes} ) if exists $t->{Notes};
-		$self->athletename( $t->{Athlete} ) if exists $t->{Athlete};
+
+		if( exists $t->{"Athlete Name"} && $t->{"Athlete Name"} ){
+			$self->athletename( $t->{"Athlete Name"} );
+		} elsif( exists $t->{Athlete} && $t->{Athlete} ){
+			$self->athletename( $t->{Athlete} );
+		}
+
+		$self->circum( $t->{"Wheel Circumference"} ) if exists $t->{"Wheel Circumference"};
+		$self->slope( $t->{Slope} ) if exists $t->{Slope};
+		$self->zeropos( $t->{"Zero Offset"} ) if exists $t->{"Zero Offset"};
 	}
 
 	my $dist = 0;
@@ -236,8 +247,18 @@ sub do_write {
 		"\t\t\"IDENTIFIER\":\"\",\n";
 
 	print $fh "\t\t\"TAGS\":{\n",
-		"\t\t\t\"Athlete\":", &protect( $self->athletename ),",\n",
-		"\t\t\t\"Notes\":", &protect( $self->note ), "\n",
+		"\t\t\t\"Athlete Name\":", &protect( $self->athletename ),",\n";
+
+	#print $fh "\t\t\t\"Device Info\":", &protect( $self->TODO ),",\n";
+
+	print $fh "\t\t\t\"Wheel Circumference\":", &protect( $self->circum ),",\n"
+		if $self->circum;
+	print $fh "\t\t\t\"Slope\":", &protect( $self->slope ),",\n"
+		if $self->slope;
+	print $fh "\t\t\t\"Zero Offset\":", &protect( $self->zeropos ),",\n"
+		if $self->zeropos;
+
+	print $fh "\t\t\t\"Notes\":", &protect( $self->note ), "\n",
 		"\t\t},\n";
 
 
