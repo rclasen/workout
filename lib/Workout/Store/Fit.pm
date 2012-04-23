@@ -188,7 +188,7 @@ sub do_write {
 		$_ => 1,
 	} $self->fields_io;
 
-	my $dist;
+	my $dist = 0;
 
 	my @fields = ({
 		field	=> 253, # timestamp
@@ -283,7 +283,7 @@ sub do_write {
 			$fit->data( 3, $row->stime, 0, 0 );
 		}
 
-		$dist += $row->dist;
+		$dist += $row->dist || 0;
 		$fit->data( 2, map { $_->( $row ) } @data );
 	}
 
