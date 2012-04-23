@@ -303,7 +303,8 @@ sub do_write {
 		}
 
 		if( $io{work} && defined $ck->work ){
-			print $fh ", \"WATTS\":", $ck->pwr;
+			print $fh ", \"WATTS\":", $ck->pwr,
+				", \"NM\":", $ck->torque;
 		}
 
 		if( $io{hr} && defined $ck->hr ){
