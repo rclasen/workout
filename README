@@ -37,6 +37,7 @@ Optional:
 
     Geo::Distance
     XML::SAX
+    JSON
 
   Visualization (wkplot, wkdelta, ...)
 

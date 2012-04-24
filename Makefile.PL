@@ -14,6 +14,7 @@ WriteMakefile(
 	    'DateTime'		=> undef,
 	    'MyChart'		=> '0.03',
 	    'Encode'		=> undef,
+	    'JSON'		=> undef,
     }, # e.g., Module::Name => 1.1
     'EXE_FILES'       => [qw(
 	wkblocks

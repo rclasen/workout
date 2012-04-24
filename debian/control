@@ -10,7 +10,7 @@ Package: workout
 Architecture: all
 Depends: ${perl:Depends}, ${misc:Depends}, libgeo-distance-perl,
  libxml-sax-perl, libclass-accessor-perl, libmodule-pluggable-perl,
- libdatetime-perl, mychart 
+ libdatetime-perl, mychart, libjson-perl
 Recommends: libxml-sax-expatxs-perl
 Description:  Workout file library
  This library and acompanying helper provide a common API to access
