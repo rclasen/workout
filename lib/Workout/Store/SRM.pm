@@ -609,6 +609,8 @@ sub do_read {
 		$ckread = $self->read_srm7( $fh, \@blocks, $temperature );
 	}
 
+	$self->debug( "finished reading chunks at ", tell $fh );
+
 	if( $ckread <= 0 ){
 		croak "no chunks found";
 
@@ -661,7 +663,7 @@ sub read_srm {
 
 	my %io;
 
-	for( ; $ckread < $ckcnt; ++$ckread ){
+	for( ; $ckread <= $ckcnt; ++$ckread ){
 
 		while( $ckread > $blk->{cklast} && @$blocks ){
 			$blk = shift @$blocks;
@@ -729,15 +731,14 @@ sub read_srm7 {
 	my( $self, $fh, $blocks, $temperature ) = @_;
 
 	my $ckread = 0;
+	my $ckcnt = $blocks->[-1]{cklast};
 
-	my $buf;
 	my $blk = shift @$blocks;
 	my $cktime = $blk->{stime};
 
 	my %io;
 
-	while( CORE::read( $fh, $buf, 14 ) == 14 ){
-
+	for( ; $ckread <= $ckcnt; ++$ckread ){
 
 		while( $ckread > $blk->{cklast} && @$blocks ){
 			$blk = shift @$blocks;
@@ -746,8 +747,6 @@ sub read_srm7 {
 
 		$cktime += $self->recint;
 
-		$ckread++;
-
 		# id	start	len	what
 		# 0	0	2	uint16 - power
 		# 1	2	1	uint8 - cadence
@@ -755,6 +754,8 @@ sub read_srm7 {
 		# 3	4	4	int32 - speed
 		# 4	8	4	int32 - elevation
 		# 5	12	2	int16 - temperature
+
+		CORE::read( $fh, my $buf, 14 ) == 14 or last;
 
 		@_ = unpack( $chunk7fmt, $buf );
 		my $chunk = Workout::Chunk->new( {
@@ -777,10 +778,8 @@ sub read_srm7 {
 
 		$self->chunk_add( $chunk );
 	}
-
-	if( $ckread > $blk->{cklast} + 1){
-		carp "found extra chunks: ".
-			$ckread ." > ". ($blk->{cklast} + 1);
+	if( ! eof( $fh ) ){
+		carp "found extra data at end of file";
 	}
 
 	$self->fields_io( qw( time dur ), keys %io );
