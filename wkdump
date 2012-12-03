@@ -13,6 +13,13 @@ use strict;
 use warnings;
 use Workout;
 use Getopt::Long;
+use I18N::Langinfo qw(langinfo CODESET);
+
+my $charset = langinfo(CODESET);
+binmode STDIN, ":encoding($charset)";
+binmode STDOUT, ":encoding($charset)";
+binmode STDERR, ":encoding($charset)";
+
 
 
 my $recint;

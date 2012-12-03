@@ -22,6 +22,13 @@ use warnings;
 use Getopt::Long;
 use Workout;
 use Workout::Athlete;
+use I18N::Langinfo qw(langinfo CODESET);
+
+my $charset = langinfo(CODESET);
+binmode STDIN, ":encoding($charset)";
+binmode STDOUT, ":encoding($charset)";
+binmode STDERR, ":encoding($charset)";
+
 
 my $join;
 my $skip;

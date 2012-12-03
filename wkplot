@@ -16,6 +16,13 @@ use Workout::Chart::Workout;
 use Gtk2 '-init';
 use Glib qw/ TRUE FALSE /;
 use MyChart::Gtk;
+use I18N::Langinfo qw(langinfo CODESET);
+
+my $charset = langinfo(CODESET);
+binmode STDIN, ":encoding($charset)";
+binmode STDOUT, ":encoding($charset)";
+binmode STDERR, ":encoding($charset)";
+
 
 my $recint;
 my @itype;
