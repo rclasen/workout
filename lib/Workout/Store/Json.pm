@@ -87,7 +87,7 @@ sub do_read {
 	local $/;
 
 	my $text = <$fh>;
-	my $j = decode_json( $text )
+	my $j = JSON->new->decode( $text )
 		or return;
 
 	my $r = $j->{RIDE}
