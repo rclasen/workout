@@ -306,6 +306,9 @@ opened. Otherwise it's assumed to be an IO::Handle.
 sub write {
 	my( $self, $source ) = @_;
 
+	$self->chunk_count
+		or return;
+
 	my( $fh, $fname );
 	if( ref $source ){
 		$fh = $source;
