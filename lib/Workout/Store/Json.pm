@@ -148,7 +148,7 @@ sub do_read {
 
 		if( exists $s->{WATTS} && defined $s->{WATTS} ){
 			$io{work}++;
-			$c{work} = $s->{WATTS} / $recint;
+			$c{work} = $s->{WATTS} * $recint;
 		}
 
 		if( exists $s->{HR} && defined $s->{HR} ){
