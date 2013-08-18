@@ -87,7 +87,6 @@ use Module::Pluggable
 	sub_name        => 'stores';
 use File::Spec;
 use File::HomeDir;
-use File::ShareDir;
 
 our $VERSION = '0.15';
 
