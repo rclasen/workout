@@ -282,6 +282,10 @@ sub end_node {
 		my $dur = $sam->{time} - $self->{ltime};
 		$self->{ltime} = $sam->{time};
 
+		if( $dur < 0.1 ){
+			return;
+		}
+
 		# try to identify gaps by stopdetect: 
 		my $stopdetect = $self->{stopdetect};
 		if( defined $stopdetect && $dur > $stopdetect ){
