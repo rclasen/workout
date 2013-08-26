@@ -282,10 +282,7 @@ sub end_node {
 		my $dur = $sam->{time} - $self->{ltime};
 		$self->{ltime} = $sam->{time};
 
-		if( $dur < 0.1 ){
-			return;
-		}
-
+		# try to identify gaps by stopdetect: 
 		my $stopdetect = $self->{stopdetect};
 		if( defined $stopdetect && $dur > $stopdetect ){
 			$dur = $stopdetect; # TODO: just guessing. Still wrong in 99%.
@@ -301,9 +298,22 @@ sub end_node {
 			$c{dist} = $sam->{dist} - $self->{dist};
 			$self->{dist} = $sam->{dist};
 
+			# try to identify gaps by speed+distance:
+			if( exists $sam->{spd} && $sam->{spd} ){
+				my $sdur = $c{dist} / $sam->{spd};
+				if( $dur > $sdur ){
+					$dur = $sdur;
+					$c{dur} = $sdur;
+				}
+			}
+
 		} elsif( exists $sam->{spd} && defined $sam->{spd} ){
 			$self->{io}{dist}++;
 			$c{dist} = $sam->{spd} * $c{dur};
+		}
+
+		if( $dur < 0.1 ){
+			return;
 		}
 
 		if( exists $sam->{pwr} && defined $sam->{pwr} ){
@@ -427,7 +437,7 @@ sub new {
 		fields_supported	=> {
 			%fields_supported,
 		},
-		cap_block	=> 0, # TODO: once stopdetect stuff is understood
+		cap_block	=> 0,
 		cap_note	=> 1,
 	});
 	$self;
@@ -509,7 +519,7 @@ sub do_write {
 
 	$self->debug( "writing fields: ", join(",", keys %io ) );
 
-	my $stopdetect = 5; # TODO: hack
+	my $stopdetect = 15; # TODO: hack
 	if( $self->recint ){
 		$stopdetect = 2* $self->recint;
 	}
