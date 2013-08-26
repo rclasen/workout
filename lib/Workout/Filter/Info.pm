@@ -56,6 +56,8 @@ our %init = (
 	dist	=> 0,
 	vspd_max	=> 0,
 	vspd_max_time	=> undef,
+	spd_min	=> undef,
+	spd_min_time	=> undef,
 	spd_max	=> 0,
 	spd_max_time	=> undef,
 	accel_max	=> 0,
@@ -66,6 +68,8 @@ our %init = (
 	temp_min_time	=> undef,
 	temp_max	=> 0,
 	temp_max_time	=> undef,
+	dur_ele		=> 0,
+	ele_sum		=> 0,
 	ele_min	=> undef,
 	ele_min_time	=> undef,
 	ele_max	=> 0,
@@ -74,6 +78,8 @@ our %init = (
 	grad_max_time	=> undef,
 	incline	=> 0,
 	work	=> 0,
+	pwr_min	=> undef,
+	pwr_min_time	=> undef,
 	pwr_max	=> 0,
 	pwr_max_time	=> undef,
 	torque_max	=> 0,
@@ -85,6 +91,8 @@ our %init = (
 	hr_max_time	=> undef,
 	cad_sum	=> 0,
 	cad_nsum	=> 0,
+	cad_min	=> undef,
+	cad_min_time	=> undef,
 	cad_max	=> 0,
 	cad_max_time	=> undef,
 	fields_used	=> {},
@@ -172,6 +180,14 @@ sub cad_avg {
 		or return;
 	$self->cad_sum / $d;
 }
+
+=head2 cad_min
+
+minimum cadence seen in the workout (1/min)
+
+=head2 cad_min_time
+
+end time of chunk with minimum cadence.
 
 =head2 cad_max
 
@@ -283,6 +299,10 @@ total duration while pedaling (sec)
 
 total duration with temperature recording (sec)
 
+=head2 dur_ele
+
+total duration with elevation recording (sec)
+
 =head2 ele_start
 
 elevation at start of workout (m).
@@ -312,6 +332,21 @@ minimum elevation seen in the workout (m).
 =head2 ele_min_time
 
 end time of chunk with minimum elevation.
+
+=head2 ele_avg
+
+average elevation (m).
+
+=cut
+
+sub ele_avg {
+	my( $self ) = @_;
+
+	my $dur = $self->dur_ele || $self->dur
+		or return;
+
+	$self->ele_sum / $dur;
+}
 
 =head2 lele
 
@@ -382,6 +417,14 @@ sub pwr_avg {
 	$self->work / $dur;
 }
 
+=head2 pwr_min
+
+minimum power seen in the workout (W).
+
+=head2 pwr_min_time
+
+end time of chunk with minimum power.
+
 =head2 pwr_max
 
 maximum power seen in the workout (W).
@@ -403,7 +446,15 @@ sub spd_avg {
 	$self->dist / $d;
 }
 
-=head2 spd_max
+=head2 spd_min
+
+minimum speed seen in the workout (m/s).
+
+=head2 spd_min_time
+
+end time of chunk with minimum speed.
+
+=head2 spd_min
 
 maximum speed seen in the workout (m/s).
 
@@ -656,10 +707,10 @@ sub process {
 	}
 
 	$self->set_nsum( $d, qw( cad ));
-	$self->set_asum( $d, qw( hr cad temp ));
+	$self->set_asum( $d, qw( hr cad ele temp ));
 	$self->set_max( $d, qw( pwr torque hr cad spd vspd accel temp ele grad ));
 	$self->set_min( $d, qw( temp ele ));
-	$self->set_zmin( $d, qw( hr ));
+	$self->set_zmin( $d, qw( cad hr pwr spd ));
 
 	$d;
 }

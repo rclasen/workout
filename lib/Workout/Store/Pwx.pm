@@ -28,6 +28,24 @@ Workout::Store::Pwx - read/write Trainingpeaks device agent XML files
 Interface to read/write Trainingpeaks device agent files. Inherits from
 Workout::Store and implements do_read/_write methods.
 
+To me its unclear if Pwx requires fixed recording intervals or if samples
+may cover varying time. Header doesn't contain any recording interval and
+the actual samples could be specified properly for varying intervals,
+aswell. To extend the confusion a "stopdetectionsetting" was introdued -
+which kind of supports the varying interval theory.
+
+So, without further clarification this parser/writer assumes, it's varying
+intervals. Unfortunatly this makes it quite picky about how samples need
+to be written for recording gaps. As a result the first sample after a
+recording gap tends to be wrong. Speed will be low, and the whole gap will
+have the same average power - possibly distorting the averages.
+If the "stopdetectionsetting" is provided, impact is lmited by this, but
+it's also unclear how exactly this setting should be evaluated.
+
+I couldn't find any reference on the timeoffset - I'd expect it to be the
+time at the end of a sample... but I've seen many files having the first
+timeoffset=0.
+
 =cut
 
 package Workout::Store::Pwx::Read;
@@ -72,8 +90,11 @@ our %nodes = (
 	athlete	=> undef,
 
 	wkdevice	=> {
+		# TODO: look for device extensions
+		stopdetectionsetting	=> 'stopdetection',
 		'*'	=> 'ignore',
 	},
+	stopdetection	=> undef,
 
 	wksummarydata	=> {
 		'duration'	=> 'sumdur',
@@ -107,6 +128,7 @@ our %nodes = (
 		hr	=> 'chr',
 		cad	=> 'ccad',
 		alt	=> 'calt',
+		temp	=> 'ctemp',
 		'*'	=> 'ignore',
 	},
 	ctime	=> undef,
@@ -118,6 +140,7 @@ our %nodes = (
 	chr	=> undef,
 	ccad	=> undef,
 	calt	=> undef,
+	ctemp	=> undef,
 
 	ignore	=> {
 		'*'	=> 'ignore',
@@ -161,6 +184,7 @@ sub new {
 		Store	=> undef,
 		%$a,
 		start	=> undef, # start time / epoch
+		stopdetect	=> undef, # max gap before device pause
 		dist	=> 0, # total distance
 		ltime	=> 0, # last elapsed seconds
 		sam	=> {}, # current sample / chunk
@@ -204,6 +228,9 @@ sub end_leaf {
 	} elsif( $name eq 'calt' ){
 		$self->{sam}{alt} = $node->{cdata};
 
+	} elsif( $name eq 'ctemp' ){
+		$self->{sam}{temp} = $node->{cdata};
+
 
 	# segment / marker
 	} elsif( $name eq 'segname' ){
@@ -217,6 +244,9 @@ sub end_leaf {
 
 
 	# workout
+
+	} elsif( $name eq 'stopdetection' ){
+		$self->{stopdetect}	=> $node->{cdata};
 
 	} elsif( $name eq 'wktime' ){
 		$self->{start} = _str2time( $node->{cdata} );
@@ -254,6 +284,11 @@ sub end_node {
 
 		if( $dur < 0.1 ){
 			return;
+		}
+
+		my $stopdetect = $self->{stopdetect};
+		if( defined $stopdetect && $dur > $stopdetect ){
+			$dur = $stopdetect; # TODO: just guessing. Still wrong in 99%.
 		}
 
 		my %c = (
@@ -298,6 +333,11 @@ sub end_node {
 		if( exists $sam->{alt} && defined $sam->{alt} ){
 			$self->{io}{ele}++;
 			$c{ele} = $sam->{alt};
+		}
+
+		if( exists $sam->{temp} && defined $sam->{temp} ){
+			$self->{io}{temp}++;
+			$c{temp} = $sam->{temp};
 		}
 
 		$self->{Store}->chunk_add( Workout::Chunk->new(\%c) );
@@ -355,6 +395,7 @@ our %fields_supported = map { $_ => 1; } qw{
 	hr
 	cad
 	work
+	temp
 };
 
 # TODO: other tags: slope, ...
@@ -386,7 +427,7 @@ sub new {
 		fields_supported	=> {
 			%fields_supported,
 		},
-		cap_block	=> 0,
+		cap_block	=> 0, # TODO: once stopdetect stuff is understood
 		cap_note	=> 1,
 	});
 	$self;
@@ -431,6 +472,10 @@ sub _time2str {
 		: $d->strftime( '%Y-%m-%dT%H:%M:%SZ' );
 }
 
+sub n { $_[0] || 0; }
+
+sub round { int( $_[0] + 0.5 ); }
+
 sub protect {
 	my $s = shift;
 
@@ -464,6 +509,12 @@ sub do_write {
 
 	$self->debug( "writing fields: ", join(",", keys %io ) );
 
+	my $stopdetect = 5; # TODO: hack
+	if( $self->recint ){
+		$stopdetect = 2* $self->recint;
+	}
+	$self->debug( "stopdetect: $stopdetect");
+
 	print $fh <<EOHEAD;
 <?xml version="1.0" encoding="utf-8"?>
 <pwx xmlns="http://www.peaksware.com/PWX/1/0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" xsi:schemaLocation="http://www.peaksware.com/PWX/1/0 http://www.peaksware.com/PWX/1/0/pwx.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" creator="Workout">
@@ -477,18 +528,30 @@ EOHEAD
 		" <cmt>", &protect($note), "</cmt>\n",
 		" <device id=\"", &protect($self->device), "\">\n",
 		"  <make>", &protect($self->device) ,"</make>\n",
+		#TODO:"  <stopdetectionsetting>", $stopdetect ,"</stopdetectionsetting>\n",
+		# TODO: write device extensions
 		" </device>\n",
 		" <time>$start_time</time>\n";
 
 	print $fh " <summarydata>\n",
 		"  <beginning>1</beginning>\n",
 		"  <duration>", $self->dur, "</duration>\n",
-		"  <hr min=\"0\" max=\"0\" avg=\"0\"/>\n",
-		"  <spd min=\"0\" max=\"0\" avg=\"0\"/>\n",
-		"  <pwr min=\"0\" max=\"0\" avg=\"0\"/>\n",
-		"  <cad min=\"0\" max=\"0\" avg=\"0\"/>\n",
-		"  <dist>", int($info->dist + 0.5), "</dist>\n",
-		"  <alt min=\"0\" max=\"0\" avg=\"0\"/>\n",
+		"  <hr min=\"", $info->hr_min,
+			"\" max=\"", &n($info->hr_max),
+			"\" avg=\"", &n($info->hr_avg), "\"/>\n",
+		"  <spd min=\"", &n($info->spd_min),
+			"\" max=\"", &n($info->spd_max),
+			"\" avg=\"", &n($info->spd_avg), "\"/>\n",
+		"  <pwr min=\"", &n($info->pwr_min),
+			"\" max=\"", &n($info->pwr_max),
+			"\" avg=\"", &n($info->pwr_avg), "\"/>\n",
+		"  <cad min=\"", &n($info->cad_min),
+			"\" max=\"", &n($info->cad_max),
+			"\" avg=\"", &n($info->cad_avg), "\"/>\n",
+		"  <dist>", &round($info->dist), "</dist>\n",
+		"  <alt min=\"", &n($info->ele_min),
+			"\" max=\"", &n($info->ele_max),
+			"\" avg=\"", &n($info->ele_avg), "\"/>\n",
 		" </summarydata>\n";
 
 	foreach my $m ( $self->marks ){
@@ -504,6 +567,12 @@ EOHEAD
 	my $dist = 0;
 	my $it = $self->iterate;
 	while( my $c = $it->next ){
+
+		if( $c->isblockfirst ){
+			print $fh " <sample>\n",
+				"  <timeoffset>", $c->time - $c->dur - $start,"</timeoffset>\n",
+				" </sample>\n";
+		}
 
 		print $fh " <sample>\n",
 			"  <timeoffset>", $c->time - $start,"</timeoffset>\n";
@@ -541,6 +610,12 @@ EOHEAD
 		if( $io{ele} && defined $c->ele ){
 			print $fh "  <alt>", $c->ele, "</alt>\n",
 		}
+
+		if( $io{temp} && defined $c->temp ){
+			print $fh "  <temp>", $c->temp, "</temp>\n",
+		}
+
+		# TODO: time
 
 		print $fh " </sample>\n",
 	}
