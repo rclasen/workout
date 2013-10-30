@@ -220,9 +220,7 @@ sub do_write {
 			or croak "cannot find apropriate recint";
 
 	}
-	my $note = $self->note || ( $info->temp_avg 
-		? sprintf( '%.1f°C', $info->temp_avg )
-		: "");
+	my $note = $self->note || "";
 	my $blocks = $self->blocks;
 
 	$self->debug( "writing ". @$blocks ." blocks, ".
@@ -399,7 +397,7 @@ sub do_read {
 	$self->note( decode('cp850',$_[7]) );
 	my $temperature;
 
-	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)[°ø]C// ){
+	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)[Â°Ã¸]C// ){
 		$temperature = $1;
 		$temperature =~ s/\,/./;
 	}

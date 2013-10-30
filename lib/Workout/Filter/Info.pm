@@ -39,7 +39,7 @@ our $VERSION = '0.01';
 our %default = (
 	vspdmax	=> 4,		# (m/s)		maximum vertical speed
 	gradmax => 40,		# (%)           maximum gradient/slope
-	accelmax => 6,		# (m/s²)	maximum acceleration
+	accelmax => 6,		# (m/sÂ²)	maximum acceleration
 	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
 	spdmin	=> 1,		# (m/s)		minimum speed
 	pwrmin	=> 40,		# (W)
@@ -69,6 +69,10 @@ our %init = (
 	temp_max	=> 0,
 	temp_max_time	=> undef,
 	dur_ele		=> 0,
+	ele_sum		=> 0,
+	ele_ref		=> undef,
+	ele_asc		=> 0,
+	ele_dsc		=> 0,
 	ele_sum		=> 0,
 	ele_min	=> undef,
 	ele_min_time	=> undef,
@@ -130,7 +134,7 @@ sub new {
 
 =head2 accelmax
 
-maximum acceleration that's realistic (m/s²). Larger values are ignored.
+maximum acceleration that's realistic (m/sÂ²). Larger values are ignored.
 
 =head2 elefuzz
 
@@ -162,7 +166,7 @@ Used for smoothing the elevation changes.
 
 =head2 accel_max
 
-maximum acceleration seen in the workout (m/s²).
+maximum acceleration seen in the workout (m/sÂ²).
 
 =head2 accel_max_time
 
@@ -317,6 +321,14 @@ sub ele_start {
 	$s->ele;
 }
 
+=head2 ele_asc
+
+ascent
+
+=head2 ele_dsc
+
+descent
+
 =head2 ele_max
 
 maximum elevation seen in the workout (m).
@@ -464,7 +476,7 @@ end time of chunk with maximum speed.
 
 =head2 temp_avg
 
-average temperature (°C)
+average temperature (Â°C)
 
 =cut
 
@@ -479,7 +491,7 @@ sub temp_avg {
 
 =head2 temp_max
 
-maximum temperature seen in the workout (°C).
+maximum temperature seen in the workout (Â°C).
 
 =head2 temp_max_time
 
@@ -487,7 +499,7 @@ end time of chunk with maximum temperature.
 
 =head2 temp_min
 
-minimum temperature seen in the workout (°C).
+minimum temperature seen in the workout (Â°C).
 
 =head2 temp_min_time
 
@@ -495,12 +507,12 @@ end time of chunk with minimum temperature.
 
 =head2 temp_sum
 
-Sum of temperature values (°C * sec). Used for calculating the average
+Sum of temperature values (Â°C * sec). Used for calculating the average
 temperature.
 
 =head2 temp_start
 
-temperature at start of workout (°C).
+temperature at start of workout (Â°C).
 
 =cut
 
@@ -681,19 +693,43 @@ sub process {
 		if( defined $self->{lele} ){
 			my $climb = $d->ele - $self->{lele};
 			# TODO: better fix climb calculation in Calc.pm
-
+			
 			if( abs($climb) >= $self->elefuzz ){
 				$self->{lele} = $d->ele;
 				if( $climb > 0 ){
 					$self->{incline} += $climb;
 				}
 			}
-
+			
 		} else {
 			$self->{lele} = $d->ele;
 		}
+		
+		# Calc ascent and descent with 3 meter threshold
+		# Quick fix for invalid ele_start // Mount Everest = 8848 m
+		my $ele = $d->ele;
+		if ($ele < '8848') {
+			my $threshold = '3';
+			my $ele_ref = '0';
+			if ($self->{ele_ref}) {
+				$ele_ref = $self->{ele_ref};
+			} else {
+				$ele_ref = $ele;
+				$self->{ele_ref} = $ele;
+			}
+			my $diff = $ele - $ele_ref;
+			if (abs($diff) >= $threshold) {
+				if ($ele > $ele_ref) {
+					$self->{ele_asc} += $diff;
+				} else {
+					$self->{ele_dsc} += -$diff;
+				}
+				$self->{ele_ref} = $ele;
+			}
+		}
+		
 	}
-
+	
 	if( (my $work = $d->work||0) > 0 ){
 		$self->{work} += $work;
 	}
