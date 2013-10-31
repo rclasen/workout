@@ -37,12 +37,14 @@ use Math::Trig;
 our $VERSION = '0.01';
 
 our %default = (
+	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
+	elemax	=> 10000,	# (m)		maximim elevation (Mt. Everest: 8848 m)
+	spdmin	=> 1,		# (m/s)		minimum speed
+	pwrmin	=> 40,		# (W)
+	# currently unused:
 	vspdmax	=> 4,		# (m/s)		maximum vertical speed
 	gradmax => 40,		# (%)           maximum gradient/slope
 	accelmax => 6,		# (m/s²)	maximum acceleration
-	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
-	spdmin	=> 1,		# (m/s)		minimum speed
-	pwrmin	=> 40,		# (W)
 );
 
 our %init = (
@@ -133,6 +135,10 @@ sub new {
 
 =head1 ACCESSOR METHODS
 
+These methods set parameters that influence the calculations. You need to
+set them before passing data through this filter or you'll get bad
+results. You can pass these values to the constructor, aswell.
+
 =head2 accelmax
 
 maximum acceleration that's realistic (m/s²). Larger values are ignored.
@@ -141,6 +147,11 @@ maximum acceleration that's realistic (m/s²). Larger values are ignored.
 
 minimum elevation change threshold (m). Used for smoothing the elevation
 changes.
+
+=head2 elemax
+
+maximum valid elevation (m) to use for calculations. Don't confuse with
+ele_max. This might move to some seperate Filter in future versions.
 
 =head2 gradmax
 
@@ -318,7 +329,7 @@ elevation at end of workout (m).
 
 =head2 ele_max
 
-maximum elevation seen in the workout (m).
+maximum elevation seen in the workout (m). Don't confuse with elemax!
 
 =head2 ele_max_time
 
@@ -685,7 +696,10 @@ sub process {
 	$self->{dist} += $d->dist ||0;
 
 	# HACK: should check if ele is defined, but this handles bad files better
-	if( $d->ele ){
+	if( $d->ele && $d->ele < $self->elemax ){
+		# TODO: instead of checking for elemax a previous filter
+		# should've nuked/fixed all unrealistic values
+
 		if( defined $self->{lele} ){
 			my $climb = $d->ele - $self->{lele};
 			# TODO: better fix climb calculation in Calc.pm
