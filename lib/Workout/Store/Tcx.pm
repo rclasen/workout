@@ -422,6 +422,7 @@ sub wk_sport {
 sub do_read {
 	my( $self, $fh, $fname ) = @_;
 
+	# TODO: support reading courses, aswell
 	my $parser = XML::SAX::ParserFactory->parser(
 		Handler	=> Workout::Store::Tcx::Read->new({
 			Store	=> $self,
@@ -466,6 +467,8 @@ sub do_write {
 		or croak "no data";
 
 	binmode( $fh, ':encoding(utf8)' );
+
+	# TODO: support writing courses, aswel
 
 	my %write = map {
 		$_ => 1;

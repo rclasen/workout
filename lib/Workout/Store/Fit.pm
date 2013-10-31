@@ -146,6 +146,7 @@ sub do_write {
 	$fit->data( 0, FIT_FILE_ACTIVITY,
 		$self->{manufacturer}, $self->{product}, $self->{serial} )
 		or return;
+	# TODO: support writing FIT courses, aswell
 
 	defined $fit->define_raw(
 		id	=> 1,
@@ -417,7 +418,7 @@ sub do_write {
 			field	=> 22, # total_ascent
 			base	=> FIT_UINT16,
 		};
-		push @data, $info->incline;
+		push @data, $info->ascent;
 	}
 
 	if( $io{work} ){
@@ -715,6 +716,8 @@ sub do_read {
 					$ftype = $f->{val};
 					$ftype == FIT_FILE_ACTIVITY
 						or warn "no activity file, unsupported";
+
+					# TODO: support courses, aswell
 
 				} elsif( $f->{field} == 1 ){ # manufacturer
 					$self->{manufacturer} = $f->{val};

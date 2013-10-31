@@ -86,9 +86,9 @@ foreach my $fname ( @ARGV ){
 	$info{dur_mov} += ($if->dur_mov || 0 );
 	$info{dist} += ($if->dist || 0 );
 	$info{work} += ( $if->work || 0 );
-	$info{incline} += ( $if->incline || 0 );
+	$info{ascent} += ( $if->ascent || 0 );
 	$info{tss} += ( $fi->tss || 0 );
-	&max( \%info, $if, qw( dur dist work incline ) );
+	&max( \%info, $if, qw( dur dist work ascent ) );
 	&max( \%info, $fi, qw( tss ) );
 }
 
@@ -102,7 +102,7 @@ print
 "moving:    ", fmtdur( $info{dur_mov} ), " h (",
 	int(($info{dur_mov}||0)/60), "m)\n",
 
-"incline:   ", (int($info{incline}||0) ||'?'), " m\n",
+"ascent:   ", (int($info{ascent}||0) ||'?'), " m\n",
 
 "distance:  ", sprintf( '%.2f', ($info{dist}||0) / 1000), " km\n",
 
@@ -115,7 +115,7 @@ print
 "----\n",
 "duration:  ", fmtdur( $info{dur_max} ), " h (", int($info{dur_max}/60), "m)\n",
 
-"incline:   ", (int($info{incline_max}||0) ||'?'), " m\n",
+"ascent:   ", (int($info{ascent_max}||0) ||'?'), " m\n",
 
 "distance:  ", sprintf( '%.2f', ($info{dist_max}||0) / 1000), " km\n",
 

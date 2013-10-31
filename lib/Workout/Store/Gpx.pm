@@ -161,6 +161,7 @@ sub end_trkpt {
 	my $pt = $self->{pt};
 	$self->{pt} = {};
 
+	# TODO: calculate time based on constant speed
 	return unless $pt->{time};
 
 	$pt->{lon} = $attr->{'{}lon'}{Value};
@@ -260,6 +261,8 @@ sub new {
 sub do_read {
 	my( $self, $fh, $fname ) = @_;
 
+	# TODO: allow filtering tracks by name/id
+	# TODO: support reading routes
 	my $parser = XML::SAX::ParserFactory->parser(
 		Handler	=> Workout::Store::Gpx::Read->new({
 			Store	=> $self,

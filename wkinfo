@@ -189,7 +189,8 @@ print
 	fmttime($info->ele_max_time), "\n",
 "max slope:       ", sprintf( '%.1f', ($info->grad_max||0)), " % at ",
 	fmttime($info->grad_max_time), "\n",
-"total incline:   ", (int($info->incline||0) ||'?'), " m\n",
+"total ascent:    ", (int($info->ascent||0) ||'?'), " m\n",
+"total descent:   ", (int($info->descent||0) ||'?'), " m\n",
 
 "total distance:  ", sprintf( '%.2f', ($info->dist||0) / 1000), " km\n",
 
@@ -260,7 +261,8 @@ print "\nMarker ", $idx++, ":\n",
 "min elevation:   ", (int($mi->ele_min||0) ||'?'), " m\n",
 "max elevation:   ", (int($mi->ele_max||0) ||'?'), " m at ",
 	fmttime($mi->ele_max_time), "\n",
-"total incline:   ", (int($mi->incline||0) ||'?'), " m\n",
+"total ascent:    ", (int($mi->ascent||0) ||'?'), " m\n",
+"total descent:   ", (int($mi->descent||0) ||'?'), " m\n",
 
 "total distance:  ", sprintf( '%.2f', ($mi->dist||0) / 1000), " km\n",
 

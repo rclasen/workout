@@ -80,7 +80,8 @@ our %init = (
 	ele_max_time	=> undef,
 	grad_max	=> 0,
 	grad_max_time	=> undef,
-	incline	=> 0,
+	ascent	=> 0,
+	descent	=> 0,
 	work	=> 0,
 	pwr_min	=> undef,
 	pwr_min_time	=> undef,
@@ -350,6 +351,24 @@ sub ele_avg {
 
 last "smoothed" elevation. For internal use.
 
+=head2 ascent
+
+sum of all positive elevation changes. Takes elefuzz and other
+smoothing into account.
+
+=cut
+
+# keep "incline" method for backward compatibility
+{ no strict 'refs'; no warnings;
+*incline = \&ascent;
+}
+
+
+=head2 descent
+
+sum of all negative elevation changes. Takes elefuzz and other
+smoothing into account.
+
 =head2 fields_used
 
 builds and returns a hashref with fields that are actually used.
@@ -394,11 +413,6 @@ end time of chunk with minimum heartrate.
 =head2 hr_sum
 
 total number of heartbeats. Used for calculating average heartrate.
-
-=head2 incline
-
-sum of all positive elevation changes (climbs). Takes elefuzz and other
-smoothing into account.
 
 =head2 pwr_avg
 
@@ -562,7 +576,7 @@ average vertical speed (m/s):
 
 sub vspd_avg {
 	my $self = shift;
-	my $c = $self->incline
+	my $c = $self->ascent
 		or return;
 	my $d = $self->dur_mov
 		or return;
@@ -679,7 +693,9 @@ sub process {
 			if( abs($climb) >= $self->elefuzz ){
 				$self->{lele} = $d->ele;
 				if( $climb > 0 ){
-					$self->{incline} += $climb;
+					$self->{ascent} += $climb;
+				} else {
+					$self->{descent} += abs($climb);
 				}
 			}
 

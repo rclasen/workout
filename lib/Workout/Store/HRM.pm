@@ -468,7 +468,7 @@ Weight=", int($athlete->weight), "
 				0,	# extra1
 				0,	# extra2
 				0,	# extra3
-				int( ($info->incline||0) /10),	# ascend
+				int( ($info->ascent||0) /10),	# ascend
 				int( ($info->dist||0) /100),	# dist
 				),"\n",
 			# row 4
