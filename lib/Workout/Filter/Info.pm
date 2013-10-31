@@ -64,11 +64,15 @@ our %init = (
 	accel_max_time	=> undef,
 	temp_sum	=> 0,
 	dur_temp	=> 0,
+	temp_start	=> undef,
+	temp_end	=> undef,
 	temp_min	=> undef,
 	temp_min_time	=> undef,
 	temp_max	=> 0,
 	temp_max_time	=> undef,
 	dur_ele		=> 0,
+	ele_start	=> undef,
+	ele_end	=> undef,
 	ele_sum		=> 0,
 	ele_min	=> undef,
 	ele_min_time	=> undef,
@@ -307,15 +311,9 @@ total duration with elevation recording (sec)
 
 elevation at start of workout (m).
 
-=cut
+=head2 ele_end
 
-sub ele_start {
-	my( $self ) = @_;
-
-	my $s = $self->chunk_first
-		or return;
-	$s->ele;
-}
+elevation at end of workout (m).
 
 =head2 ele_max
 
@@ -502,15 +500,9 @@ temperature.
 
 temperature at start of workout (°C).
 
-=cut
+=head2 temp_end
 
-sub temp_start {
-	my( $self ) = @_;
-
-	my $s = $self->chunk_first
-		or return;
-	$s->temp;
-}
+temperature at end of workout (°C).
 
 =head2 time_end
 
@@ -672,11 +664,13 @@ sub process {
 	$self->{chunk_last} = $d;
 
 	foreach my $f ( keys %{$self->{fields_used}} ){
+		# HACK: should check if field is defined, but this handles bad files better
 		++$self->{fields_used}{$f} if $d->$f;
 	}
 
 	$self->{dist} += $d->dist ||0;
 
+	# HACK: should check if ele is defined, but this handles bad files better
 	if( $d->ele ){
 		if( defined $self->{lele} ){
 			my $climb = $d->ele - $self->{lele};
@@ -692,6 +686,21 @@ sub process {
 		} else {
 			$self->{lele} = $d->ele;
 		}
+
+		if( ! defined $self->{ele_start} ){
+			$self->{ele_start} = $d->ele;
+		}
+
+		$self->{ele_ele} = $d->ele;
+
+	}
+
+	if( $d->temp ){
+		if( ! defined $self->{temp_start} ){
+			$self->{temp_start} = $d->temp;
+		}
+
+		$self->{temp_end} = $d->temp;
 	}
 
 	if( (my $work = $d->work||0) > 0 ){
