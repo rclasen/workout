@@ -755,6 +755,10 @@ sub read_srm7 {
 
 		CORE::read( $fh, my $buf, 14 ) == 14 or last;
 
+		# HACK: elevation max of 65000 is a guess. This should be
+		# sanitized in some extra filter to allow fixing elevation
+		# data manually.
+
 		@_ = unpack( $chunk7fmt, $buf );
 		my $chunk = Workout::Chunk->new( {
 			time	=> $cktime,
@@ -763,7 +767,7 @@ sub read_srm7 {
 			cad	=> $_[1],
 			hr	=> $_[2] < 20 ? undef : $_[2],
 			dist	=> $_[3] < 0 ? undef :  $_[3] / 1000 * $self->recint,
-			ele	=> $_[4],
+			ele	=> $_[4] > 65000 ? undef : $_[4],
 			temp	=> $_[5] / 10,
 		});
 
