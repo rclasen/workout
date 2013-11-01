@@ -220,9 +220,7 @@ sub do_write {
 			or croak "cannot find apropriate recint";
 
 	}
-	my $note = $self->note || ( $info->temp_avg 
-		? sprintf( '%.1f°C', $info->temp_avg )
-		: "");
+	my $note = $self->note || '';
 	my $blocks = $self->blocks;
 
 	$self->debug( "writing ". @$blocks ." blocks, ".
