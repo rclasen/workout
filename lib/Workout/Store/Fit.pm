@@ -569,14 +569,16 @@ sub do_read {
 					$ck->{pwr} = $f->{val}; # tmp
 
 				} elsif( $f->{field} == 8 ){
-					my @b = unpack('CCC',$f->{val} );
-					# TODO: verify compressed speed/dist
-					my $spd = ($b[0]
-						| ($b[1] & 0x0f) <<8 ) / 100;
-					my $dst = ( $b[1] >>4
-						| $b[2] <<4 ) / 16;
-					$ck->{dist} ||= $dst;
-					++$self->{field_use}{dist};
+					if( ! exists $ck->{dist} ){
+						my @b = unpack('CCC',$f->{val} );
+						# TODO: verify compressed speed/dist
+						my $spd = ($b[0]
+							| ($b[1] & 0x0f) <<8 ) / 100;
+						my $dst = ( $b[1] >>4
+							| $b[2] <<4 ) / 16;
+						$ck->{dist} ||= $dst;
+						++$self->{field_use}{dist};
+					}
 
 				} elsif( $f->{field} == 13 ){
 					$ck->{temp} = $f->{val};
@@ -594,7 +596,7 @@ sub do_read {
 			}
 
 			if( ! $rec_last_time ){
-				if( $ck->{spd} && $ck->{dist}  ){
+				if( $ck->{spd} > 0 && $ck->{dist} > 0  ){
 					$rec_last_time = $ck->{time}
 						- $ck->{dist} / $ck->{spd};
 				}
@@ -608,7 +610,7 @@ sub do_read {
 					++$self->{field_use}{work};
 				}
 
-				if( $ck->{dist} ){
+				if( exists $ck->{dist} ){
 					# delete($ck->{spd}); # unneeded
 
 				} elsif( $ck->{spd} ){
