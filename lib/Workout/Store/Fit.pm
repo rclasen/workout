@@ -65,6 +65,7 @@ our %defaults = (
 	serial		=> undef,
 	hard_version	=> undef,
 	soft_version	=> undef,
+	expenditure	=> undef, # energy guessed by heartrate
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -699,6 +700,16 @@ sub do_read {
 		} elsif( $msg->{message} == FIT_MSG_SESSION ){ # TODO: session
 			$self->debug( "found session @"
 				.($msg->{timestamp} + FIT_TIME_OFFSET) );
+
+			foreach my $f ( @{$msg->{fields}} ){
+
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 11 ){
+					$self->{expenditure} = $f->{val};
+				}
+			}
 
 		############################################################
 		# activity message
