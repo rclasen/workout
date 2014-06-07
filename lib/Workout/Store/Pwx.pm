@@ -303,7 +303,7 @@ sub end_node {
 			$self->{dist} = $sam->{dist};
 
 			# try to identify gaps by speed+distance:
-			if( exists $sam->{spd} && $sam->{spd} ){
+			if( exists $sam->{spd} && $sam->{spd} > 0 ){
 				my $sdur = $c{dist} / $sam->{spd};
 				if( $dur > $sdur ){
 					$dur = $sdur;
