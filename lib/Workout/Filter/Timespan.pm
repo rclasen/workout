@@ -44,6 +44,8 @@ our $VERSION = '0.01';
 our %default = (
 	start	=> 0,
 	end	=> undef,
+	ifirst	=> undef,
+	ilast	=> undef,
 );
 
 __PACKAGE__->mk_accessors(keys %default );
@@ -81,18 +83,23 @@ get/set end time.
 sub process {
 	my( $self ) = @_;
 
+	my $start = $self->start;
+	my $end = $self->end;
+
 	my $i;
 	do {
 		$i = $self->src->next
 			or return;
 		$self->{cntin}++;
 
-		my $end = $self->end;
-		if( defined $end && $end < $i->time ){
-			return 
+		if( defined $end && $end < $i->stime ){
+			return;
 		}
 
-	} while( $i->stime < $self->start );
+	} while( $i->stime < $start );
+
+	$self->{ifirst} ||= $self->{cntin};
+	$self->{ilast} = $self->{cntin};
 
 	$i;
 }

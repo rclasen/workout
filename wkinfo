@@ -158,8 +158,8 @@ print
 "used fields:     ", join(',', @fields ), "\n", 
 "marker:          ", $src->mark_count, "\n",
 
-"start time:      ", $sdate->datetime, "\n",
-"end time:        ", $edate->datetime, "\n",
+"start time:      ", $sdate->datetime, " (", $info->time_start ,")\n",
+"end time:        ", $edate->datetime, " (", $info->time_end, ")\n",
 
 "duration:        ", fmtdur( $info->dur ), " h (", int($info->dur/60), "m)\n",
 "creeping:        ", fmtdur( $info->dur_creep ), " h (",
@@ -243,10 +243,14 @@ if( $domarks ){
 		);
 
 print "\nMarker ", $idx++, ":\n",
-"start time:      ", $sdate->datetime, "\n",
-"end time:        ", $edate->datetime, "\n",
+"idx:             ", $mi->src->ifirst, " - ", $mi->src->ilast, "\n",
+"start time:      ", $sdate->datetime, " (", $mi->time_start ," @ ",
+	$mi->time_start - $src->time_start ,")\n",
+"end time:        ", $edate->datetime, " (", $mi->time_end ," @ ",
+	$mi->time_end - $src->time_start ,")\n",
 
-"duration:        ", fmtdur( $mi->dur ), " h (", int($mi->dur/60), "m)\n",
+"duration:        ", fmtdur( $mi->dur ), " h (", int($mi->dur/60), "m, ",
+		$mi->dur, "s)\n",
 
 "Heartrate min:   ", (int($mi->hr_min||0) || '?'), " 1/min\n",
 "Heartrate avg:   ", (int($mi->hr_avg||0) || '?'), " 1/min\n",
