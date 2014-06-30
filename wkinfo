@@ -243,6 +243,8 @@ if( $domarks ){
 		);
 
 print "\nMarker ", $idx++, ":\n",
+"marker:          ", $mark->start, " - ", $mark->end, ": ",
+	$mark->end - $mark->start, "s\n",
 "idx:             ", $mi->src->ifirst, " - ", $mi->src->ilast, "\n",
 "start time:      ", $sdate->datetime, " (", $mi->time_start ," @ ",
 	$mi->time_start - $src->time_start ,")\n",

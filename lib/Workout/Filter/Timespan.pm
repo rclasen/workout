@@ -92,7 +92,7 @@ sub process {
 			or return;
 		$self->{cntin}++;
 
-		if( defined $end && $end < $i->stime ){
+		if( defined $end && $end <= $i->stime ){
 			return;
 		}
 

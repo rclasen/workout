@@ -677,20 +677,32 @@ sub do_read {
 		# lap message
 
 		} elsif( $msg->{message} == FIT_MSG_LAP ){ # lap
-			my $start;
+			my( $event, $start, $dur );
 			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
 
 			foreach my $f ( @{$msg->{fields}} ){
-				if( $f->{field} == 2 ){
+				if( $f->{field} == 0 ){ # event
+					$event = $f->{val};
+
+				} elsif( $f->{field} == 2 ){ # start_time
 					$start = $f->{val} + FIT_TIME_OFFSET;
 
+				} elsif( $f->{field} == 7 ){ # total_elapsed_time
+					$dur = $f->{val};
+
+				# TODO: trigger, sport, ...
 				} # else ignore
 			}
 
-			$self->debug( "found lap $start - $end" );
+			my $xstart = $dur
+				? $end - $dur/1000
+				: $start;
+
+			$self->debug( "found lap $start/$xstart to $end: ".
+				($end-$start) ." dur=$dur, event=$event" );
 
 			push @laps, {
-				start	=> $start,
+				start	=> $xstart,
 				end	=> $end,
 			};
 
