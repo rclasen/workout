@@ -660,11 +660,14 @@ sub do_read {
 				if( ! defined $etype ){
 					# do nothing
 
-				} elsif( $etype == 0
-					|| $etype == 1
-					|| $etype == 4 ){ # start/stop
+				} elsif( $etype == 0 # start
+					|| $etype == 1 # stop
+					|| $etype == 4 ){ # stop_all
 
-					$self->debug( "found start/stop event @". $end );
+					$self->debug( "found ".
+						( $etype == 0  ? 'start' : 'stop' )
+						." event @". $end
+						.", last: ".  ($self->time_end||0) );
 
 					if( ! $rec_last_time || $rec_last_time < $end ){
 						$rec_last_time = $end;
