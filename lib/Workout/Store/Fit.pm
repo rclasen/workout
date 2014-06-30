@@ -785,8 +785,44 @@ sub do_read {
 				."sw=".  ($self->{soft_version}||'-') .", "
 				."hw=".  ($self->{hard_version}||'-') );
 
-		} elsif( $msg->{message} == 23 # device_info
-			|| $msg->{message} == 22 ){ # TODO: unknown message
+		} elsif( $msg->{message} == 23  ){ # device_info
+			my %dev;
+
+			foreach my $f ( @{$msg->{fields}} ){
+
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 0 ){
+					$dev{idx}= $f->{val};
+
+				} elsif( $f->{field} == 1 ){
+					$dev{type}= $f->{val};
+
+				} elsif( $f->{field} == 2 ){
+					$dev{manu}= $f->{val};
+
+				} elsif( $f->{field} == 3 ){
+					$dev{serial}= $f->{val};
+
+				} elsif( $f->{field} == 4 ){
+					$dev{product}= $f->{val};
+
+				} elsif( $f->{field} == 5 ){
+					$dev{soft_version}= $f->{val};
+
+				} elsif( $f->{field} == 6 ){
+					$dev{hard_version}= $f->{val};
+
+				}
+			}
+			$self->debug( "device idx=". ($dev{idx}||'')
+				.", type=".  ($dev{type}||'')
+				.", manu=". ($dev{manu}||'')
+				.", serial=".  ($dev{serial}||'')
+				.", product=". ($dev{product}||''));
+
+		} elsif( $msg->{message} == 22  ){ # TODO: unknown message
 			# do nothing, calm down
 
 		} else {
