@@ -672,7 +672,26 @@ sub do_read {
 					if( ! $rec_last_time || $rec_last_time < $end ){
 						$rec_last_time = $end;
 					}
+
+				} else {
+					$self->debug( "found unhandled timer event $etype @"
+							.($msg->{timestamp} + FIT_TIME_OFFSET));
 				}
+
+			} elsif( $event >= 12 && $event <= 21 ){
+				# calm down high/low zone alerts
+
+			} elsif( $event == 3 || $event == 4 # workout/-step
+#				|| $event == 5 || $event == 6 # power_down/_up
+				|| $event == 7  # off course
+#				|| $event == 8  # session end
+				|| $event == 10  # course_point
+				) {
+				# calm down
+
+			} else {
+				$self->debug( "found unhandled event $event/$etype @"
+					.($msg->{timestamp} + FIT_TIME_OFFSET));
 			}
 
 
@@ -805,7 +824,16 @@ sub do_read {
 					$dev{idx}= $f->{val};
 
 				} elsif( $f->{field} == 1 ){
-					$dev{type}= $f->{val};
+					$dev{type} = $f->{val};
+
+					my $i = $f->{val};
+					if($i == 1){ $dev{type} .= '/antfs' }
+					elsif($i == 11){ $dev{type} .= '/bike_power' }
+					elsif($i == 12){ $dev{type} .= '/environment' }
+					elsif($i == 120){ $dev{type} .= '/heart_rate' }
+					elsif($i == 121){ $dev{type} .= '/bike_speed_cadence' }
+					elsif($i == 122){ $dev{type} .= '/bike_cadence' }
+					elsif($i == 123){ $dev{type} .= '/bike_speed' }
 
 				} elsif( $f->{field} == 2 ){
 					$dev{manu}= $f->{val};
@@ -830,7 +858,9 @@ sub do_read {
 				.", serial=".  ($dev{serial}||'')
 				.", product=". ($dev{product}||''));
 
-		} elsif( $msg->{message} == 22  ){ # TODO: unknown message
+		} elsif( $msg->{message} == 22
+			|| $msg->{message} == 72 ){ # TODO: unknown messages
+
 			# do nothing, calm down
 
 		} else {
