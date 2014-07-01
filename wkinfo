@@ -153,7 +153,7 @@ foreach my $attr (qw( athletename note sport circum slope zeropos )){
 
 print 
 "chunks:          ", $src->chunk_count, " (", 
-	sprintf('%.2f',$info->dur/$src->chunk_count), "s/chunk recint=", 
+	sprintf('%.2f',$info->dur_rec/$src->chunk_count), "s/chunk recint=", 
 	$src->recint||0, ")\n",
 "used fields:     ", join(',', @fields ), "\n", 
 "marker:          ", $src->mark_count, "\n",

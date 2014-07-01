@@ -51,6 +51,7 @@ our %init = (
 	chunk_first	=> undef,
 	chunk_last	=> undef,
 	lele	=> undef,
+	dur_rec	=> 0,
 	dur_mov	=> 0,
 	dur_cad	=> 0,
 	dur_ncad => 0,
@@ -302,6 +303,10 @@ sub dur_creep {
 =head2 dur_hr
 
 total duration with heartrat recording (sec)
+
+=head2 dur_rec
+
+total time covered by Chunks. (sec)
 
 =head2 dur_mov
 
@@ -738,6 +743,7 @@ sub process {
 	}
 
 
+	$self->{dur_rec} += $d->dur;
 	if( ($d->pwr||0) > $self->pwrmin
 		|| ($d->cad||0) > 0
 		|| ($d->spd||0) > $self->spdmin ){
