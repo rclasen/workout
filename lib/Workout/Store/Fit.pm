@@ -507,6 +507,7 @@ sub do_read {
 	my @laps;
 	my $rec_last_dist = 0;
 	my $rec_last_time;
+	my $event_last_time;
 
 	my $fit = Workout::Fit->new(
 		from => $fh,
@@ -523,15 +524,6 @@ sub do_read {
 			my $ck = {
 				time => $msg->{timestamp} + FIT_TIME_OFFSET,
 			};
-
-			if( defined $rec_last_time
-				&& $rec_last_time >= $ck->{time} ){
-
-				$self->debug( "backward time step, "
-					."skipping record at ". $ck->{time} );
-
-				next;
-			}
 
 			foreach my $f ( @{$msg->{fields}} ){
 
@@ -585,6 +577,9 @@ sub do_read {
 					$ck->{temp} = $f->{val};
 					++$self->{field_use}{temp};
 
+				} elsif( $f->{field} == 30 ){
+					# TODO: l-r balance
+
 				} # else ignore
 			}
 
@@ -596,45 +591,73 @@ sub do_read {
 				delete( $ck->{lat} );
 			}
 
+			my $stime;
+
+			# first record:
 			if( ! $rec_last_time ){
-				if( $ck->{spd} > 0 && $ck->{dist} > 0  ){
-					$rec_last_time = $ck->{time}
+				if( $event_last_time && $event_last_time < $ck->{time} ){
+					$stime = $event_last_time;
+					$self->debug("using first event $stime start time \@$ck->{time}" );
+
+				} elsif( $ck->{spd} > 0 && $ck->{dist} > 0  ){
+					$stime = $ck->{time}
 						- $ck->{dist} / $ck->{spd};
+					$self->debug("using speed as start time $stime \@$ck->{time}" );
+				} else {
+					$self->debug( "unknown sample duration, "
+						."skipping record at ". $ck->{time} );
+					next;
 				}
+
+			# first record after gap:
+			} elsif( $event_last_time && $event_last_time > $rec_last_time ){
+				$stime = $event_last_time;
+				$self->debug("using event $stime as start time \@$ck->{time}" );
+			# other records:
+			} else {
+				$stime = $rec_last_time;
 			}
 
-			if( $rec_last_time ){
-				$ck->{dur} = $ck->{time} - $rec_last_time;
+			if( defined $rec_last_time && $rec_last_time > $stime ){
+				$self->debug( "backward time step, "
+					."skipping record at ". $ck->{time} );
 
-				if( $ck->{pwr} ){
-					$ck->{work} = $ck->{pwr} * $ck->{dur};
-					++$self->{field_use}{work};
-				}
-
-				if( exists $ck->{dist} ){
-					# delete($ck->{spd}); # unneeded
-
-				} elsif( $ck->{spd} ){
-					$ck->{dist} = $ck->{spd} * $ck->{dur};
-					++$self->{field_use}{dist};
-
-				# TODO: dist from geocalc
-				#} elsif( defined($ck->{lon}) && defined($ck->{lat} ) ){
-
-				}
-
-				delete $ck->{pwr};
-				delete $ck->{spd};
-
-				if( $ck->{dur} ){
-					my $chunk = Workout::Chunk->new( $ck );
-					$self->chunk_add( $chunk );
-				}
-
+				next;
 			}
+
 
 			$rec_last_time = $ck->{time};
 			$rec_last_dist = $dist if defined $dist;
+
+			if( $stime >= $ck->{time} ){
+				$self->debug( "short sample, skipping record at ". $ck->{time} );
+				next;
+			}
+
+			$ck->{dur} = $ck->{time} - $stime;
+
+			if( $ck->{pwr} ){
+				$ck->{work} = $ck->{pwr} * $ck->{dur};
+				++$self->{field_use}{work};
+			}
+
+			if( exists $ck->{dist} ){
+				# delete($ck->{spd}); # unneeded
+
+			} elsif( $ck->{spd} ){
+				$ck->{dist} = $ck->{spd} * $ck->{dur};
+				++$self->{field_use}{dist};
+
+			# TODO: dist from geocalc
+			#} elsif( defined($ck->{lon}) && defined($ck->{lat} ) ){
+
+			}
+
+			delete $ck->{pwr};
+			delete $ck->{spd};
+
+			my $chunk = Workout::Chunk->new( $ck );
+			$self->chunk_add( $chunk );
 
 		############################################################
 		# event message
@@ -669,9 +692,7 @@ sub do_read {
 						." event @". $end
 						.", last: ".  ($self->time_end||0) );
 
-					if( ! $rec_last_time || $rec_last_time < $end ){
-						$rec_last_time = $end;
-					}
+					$event_last_time = $end;
 
 				} else {
 					$self->debug( "found unhandled timer event $etype @"
