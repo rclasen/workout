@@ -680,7 +680,7 @@ sub do_read {
 		# lap message
 
 		} elsif( $msg->{message} == FIT_MSG_LAP ){ # lap
-			my( $event, $start, $dur );
+			my( $event, $start, $elapsed, $timer, $trigger );
 			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
 
 			foreach my $f ( @{$msg->{fields}} ){
@@ -691,22 +691,30 @@ sub do_read {
 					$start = $f->{val} + FIT_TIME_OFFSET;
 
 				} elsif( $f->{field} == 7 ){ # total_elapsed_time
-					$dur = $f->{val};
+					$elapsed = $f->{val};
+
+				} elsif( $f->{field} == 8 ){ # total_timer_time
+					$timer = $f->{val};
+
+				} elsif( $f->{field} == 24 ){ # total_timer_time
+					$trigger = $f->{val};
 
 				# TODO: trigger, sport, ...
 				} # else ignore
 			}
 
-			my $xstart = $dur
-				? $end - $dur/1000
-				: $start;
+			my $xend = $elapsed
+				? $start + int( .5 + $elapsed/1000 )
+				: $end;
 
-			$self->debug( "found lap $start/$xstart to $end: ".
-				($end-$start) ." dur=$dur, event=$event" );
+			$self->debug( "found lap $start to $end/$xend: ".
+				($end-$start) ." elapsed=$elapsed"
+				.", timer=$timer, event=$event"
+				.", trigger=$trigger" );
 
 			push @laps, {
-				start	=> $xstart,
-				end	=> $end,
+				start	=> $start,
+				end	=> $xend,
 			};
 
 		############################################################
@@ -785,7 +793,7 @@ sub do_read {
 				."sw=".  ($self->{soft_version}||'-') .", "
 				."hw=".  ($self->{hard_version}||'-') );
 
-		} elsif( $msg->{message} == 23  ){ # device_info
+		} elsif( $msg->{message} == FIT_MSG_DEVICE_INFO  ){ # device_info
 			my %dev;
 
 			foreach my $f ( @{$msg->{fields}} ){
