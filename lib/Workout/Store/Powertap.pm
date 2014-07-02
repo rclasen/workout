@@ -175,7 +175,7 @@ sub do_read {
 	my $recint = int( 100 * $dur / (1+ scalar @data) ) / 100;
 
 	# TODO: other "known" recints
-	foreach my $known ( 1.26, int($recint) ){
+	foreach my $known ( 1.26, int($recint +0.5) ){
 		if( abs($recint - $known) <= 0.04 ){
 			$recint = $known;
 			last;
