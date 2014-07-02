@@ -40,6 +40,7 @@ use warnings;
 use base 'Workout::Store';
 use Carp;
 use Workout::Fit qw( :types );
+use Workout::Fit::Enum;
 
 our $VERSION = '0.01';
 
@@ -145,12 +146,29 @@ sub do_write {
 		}],
 	) or return;
 
-	# TODO: meta lookup non-numeric manufacturer/device
-	my $manu = $info->{manufacturer};
-	$manu = $defaults{manufacturer} if $manu !~ /^\d+$/;
+	my( $manu, $dev );
+	if( ! defined $info->{device} ){
+		# undef
+	} elsif( $info->{device}=~ /^\d+$/ ){
+		$dev = $info->{device}
 
-	my $dev = $info->{device};
-	$dev = $defaults{device} if $dev !~ /^\d+$/;
+	} elsif( $info->{device} =~ /^(\S+)\s+(\S+)$/ ){
+		$info->{manufacturer} = $1
+			unless defined $info->{manufacturer};
+		$dev = FIT_garmin_product( lc($2) );
+
+	} else {
+		$dev = FIT_garmin_product( lc($info->{device}) );
+	}
+
+	if( ! defined $info->{manufacturer} ){
+		# undef
+	} elsif( $info->{manufacturer} =~ /^\d+$/ ){
+		$manu = $info->{manufacturer};
+	} else {
+		$manu = FIT_manufacturer( lc($info->{manufacturer}) )
+	}
+
 
 	$fit->data( 0, FIT_FILE_ACTIVITY, $manu, $dev, $info->{serial} )
 		or return;
@@ -809,6 +827,7 @@ sub do_read {
 
 		} elsif( $msg->{message} == FIT_MSG_FILE_ID ){ # file_id
 			my $ftype;
+			my( $manu, $prod );
 
 			foreach my $f ( @{$msg->{fields}} ){
 				if( $f->{field} == 0 ){ # type
@@ -819,10 +838,10 @@ sub do_read {
 					# TODO: support courses, aswell
 
 				} elsif( $f->{field} == 1 ){ # manufacturer
-					$self->meta_field('manufacturer', $f->{val} );
+					$manu = $f->{val};
 
 				} elsif( $f->{field} == 2 ){ # product
-					$self->meta_field('device', $f->{val} );
+					$prod = $f->{val};
 
 				} elsif( $f->{field} == 3 ){ # serial
 					$self->meta_field('serial', $f->{val} );
@@ -830,13 +849,28 @@ sub do_read {
 				}
 			}
 
-			# TODO: meta lookup manufacturer/device string
+			if( ! defined $manu ){
+				$self->meta_field('manufacturer', undef );
+				$self->meta_field('device', undef );
+
+			} elsif( $manu == 1 || $manu == 2 ){
+				$self->meta_field('manufacturer', 'garmin' );
+				$self->meta_field('device', 'garmin '.
+					FIT_garmin_product_id($prod)||$prod );
+
+			} else {
+				my $m = FIT_manufacturer_id($manu)||$manu;
+				$self->meta_field('manufacturer', $m );
+				$self->meta_field('device', $m .($prod
+					? " $prod" : '' ) );
+			}
 
 			$self->debug( "found file_id "
 				."type=". ($ftype||'-'). ", "
-				."manu=". ($self->meta_field('manufacturer')||'-'). ", "
-				."prod=". ($self->meta_field('device')||'-'). ", "
-				."seral=". ($self->meta_field('serial')||'-') );
+				."manu=". ($manu||'-'). ", "
+				."prod=". ($prod||'-'). ", "
+				."seral=".  ($self->meta_field('serial')||'-'). ", "
+				."device=".  ($self->meta_field('device')||'-') );
 
 		############################################################
 		# file_creator message
