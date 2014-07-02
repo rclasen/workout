@@ -85,7 +85,6 @@ creates an empty Store.
 
 =cut
 
-# TODO: meta sport
 
 sub new {
 	my( $class,$a ) = @_;
@@ -124,7 +123,7 @@ sub do_write {
 
 	# TODO: notes??
 
-	my $info = $self->info; # TODO: meta use summary
+	my $info = $self->info_meta;
 
 	# header
 
@@ -147,14 +146,13 @@ sub do_write {
 	) or return;
 
 	# TODO: meta lookup non-numeric manufacturer/device
-	my $manu = $self->meta_field('manufacturer');
+	my $manu = $info->{manufacturer};
 	$manu = $defaults{manufacturer} if $manu !~ /^\d+$/;
 
-	my $dev = $self->meta_field('device');
+	my $dev = $info->{device};
 	$dev = $defaults{device} if $dev !~ /^\d+$/;
 
-	$fit->data( 0, FIT_FILE_ACTIVITY, $manu, $dev,
-		$self->meta_field('serial') )
+	$fit->data( 0, FIT_FILE_ACTIVITY, $manu, $dev, $info->{serial} )
 		or return;
 
 	# TODO: support writing FIT courses, aswell
@@ -170,11 +168,12 @@ sub do_write {
 			base	=> FIT_UINT8,
 		}],
 	) or return;
-	$fit->data( 1, $self->meta_field('soft_version'),
-		$self->meta_field('hard_version') )
+	$fit->data( 1, $info->{soft_version},
+		$info->{hard_version} )
 		or return;
 
 
+	# TODO: write meta sport
 
 	# timer events
 
@@ -304,7 +303,7 @@ sub do_write {
 
 	# laps
 
-	# TODO meta summary data for laps
+	# TODO write meta summary data for laps
 	defined $fit->define_raw(
 		id	=> 4,
 		message	=> FIT_MSG_LAP,
@@ -381,8 +380,8 @@ sub do_write {
 	@data = ( 5,
 		0, $self->time_end - FIT_TIME_OFFSET, $self->time_start - FIT_TIME_OFFSET,
 		8, 1, 0, $laps, undef, 0,
-		defined $self->dur ? $self->dur * 1000 : undef,
-		defined $info->dur_mov ? $info->dur_mov * 1000 : undef );
+		defined $info->{dur} ? $info->{dur} * 1000 : undef,
+		defined $info->{dur_mov} ? $info->{dur_mov} * 1000 : undef );
 
 	if( $io{lon} || $io{lat} ){
 		# find first chunk with lon+lat
@@ -420,9 +419,9 @@ sub do_write {
 			base	=> FIT_UINT16,
 		};
 		push @data,
-			defined $info->dist ? $info->dist * 100 : undef,
-			defined $info->spd_avg ? $info->spd_avg * 1000 : undef,
-			defined $info->spd_max ? $info->spd_max * 1000 : undef;
+			defined $info->{dist} ? $info->{dist} * 100 : undef,
+			defined $info->{spd_avg} ? $info->{spd_avg} * 1000 : undef,
+			defined $info->{spd_max} ? $info->{spd_max} * 1000 : undef;
 	}
 
 	if( $io{ele} ){
@@ -430,7 +429,7 @@ sub do_write {
 			field	=> 22, # total_ascent
 			base	=> FIT_UINT16,
 		};
-		push @data, $info->ascent;
+		push @data, $info->{ascent};
 	}
 
 	if( $io{work} ){
@@ -445,9 +444,9 @@ sub do_write {
 			base	=> FIT_UINT16,
 		};
 		push @data,
-			defined $info->work ? $info->work / 1000 : undef,
-			$info->pwr_avg,
-			$info->pwr_max;
+			defined $info->{work} ? $info->{work} / 1000 : undef,
+			$info->{pwr_avg},
+			$info->{pwr_max};
 	}
 
 	if( $io{hr} ){
@@ -458,7 +457,7 @@ sub do_write {
 			field	=> 17, # max_hr
 			base	=> FIT_UINT8,
 		};
-		push @data, $info->hr_avg, $info->hr_max;
+		push @data, $info->{hr_avg}, $info->{hr_max};
 	}
 
 	if( $io{cad} ){
@@ -469,7 +468,7 @@ sub do_write {
 			field	=> 19, # max_cadence
 			base	=> FIT_UINT8,
 		};
-		push @data, $info->cad_avg, $info->cad_max;
+		push @data, $info->{cad_avg}, $info->{cad_max};
 	}
 
 	defined $fit->define_raw(
@@ -501,7 +500,7 @@ sub do_write {
 		}],
 	) or return;
 	$fit->data( 6,
-		$self->time_end - FIT_TIME_OFFSET, 1, 0, 26, 1 );
+		$info->{time_end} - FIT_TIME_OFFSET, 1, 0, 26, 1 );
 
 
 	$fit->close
@@ -752,18 +751,24 @@ sub do_read {
 					$trigger = $f->{val};
 
 				# TODO: trigger, ...
-				# TODO: meta sport, summary ...
+				# TODO: read meta sport, summary ... for lap
 				} # else ignore
+			}
+
+			if( ! defined $start ){
+				warn "found lap without start \@$end, skipping";
+				next;
 			}
 
 			my $xend = $elapsed
 				? $start + int( .5 + $elapsed/1000 )
 				: $end;
 
-			$self->debug( "found lap $start to $end/$xend: ".
-				($end-$start) ." elapsed=$elapsed"
-				.", timer=$timer, event=$event"
-				.", trigger=$trigger" );
+			$self->debug( "found lap $start to $end/$xend: ". ($end-$start)
+				.", elapsed=".  ($elapsed||'')
+				.", timer=". ($timer||'')
+				.", event=". ($event||'')
+				.", trigger=". ($trigger||'') );
 
 			push @laps, {
 				start	=> $start,
@@ -787,7 +792,7 @@ sub do_read {
 					$self->meta_field('work_expended',
 						joule * $f->{val} );
 				}
-				# TODO: meta sport, summary ...
+				# TODO: read meta summary ... session
 			}
 
 		############################################################
@@ -797,7 +802,7 @@ sub do_read {
 			$self->debug( "found activity @"
 				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 
-				# TODO: meta sport
+				# TODO: read meta sport activity
 
 		############################################################
 		# file_id message
