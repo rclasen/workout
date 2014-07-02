@@ -91,7 +91,6 @@ sub new {
 			%fields_supported,
 		},
 		cap_block	=> 1,
-		cap_note	=> 0,
 
 		field_use	=> {},
 	});

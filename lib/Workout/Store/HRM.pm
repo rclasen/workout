@@ -109,7 +109,6 @@ sub new {
 		blockline	=> 0,	# tmp read
 		laps		=> [],	# tmp read
 		cap_block	=> 0,
-		cap_note	=> 1,
 	});
 }
 

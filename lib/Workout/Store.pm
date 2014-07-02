@@ -82,7 +82,6 @@ sub filetypes {
 
 __PACKAGE__->mk_accessors(qw(
 	cap_block
-	cap_note
 	recint
 
 	note
@@ -105,8 +104,6 @@ Please see the matching method's description:
 
 =item cap_block
 
-=item cap_note
-
 =item note
 
 =item fields_essential
@@ -126,7 +123,6 @@ sub new {
 	my $self = $class->SUPER::new({
 		sport		=> 'Bike',
 		cap_block	=> 1,
-		cap_note	=> 1,
 		fields_essential	=> {},
 		fields_supported	=> {
 			%fields_supported,
@@ -1100,7 +1096,7 @@ sub dur {
 
 =head2 info
 
-Collects overall Data from this story and returns it as a
+Collects overall Data from this store and returns it as a
 finish()ed Workout::Filter::Info.
 
 =cut

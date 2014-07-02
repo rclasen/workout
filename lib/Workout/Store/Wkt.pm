@@ -82,7 +82,6 @@ sub new {
 		%$a,
 		columns		=> [],
 		cap_block	=> 1,
-		cap_note	=> 1,
 	});
 }
 
