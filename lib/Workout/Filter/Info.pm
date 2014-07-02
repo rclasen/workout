@@ -48,6 +48,7 @@ our %default = (
 );
 
 our %init = (
+	cntcalc	=> 0,
 	chunk_first	=> undef,
 	chunk_last	=> undef,
 	lele	=> undef,
@@ -106,8 +107,42 @@ our %init = (
 	fields_used	=> {},
 );
 
+my %calc = (
+	time_end	=> undef,
+	time_start	=> undef,
+	dur	=> undef,
+	dur_coast	=> undef,
+	dur_creep	=> undef,
+	dur_gap	=> undef,
+	cad_avg	=> undef,
+	cad_percent	=> undef,
+	ele_avg	=> undef,
+	hr_avg	=> undef,
+	pwr_avg	=> undef,
+	spd_avg	=> undef,
+	temp_avg	=> undef,
+	torque_avg	=> undef,
+	vspd_avg	=> undef,
+);
+
 __PACKAGE__->mk_accessors( keys %default );
 __PACKAGE__->mk_ro_accessors( keys %init );
+__PACKAGE__->mk_calc_accessors( keys %calc );
+
+{ no strict 'refs';
+
+sub mk_calc_accessors {
+	my $class = shift;
+
+	foreach my $f ( @_ ){
+		*{"${class}::${f}"} = sub {
+			my( $self ) = @_;
+			$self->calculate;
+			$self->{$f};
+		};
+	}
+}
+}
 
 =head1 CONSTRUCTOR
 
@@ -132,6 +167,89 @@ sub new {
 	};
 	
 	$self;
+}
+
+=head1 METHODS
+
+=head2 calculcate
+
+update some calculated fields. Automatically invoked when such fields are
+retrieved.
+
+=cut
+
+sub calculate {
+	my( $self ) = @_;
+
+	return if $self->{cntin} <= $self->{cntcalc};
+	$self->{cntcalc} = $self->{cntin};
+
+	if( my $c = $self->{chunk_last} ){
+		$self->{time_end} = $c->time;
+	}
+
+	if( my $c = $self->{chunk_first} ){
+		$self->{time_start} = $c->stime;
+	}
+
+	if( my $s = $self->{time_start}
+		and my $e = $self->{time_end} ){
+
+		$self->{dur} = $e - $s;
+	}
+
+	if( my $m = $self->{dur_mov}
+		and my $c = $self->{dur_ncad} ){
+
+		$self->{dur_coast} = $c < $m ? $m - $c : 0;
+	}
+
+	if( my $t = $self->{dur} ){
+		$self->{dur_creep} = $t - $self->{dur_mov};
+		$self->{dur_gap} = $t - $self->{dur_rec};
+	}
+
+
+	if( my $d = $self->{dur_cad} || $self->{dur} ){
+		$self->{cad_avg} = $self->{cad_sum} / $d;
+	}
+
+	if( my $m = $self->{dur_mov} ){
+		$self->{cad_percent} = 100 * ($self->{dur_ncad} ||0) / $m;
+	}
+
+	if( my $dur = $self->{dur_ele} || $self->{dur} ){
+		$self->{ele_avg} = $self->{ele_sum} / $dur;
+	}
+
+	if( my $d = $self->{dur_hr} || $self->{dur} ){
+		$self->{hr_avg} = $self->{hr_sum} / $d;
+	}
+
+
+	if( my $dur = $self->{dur_mov} || $self->{dur} ){
+		$self->{pwr_avg} = $self->{work} / $dur;
+	}
+
+	if( my $d = $self->{dur_mov} ){
+		$self->{spd_avg} = $self->{dist} / $d;
+	}
+
+	if( my $dur = $self->{dur_temp} || $self->{dur} ){
+		$self->{temp_avg} = $self->{temp_sum} / $dur;
+	}
+
+	if( my $cad = $self->{cad_avg}
+		and defined(my $pwr = $self->{pwr_avg}) ){
+
+		$self->{torque_avg} = $pwr / (2 * pi * $cad ) * 60;
+	}
+
+	if( my $c = $self->{ascent}
+		and my $d = $self->{dur_mov} ){
+
+		$self->{vspd_avg} = $c/$d;
+	}
 }
 
 =head1 ACCESSOR METHODS
@@ -177,6 +295,30 @@ Used for smoothing the elevation changes.
 
 =head1 INFO METHODS
 
+=head2 meta( [$meta] )
+
+returns a copy of the provided meta hash where missing bits are
+automatically populated by the calculated values.
+
+=cut
+
+sub meta {
+	my( $self, $in ) = @_;
+
+	$self->calculate;
+
+	$in ||= {};
+	my %out = ( %$in );
+
+	foreach my $k ( keys %init, keys %calc ){
+		next if defined $out{$k};
+		$out{$k} = $self->{$k};
+	}
+
+	return \%out;
+}
+
+
 =head2 accel_max
 
 maximum acceleration seen in the workout (m/s²).
@@ -188,15 +330,6 @@ end time of chunk with maximum acceleration.
 =head2 cad_avg
 
 average cadence (1/min).
-
-=cut
-
-sub cad_avg {
-	my( $self ) = @_;
-	my $d = $self->dur_cad || $self->dur
-		or return;
-	$self->cad_sum / $d;
-}
 
 =head2 cad_min
 
@@ -222,15 +355,6 @@ total number of crank revolutions.
 
 percent of moving time where cranks were spinning (%).
 
-=cut
-
-sub cad_percent {
-	my( $self ) = @_;
-	my $m = $self->dur_mov
-		or return;
-	100 * ($self->dur_ncad ||0) / $m;
-}
-
 =head2 cad_sum
 
 total number of crank revolutions. Internally used for calculating the
@@ -252,19 +376,6 @@ total cumulated distance (m).
 
 total duration (sec).
 
-=cut
-
-sub dur {
-	my( $self ) = @_;
-
-	my $s = $self->time_start
-		or return;
-	my $e = $self->time_end
-		or return;
-
-	$e - $s;
-}
-
 =head2 dur_cad
 
 total duration with cadence recording (sec)
@@ -273,32 +384,9 @@ total duration with cadence recording (sec)
 
 time spent not pedaling (sec).
 
-=cut
-
-sub dur_coast {
-	my( $self ) = @_;
-
-	my $m = $self->dur_mov
-		or return;
-
-	my $c = $self->dur_ncad;
-	return $c < $m ? $m - $c : 0;
-}
-
 =head2 dur_creep
 
 time (sec) spent not moving - or moving too slow.
-
-=cut
-
-sub dur_creep {
-	my( $self ) = @_;
-
-	my $t = $self->dur
-		or return;
-
-	$t - $self->dur_mov;
-}
 
 =head2 dur_hr
 
@@ -307,6 +395,10 @@ total duration with heartrat recording (sec)
 =head2 dur_rec
 
 total time covered by Chunks. (sec)
+
+=head2 dur_gap
+
+total time not covered by Chunks. (sec)
 
 =head2 dur_mov
 
@@ -352,17 +444,6 @@ end time of chunk with minimum elevation.
 
 average elevation (m).
 
-=cut
-
-sub ele_avg {
-	my( $self ) = @_;
-
-	my $dur = $self->dur_ele || $self->dur
-		or return;
-
-	$self->ele_sum / $dur;
-}
-
 =head2 lele
 
 last "smoothed" elevation. For internal use.
@@ -371,14 +452,6 @@ last "smoothed" elevation. For internal use.
 
 sum of all positive elevation changes. Takes elefuzz and other
 smoothing into account.
-
-=cut
-
-# keep "incline" method for backward compatibility
-{ no strict 'refs'; no warnings;
-*incline = \&ascent;
-}
-
 
 =head2 descent
 
@@ -400,15 +473,6 @@ end time of chunk with maximum gradient.
 =head2 hr_avg
 
 average heartrate (1/min)
-
-=cut
-
-sub hr_avg {
-	my( $self ) = @_;
-	my $d = $self->dur_hr ||$self->dur
-		or return;
-	$self->hr_sum / $d;
-}
 
 =head2 hr_max
 
@@ -434,17 +498,6 @@ total number of heartbeats. Used for calculating average heartrate.
 
 average power (W)
 
-=cut
-
-sub pwr_avg {
-	my( $self ) = @_;
-
-	my $dur = $self->dur_mov || $self->dur
-		or return;
-
-	$self->work / $dur;
-}
-
 =head2 pwr_min
 
 minimum power seen in the workout (W).
@@ -465,15 +518,6 @@ end time of chunk with maximum power.
 
 average speed (m/s)
 
-=cut
-
-sub spd_avg {
-	my( $self ) = @_;
-	my $d = $self->dur_mov
-		or return;
-	$self->dist / $d;
-}
-
 =head2 spd_min
 
 minimum speed seen in the workout (m/s).
@@ -493,17 +537,6 @@ end time of chunk with maximum speed.
 =head2 temp_avg
 
 average temperature (°C)
-
-=cut
-
-sub temp_avg {
-	my( $self ) = @_;
-
-	my $dur = $self->dur_temp || $self->dur
-		or return;
-
-	$self->temp_sum / $dur;
-}
 
 =head2 temp_max
 
@@ -538,43 +571,13 @@ temperature at end of workout (°C).
 
 time at end of workout (unix timestamp).
 
-=cut
-
-sub time_end {
-	my( $self ) = @_;
-
-	my $c = $self->chunk_last
-		or return;
-	$c->time;
-}
-
 =head2 time_start
 
 time at start of workout (unix timestamp).
 
-=cut
-
-sub time_start {
-	my( $self ) = @_;
-
-	my $c = $self->chunk_first
-		or return;
-	$c->stime;
-}
-
 =head2 torque_avg
 
 average torque (Nm).
-
-=cut
-
-sub torque_avg {
-	my( $self ) = @_;
-	my $cad = $self->cad_avg or return;
-	defined(my $pwr = $self->pwr_avg) or return;
-
-	$pwr / (2 * pi * $cad ) * 60;
-}
 
 =head2 torque_max
 
@@ -587,17 +590,6 @@ end time of chunk with maximum torque.
 =head2 vspd_avg
 
 average vertical speed (m/s):
-
-=cut
-
-sub vspd_avg {
-	my $self = shift;
-	my $c = $self->ascent
-		or return;
-	my $d = $self->dur_mov
-		or return;
-	$c/$d;
-}
 
 =head2 vspd_max
 
