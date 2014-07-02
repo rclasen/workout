@@ -227,7 +227,7 @@ sub end_node {
 		++$self->{trackcnt};
 
 	} elsif( $name eq 'lap' ){
-		# TODO: meta summary ...
+		# TODO: read meta summary ... lap
 		if( my $endtime = $self->{Store}->time_end ){
 			push @{ $self->{laps} }, {
 				end	=> $endtime,
@@ -240,7 +240,7 @@ sub end_node {
 		$self->{trackcnt} = 0;
 
 	} elsif( $name eq 'activity' ){
-		# TODO: meta summary, device
+		# TODO: read meta summary, device activity
 		my $sport = $node->{attr}{'{}Sport'}{Value};
 
 		$self->{Store}->meta_field('note', $self->{actnote} );
@@ -496,8 +496,8 @@ sub do_write {
 	my $laps = $self->laps;
 	my $odo = 0;
 
-	my $sport = lc $self->meta_field('sport');
-	if( $sport && exists $tcx_sport{$sport} ){
+	my $sport = lc( $self->meta_field('sport')||'' );
+	if( exists $tcx_sport{$sport} ){
 		$sport = $tcx_sport{$sport};
 	} else {
 		$sport = 'Other';
@@ -510,36 +510,39 @@ sub do_write {
 <Activity Sport="$sport">
 <Id>$stime</Id>
 EOHEAD
+	# TODO: meta write summary ... activity
 
 	foreach my $lap (@$laps){
 
-		my $info = $lap->info; # TODO: meta use summary
-		if( ! $info->time_start ){
+		my $info = $lap->info_meta;
+		if( ! $info->{time_start} ){
 			$self->debug( "skipping empty lap" );
 			next;
 		}
 
-		my $ltime = _time2str($info->time_start);
+		my $ltime = _time2str($info->{time_start});
 
 		print $fh "<Lap StartTime=\"", $ltime, "\">\n",
-			"<TotalTimeSeconds>", $info->dur, "</TotalTimeSeconds>\n",
-			"<DistanceMeters>", ($info->dist || 0), "</DistanceMeters>\n",
-			"<MaximumSpeed>", ($info->spd_max || 0), "</MaximumSpeed>\n",
-			"<Calories>", int( ($info->work || 0) / 1000 ), "</Calories>\n";
+			"<TotalTimeSeconds>", $info->{dur}, "</TotalTimeSeconds>\n",
+			"<DistanceMeters>", ($info->{dist} || 0), "</DistanceMeters>\n",
+			"<MaximumSpeed>", ($info->{spd_max} || 0), "</MaximumSpeed>\n",
+			"<Calories>", int( ($info->{work} || 0) / 1000 ), "</Calories>\n";
+
+		# TODO: meta write summary ... lap
 
 		print $fh "<AverageHeartRateBpm>\n",
-			"<Value>", int($info->hr_avg ), "</Value>\n",
+			"<Value>", int($info->{hr_avg} ), "</Value>\n",
 			"</AverageHeartRateBpm>\n"
-			if $write{hr} && $info->hr_min && $info->hr_min >= 1;
+			if $write{hr} && $info->{hr_min} && $info->{hr_min} >= 1;
 		print $fh "<MaximumHeartRateBpm>\n",
-			"<Value>", int($info->hr_max ), "</Value>\n",
+			"<Value>", int($info->{hr_max} ), "</Value>\n",
 			"</MaximumHeartRateBpm>\n"
-			if $write{hr} && $info->hr_max && $info->hr_max >= 1;
+			if $write{hr} && $info->{hr_max} && $info->{hr_max} >= 1;
 
 		# TODO: Intensity = Active|Resting
 		print $fh "<Intensity>Active</Intensity>\n";
 
-		print $fh "<Cadence>", int($info->cad_avg || 0), "</Cadence>\n"
+		print $fh "<Cadence>", int($info->{cad_avg} || 0), "</Cadence>\n"
 			if $write{cad};
 
 		print $fh "<TriggerMethod>Manual</TriggerMethod>\n",
@@ -599,14 +602,14 @@ EOHEAD
 		}
 
 		print $fh "</Track>\n",
-			"<Notes>", &protect($lap->meta_field('note')), "</Notes>\n";
+			"<Notes>", &protect($info->{note}), "</Notes>\n";
 
 		print $fh "<Extensions>\n",
 			"<LX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
-			"<AvgWatts>", $info->pwr_avg, "</AvgWatts>\n",
+			"<AvgWatts>", $info->{pwr_avg}, "</AvgWatts>\n",
 			"</LX>\n",
 			"</Extensions>\n"
-			if $write{work} && defined $info->pwr_avg;
+			if $write{work} && defined $info->{pwr_avg};
 
 		print $fh "</Lap>\n";
 	}
