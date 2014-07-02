@@ -25,6 +25,7 @@ binmode STDERR, ":encoding($charset)";
 my $debug;
 my $ftp;
 my $itype;
+my $docalc;
 
 my $wanthelp;
 my $needhelp;
@@ -32,6 +33,7 @@ my $needhelp;
 if( ! GetOptions(
 	"debug!"	=> \$debug,
 	"ftp=i"		=> \$ftp,
+	'calc!'		=> \$docalc,
 	"help!"		=> \$wanthelp,
 	"itype=s"	=> \$itype,
 )){
@@ -46,6 +48,7 @@ calculate some fancy data from Workout data
 Options:
 --itype=<type>      input file type for all files
 
+--calc              show calculated summary instead of stored data
 --ftp=<w>           threshold power (W)
 
 --debug             enable debuging output
@@ -71,7 +74,6 @@ foreach my $fname ( @ARGV ){
 		ftype	=> $itype,
 		debug	=> $debug, 
 	} );
-	# TODO: meta use summary
 	my $if = Workout::filter( 'Info', $src, {
 		debug	=> $debug,
 	});
@@ -81,14 +83,17 @@ foreach my $fname ( @ARGV ){
 	});
 	$fi->finish;
 
+	my $smeta = $src->meta;
+	my $meta = $if->meta( $docalc ? undef : $smeta );
+
 	$info{files}++;
-	$info{dur} += ($if->dur || 0 );
-	$info{dur_creep} += ($if->dur_creep || 0 );
-	$info{dur_mov} += ($if->dur_mov || 0 );
-	$info{dist} += ($if->dist || 0 );
-	$info{work} += ( $if->work || 0 );
-	$info{ascent} += ( $if->ascent || 0 );
-	$info{tss} += ( $fi->tss || 0 );
+	$info{dur} += ($meta->{dur} || 0 );
+	$info{dur_creep} += ($meta->{dur_creep} || 0 );
+	$info{dur_mov} += ($meta->{dur_mov} || 0 );
+	$info{dist} += ($meta->{dist} || 0 );
+	$info{work} += ( $meta->{work} || 0 );
+	$info{ascent} += ( $meta->{ascent} || 0 );
+	$info{tss} += ( $fi->tss || 0 ); # TODO: use meta tss
 	&max( \%info, $if, qw( dur dist work ascent ) );
 	&max( \%info, $fi, qw( tss ) );
 }
@@ -103,7 +108,7 @@ print
 "moving:    ", fmtdur( $info{dur_mov} ), " h (",
 	int(($info{dur_mov}||0)/60), "m)\n",
 
-"ascent:   ", (int($info{ascent}||0) ||'?'), " m\n",
+"ascent:    ", (int($info{ascent}||0) ||'?'), " m\n",
 
 "distance:  ", sprintf( '%.2f', ($info{dist}||0) / 1000), " km\n",
 
@@ -116,7 +121,7 @@ print
 "----\n",
 "duration:  ", fmtdur( $info{dur_max} ), " h (", int($info{dur_max}/60), "m)\n",
 
-"ascent:   ", (int($info{ascent_max}||0) ||'?'), " m\n",
+"ascent:    ", (int($info{ascent_max}||0) ||'?'), " m\n",
 
 "distance:  ", sprintf( '%.2f', ($info{dist_max}||0) / 1000), " km\n",
 
