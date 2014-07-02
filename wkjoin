@@ -123,6 +123,7 @@ $iter = Workout::filter('Join', $iter, {
 $dst->from( $iter );
 
 $opt_verbose && print "writing ", $ofname ,"... \n";
+$dst->meta_prune;
 $dst->write( $ofname );
 
 

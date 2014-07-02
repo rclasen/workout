@@ -127,6 +127,7 @@ if( $delta && $opt_save ){
 		? $wk1 
 		: ($wk1->stores)[-1];
 	$store->time_add_delta( $delta );
+	$store->meta_prune_all;
 	$store->write( "$f1.wkdelta" );
 	unlink $f1 or die "unlink $f1 failed: $!";
 	rename "$f1.wkdelta", $f1;

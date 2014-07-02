@@ -191,6 +191,7 @@ $iter = Workout::filter( 'SkipUndef', $iter, {
 $dst->from( $iter );
 
 # write dst
+$dst->meta_prune_all;
 $dst->write( $ofname );
 
 1;

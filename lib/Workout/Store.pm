@@ -636,6 +636,8 @@ sub chunk_del_idx {
 	$idx1 <= $idx2
 		or croak "inverse index span $idx1-$idx2";
 
+	$self->meta_prune_all;
+
 	# TODO: nuke marker outside the resulting time span
 	# TODO: update ->prev
 	splice @{$self->{chunk}}, $idx1, $idx2-$idx1;
@@ -1042,6 +1044,8 @@ sub time_add_delta {
 	foreach my $m ( @{ $self->marks } ){
 		$m->time_add_delta( $delta, $start, $end );
 	}
+
+	$self->meta_prune_all;
 }
 
 
@@ -1115,7 +1119,38 @@ sub info_meta {
 	my $self = shift;
 	my $i = Workout::Filter::Info->new( $self, @_ );
 	$i->finish;
-	$i->meta( $self->meta );
+	return $i->meta( $self->meta );
+}
+
+=head2 meta_prune
+
+remove all keys from this store's meta that can ba calculated by
+Workout::Filter::Info. As a result info_meta() will recompute all values
+on next invocation.
+
+=cut
+
+sub meta_prune {
+	my( $self ) = @_;
+
+	foreach my $k ( &Workout::Filter::Info::meta_fields ){
+		delete $self->{meta}{$k};
+	}
+}
+
+=head2 meta_prune_all
+
+prune recalculateable metadata from store and marker
+
+=cut
+
+sub meta_prune_all {
+	my( $self ) = @_;
+
+	$self->meta_prune;
+	foreach my $m ( $self->marks ){
+		$m->meta_prune;
+	}
 }
 
 =head2 meta

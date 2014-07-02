@@ -120,6 +120,7 @@ foreach my $split ( @splits ){
 		time_zone => 'local',
 	)->strftime( $fnpat );
 
+	$out->meta_prune;
 	$out->write( $ofname );
 
 	print $ofname, "\n";

@@ -123,6 +123,22 @@ sub meta_field {
 	$m->{$k} = $v[0]
 }
 
+=head2 meta_prune
+
+remove all keys from this marker's meta that can ba calculated by
+Workout::Filter::Info. As a result info_meta() will recompute all values
+on next invocation.
+
+=cut
+
+sub meta_prune {
+	my( $self ) = @_;
+
+	foreach my $k ( &Workout::Filter::Info::meta_fields ){
+		delete $self->{meta}{$k};
+	}
+}
+
 =head2 dur
 
 get duration of marker

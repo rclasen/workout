@@ -30,6 +30,7 @@ my $join;
 my $skip;
 my @fields;
 my $opt_verbose;
+my $docalc;
 my $debug;
 
 my $needhelp;
@@ -38,6 +39,7 @@ my $wanthelp;
 if( ! GetOptions(
 	"debug!"	=> \$debug,
 	"fields=s"	=> \@fields,
+	'calc!'		=> \$docalc,
 	"help!"		=> \$wanthelp,
 	"itype=s"	=> \$itype,
 	"join!"		=> \$join,
@@ -57,6 +59,7 @@ convert workout files between formats
 Options:
 --itype=<type>      input file type
 
+--calc              recalculate summaries
 --otype=<type>      input file type
 --join              join blocks
 --skip              skip chunks where essential fields are missing
@@ -142,6 +145,7 @@ my $res = $iter = Workout::filter('Resample', $iter, {
 
 $dst->from( $iter );
 $dst->fields_io( @fields ) if @fields;
+$dst->meta_prune_all if $docalc;
 $dst->write( $ofname );
 
 if( $opt_verbose ){

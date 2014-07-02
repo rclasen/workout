@@ -252,6 +252,16 @@ sub calculate {
 	}
 }
 
+=head2 meta_fields
+
+returns a list with all keys that get set/updated in returned meta hash
+
+=cut
+
+sub meta_fields {
+	return keys %init, keys %calc;
+}
+
 =head1 ACCESSOR METHODS
 
 These methods set parameters that influence the calculations. You need to
