@@ -8,7 +8,7 @@
 #
 
 
-# TODO: pod
+# todo: POD
 # TODO: options for parameters (bike, user)
 # TODO: one-line output for tabular lists of several workouts
 
@@ -32,6 +32,7 @@ my $ftp;
 my $dopwr;
 my $domax;
 my $domarks;
+my $docalc,
 my $recint;
 
 my $wanthelp;
@@ -44,6 +45,7 @@ if( ! GetOptions(
 	"itype=s"	=> \$itype,
 	"marker!"	=> \$domarks,
 	"maxint!"	=> \$domax,
+	"calc!"		=> \$docalc,
 	"pwr!"		=> \$dopwr,
 	"recint=f"	=> \$recint,
 )){
@@ -64,6 +66,7 @@ Options:
 --maxint            calculate per-interval max power
 
 --marker            show per-marker info
+--calc              show calculated summary instead of stored data
 
 --debug             enable debuging output
 --help              this cruft
@@ -117,7 +120,9 @@ $iter = my $m60 = Workout::filter( 'Max', $iter, {
 }) if defined $domax;
 
 $iter->finish;
-# TODO: meta use summary
+
+my $smeta = $src->meta;
+my $meta = $info->meta( $docalc ? undef : $smeta );
 
 
 if( $info->cntin == 0 ){
@@ -126,11 +131,11 @@ if( $info->cntin == 0 ){
 }
 
 my $sdate = DateTime->from_epoch( 
-	epoch		=> $info->time_start,
+	epoch		=> $meta->{time_start},
 	time_zone	=> 'local',
 );
 my $edate = DateTime->from_epoch(
-	epoch		=> $info->time_end,
+	epoch		=> $meta->{time_end},
 	time_zone	=> 'local',
 );
 
@@ -139,65 +144,64 @@ my @fields = sort { $a cmp $b } grep { $fields->{$_} } keys %{$fields};
 
 # TODO: zones/inzone
 
-my $meta = $src->meta;
-foreach my $k ( sort { $a cmp $b } keys %$meta ){
-	defined $meta->{$k} or next;
-	printf "%-17s%s\n", $k.':', $meta->{$k};
+foreach my $k ( sort { $a cmp $b } keys %$smeta ){
+	defined $smeta->{$k} or next;
+	printf "%-17s%s\n", $k.':', $smeta->{$k};
 }
 
 print 
 "chunks:          ", $src->chunk_count, " (", 
-	sprintf('%.2f',$info->dur_rec/$src->chunk_count), "s/chunk recint=", 
+	sprintf('%.2f',$meta->{dur_rec}/$src->chunk_count), "s/chunk recint=", 
 	$src->recint||0, ")\n",
 "used fields:     ", join(',', @fields ), "\n", 
 "marker:          ", $src->mark_count, "\n",
 
-"start time:      ", $sdate->datetime, " (", $info->time_start ,")\n",
-"end time:        ", $edate->datetime, " (", $info->time_end, ")\n",
+"start time:      ", $sdate->datetime, " (", $meta->{time_start} ,")\n",
+"end time:        ", $edate->datetime, " (", $meta->{time_end}, ")\n",
 
-"duration:        ", fmtdur( $info->dur ), " h (", int($info->dur/60), "m)\n",
-"creeping:        ", fmtdur( $info->dur_creep ), " h (",
-	int(($info->dur_creep||0)/60), "m)\n",
-"moving:          ", fmtdur( $info->dur_mov ), " h (",
-	int(($info->dur_mov||0)/60), "m)\n",
-"pedaling:        ", fmtdur( $info->dur_ncad ), " h (",
-	int(($info->dur_ncad||0)/60), "m) (",
-	sprintf('%.2f', ($info->cad_percent||0) ), "%)\n",
+"duration:        ", fmtdur( $meta->{dur} ), " h (", int($meta->{dur}/60), "m)\n",
+"creeping:        ", fmtdur( $meta->{dur_creep} ), " h (",
+	int(($meta->{dur_creep}||0)/60), "m)\n",
+"moving:          ", fmtdur( $meta->{dur_mov} ), " h (",
+	int(($meta->{dur_mov}||0)/60), "m)\n",
+"pedaling:        ", fmtdur( $meta->{dur_ncad} ), " h (",
+	int(($meta->{dur_ncad}||0)/60), "m) (",
+	sprintf('%.2f', ($meta->{cad_percent}||0) ), "%)\n",
 
-"Temperature min: ", (int($info->temp_min||0) || '?'), " 캜\n",
-"Temperature max: ", (int($info->temp_max||0) || '?'), " 캜\n",
-"Temperature avg: ", (int($info->temp_avg||0) || '?'), " 캜\n",
+"Temperature min: ", (int($meta->{temp_min}||0) || '?'), " 캜\n",
+"Temperature max: ", (int($meta->{temp_max}||0) || '?'), " 캜\n",
+"Temperature avg: ", (int($meta->{temp_avg}||0) || '?'), " 캜\n",
 
-"Heartrate min:   ", (int($info->hr_min||0) || '?'), " 1/min\n",
-"Heartrate avg:   ", (int($info->hr_avg||0) || '?'), " 1/min\n",
-"Heartrate max:   ", (int($info->hr_max||0) || '?'), " 1/min at ",
-	fmttime($info->hr_max_time), "\n",
+"Heartrate min:   ", (int($meta->{hr_min}||0) || '?'), " 1/min\n",
+"Heartrate avg:   ", (int($meta->{hr_avg}||0) || '?'), " 1/min\n",
+"Heartrate max:   ", (int($meta->{hr_max}||0) || '?'), " 1/min at ",
+	fmttime($meta->{hr_max_time}), "\n",
 
-"Cadence avg:     ", (int($info->cad_avg||0) || '?'), " 1/s\n",
-"Cadence max:     ", (int($info->cad_max||0) || '?'), " 1/s at ",
-	fmttime($info->cad_max_time), "\n",
+"Cadence avg:     ", (int($meta->{cad_avg}||0) || '?'), " 1/s\n",
+"Cadence max:     ", (int($meta->{cad_max}||0) || '?'), " 1/s at ",
+	fmttime($meta->{cad_max_time}), "\n",
 
-"start elevation: ", (int($info->ele_start||0) ||'?'), " m\n",
-"min elevation:   ", (int($info->ele_min||0) ||'?'), " m\n",
-"max elevation:   ", (int($info->ele_max||0) ||'?'), " m at ",
-	fmttime($info->ele_max_time), "\n",
-"max slope:       ", sprintf( '%.1f', ($info->grad_max||0)), " % at ",
-	fmttime($info->grad_max_time), "\n",
-"total ascent:    ", (int($info->ascent||0) ||'?'), " m\n",
-"total descent:   ", (int($info->descent||0) ||'?'), " m\n",
+"start elevation: ", (int($meta->{ele_start}||0) ||'?'), " m\n",
+"min elevation:   ", (int($meta->{ele_min}||0) ||'?'), " m\n",
+"max elevation:   ", (int($meta->{ele_max}||0) ||'?'), " m at ",
+	fmttime($meta->{ele_max_time}), "\n",
+"max slope:       ", sprintf( '%.1f', ($meta->{grad_max}||0)), " % at ",
+	fmttime($meta->{grad_max_time}), "\n",
+"total ascent:    ", (int($meta->{ascent}||0) ||'?'), " m\n",
+"total descent:   ", (int($meta->{descent}||0) ||'?'), " m\n",
 
-"total distance:  ", sprintf( '%.2f', ($info->dist||0) / 1000), " km\n",
+"total distance:  ", sprintf( '%.2f', ($meta->{dist}||0) / 1000), " km\n",
 
-"max speed:       ", sprintf( '%.2f', ($info->spd_max||0) * 3.6 ), " km/h at ",
-	fmttime($info->spd_max_time), "\n",
-"avg speed:       ", sprintf( '%.2f', ($info->spd_avg||0) * 3.6 ), " km/h\n",
-"max accel:       ", sprintf( '%.2f', ($info->accel_max||0) ), " m/s� at ",
-	fmttime($info->accel_max_time), "\n",
+"max speed:       ", sprintf( '%.2f', ($meta->{spd_max}||0) * 3.6 ), " km/h at ",
+	fmttime($meta->{spd_max_time}), "\n",
+"avg speed:       ", sprintf( '%.2f', ($meta->{spd_avg}||0) * 3.6 ), " km/h\n",
+"max accel:       ", sprintf( '%.2f', ($meta->{accel_max}||0) ), " m/s� at ",
+	fmttime($meta->{accel_max_time}), "\n",
 
-"total work:      ", sprintf( '%.2f', ($info->work||0) / 1000 ), " kJ\n",
-"avg Power:       ", sprintf( '%.2f', ($info->pwr_avg||0) ), " W\n", # TODO
-"max Power:       ", sprintf( '%.2f', ($info->pwr_max||0) ), " W at ", # TODO
-	fmttime($info->pwr_max_time), "\n";
+"total work:      ", sprintf( '%.2f', ($meta->{work}||0) / 1000 ), " kJ\n",
+"avg Power:       ", sprintf( '%.2f', ($meta->{pwr_avg}||0) ), " W\n", # TODO
+"max Power:       ", sprintf( '%.2f', ($meta->{pwr_max}||0) ), " W at ", # TODO
+	fmttime($meta->{pwr_max_time}), "\n";
 
 $m20 && print
 "20m avg Power:   ", sprintf( '%.2f', ($m20->pwr||0) ), " W from ",
@@ -217,22 +221,26 @@ $finfo && print
 	sprintf( '%.2f', ($finfo->if||0) ), ")\n";
 
 print
-"avg Torque:      ", sprintf( '%.2f', ($info->torque_avg||0) ), " Nm\n", # TODO
-"max Torque:      ", sprintf( '%.2f', ($info->torque_max||0) ), " Nm at ", # TODO
-	fmttime($info->torque_max_time), "\n";
+"avg Torque:      ", sprintf( '%.2f', ($meta->{torque_avg}||0) ), " Nm\n", # TODO
+"max Torque:      ", sprintf( '%.2f', ($meta->{torque_max}||0) ), " Nm at ", # TODO
+	fmttime($meta->{torque_max_time}), "\n";
 
 if( $domarks ){
 	my $marks = $src->marks;
 	my $idx = 0;
 	foreach my $mark ( @$marks ){
-		my $mi = $mark->info; # TODO: meta use summary
+		my $mi = $mark->info;
+
+		my $mm = $mark->meta;
+		my $mim = $mi->meta( $docalc ? undef : $mm );
+
 
 		my $sdate = DateTime->from_epoch( 
-			epoch		=> $mi->time_start,
+			epoch		=> $mim->{time_start},
 			time_zone	=> 'local',
 		);
 		my $edate = DateTime->from_epoch(
-			epoch		=> $mi->time_end,
+			epoch		=> $mim->{time_end},
 			time_zone	=> 'local',
 		);
 
@@ -240,42 +248,42 @@ print "\nMarker ", $idx++, ":\n",
 "marker:          ", $mark->start, " - ", $mark->end, ": ",
 	$mark->end - $mark->start, "s\n",
 "idx:             ", $mi->src->ifirst, " - ", $mi->src->ilast, "\n",
-"start time:      ", $sdate->datetime, " (", $mi->time_start ," @ ",
-	$mi->time_start - $src->time_start ,")\n",
-"end time:        ", $edate->datetime, " (", $mi->time_end ," @ ",
-	$mi->time_end - $src->time_start ,")\n",
+"start time:      ", $sdate->datetime, " (", $mim->{time_start} ," @ ",
+	$mim->{time_start} - $src->time_start ,")\n",
+"end time:        ", $edate->datetime, " (", $mim->{time_end} ," @ ",
+	$mim->{time_end} - $src->time_start ,")\n",
 
-"duration:        ", fmtdur( $mi->dur ), " h (", int($mi->dur/60), "m, ",
-		$mi->dur, "s)\n",
+"duration:        ", fmtdur( $mim->{dur} ), " h (", int($mim->{dur}/60), "m, ",
+		$mim->{dur}, "s)\n",
 
-"Heartrate min:   ", (int($mi->hr_min||0) || '?'), " 1/min\n",
-"Heartrate avg:   ", (int($mi->hr_avg||0) || '?'), " 1/min\n",
-"Heartrate max:   ", (int($mi->hr_max||0) || '?'), " 1/min at ",
-	fmttime($mi->hr_max_time), "\n",
+"Heartrate min:   ", (int($mim->{hr_min}||0) || '?'), " 1/min\n",
+"Heartrate avg:   ", (int($mim->{hr_avg}||0) || '?'), " 1/min\n",
+"Heartrate max:   ", (int($mim->{hr_max}||0) || '?'), " 1/min at ",
+	fmttime($mim->{hr_max_time}), "\n",
 
-"Cadence avg:     ", (int($mi->cad_avg||0) || '?'), " 1/s\n",
-"Cadence max:     ", (int($mi->cad_max||0) || '?'), " 1/s at ",
-	fmttime($mi->cad_max_time), "\n",
+"Cadence avg:     ", (int($mim->{cad_avg}||0) || '?'), " 1/s\n",
+"Cadence max:     ", (int($mim->{cad_max}||0) || '?'), " 1/s at ",
+	fmttime($mim->{cad_max_time}), "\n",
 
-"start elevation: ", (int($mi->ele_start||0) ||'?'), " m\n",
-"min elevation:   ", (int($mi->ele_min||0) ||'?'), " m\n",
-"max elevation:   ", (int($mi->ele_max||0) ||'?'), " m at ",
-	fmttime($mi->ele_max_time), "\n",
-"total ascent:    ", (int($mi->ascent||0) ||'?'), " m\n",
-"total descent:   ", (int($mi->descent||0) ||'?'), " m\n",
+"start elevation: ", (int($mim->{ele_start}||0) ||'?'), " m\n",
+"min elevation:   ", (int($mim->{ele_min}||0) ||'?'), " m\n",
+"max elevation:   ", (int($mim->{ele_max}||0) ||'?'), " m at ",
+	fmttime($mim->{ele_max_time}), "\n",
+"total ascent:    ", (int($mim->{ascent}||0) ||'?'), " m\n",
+"total descent:   ", (int($mim->{descent}||0) ||'?'), " m\n",
 
-"total distance:  ", sprintf( '%.2f', ($mi->dist||0) / 1000), " km\n",
+"total distance:  ", sprintf( '%.2f', ($mim->{dist}||0) / 1000), " km\n",
 
-"max speed:       ", sprintf( '%.2f', ($mi->spd_max||0) * 3.6 ), " km/h at ",
-	fmttime($mi->spd_max_time), "\n",
-"avg speed:       ", sprintf( '%.2f', ($mi->spd_avg||0) * 3.6 ), " km/h\n",
-"max accel:       ", sprintf( '%.2f', ($mi->accel_max||0) ), " m/s� at ",
-	fmttime($mi->accel_max_time), "\n",
+"max speed:       ", sprintf( '%.2f', ($mim->{spd_max}||0) * 3.6 ), " km/h at ",
+	fmttime($mim->{spd_max_time}), "\n",
+"avg speed:       ", sprintf( '%.2f', ($mim->{spd_avg}||0) * 3.6 ), " km/h\n",
+"max accel:       ", sprintf( '%.2f', ($mim->{accel_max}||0) ), " m/s� at ",
+	fmttime($mim->{accel_max_time}), "\n",
 
-"total work:      ", sprintf( '%.2f', ($mi->work||0) / 1000 ), " kJ\n",
-"avg Power:       ", sprintf( '%.2f', ($mi->pwr_avg||0) ), " W\n", # TODO
-"max Power:       ", sprintf( '%.2f', ($mi->pwr_max||0) ), " W at ", # TODO
-	fmttime($mi->pwr_max_time), "\n";
+"total work:      ", sprintf( '%.2f', ($mim->{work}||0) / 1000 ), " kJ\n",
+"avg Power:       ", sprintf( '%.2f', ($mim->{pwr_avg}||0) ), " W\n", # TODO
+"max Power:       ", sprintf( '%.2f', ($mim->{pwr_max}||0) ), " W at ", # TODO
+	fmttime($mim->{pwr_max_time}), "\n";
 
 	}
 }
