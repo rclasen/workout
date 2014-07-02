@@ -21,7 +21,6 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Workout;
-use Workout::Athlete;
 use I18N::Langinfo qw(langinfo CODESET);
 
 my $charset = langinfo(CODESET);
@@ -121,7 +120,6 @@ $otype ||= Workout::file_type_name( $ofname );
 my $dst = Workout::file_new( { 
 	debug	=> $debug,
 	ftype	=> $otype,
-	#athlete	=> $ath, - see below
 } );
 
 if( ! $join and $join = ! $dst->cap_block ){
@@ -176,19 +174,6 @@ $it2 = Workout::filter('Timeshift', $it2, {
 	delta	=> $delta,
 	debug	=> $debug,
 }) if $delta;
-
-if( $dst->can( 'athlete' ) ){
-	if( $wk2->can( 'athlete' ) ){
-		$dst->athlete( $wk2->athlete );
-
-	} elsif( $wk1->can( 'athlete' ) ){
-		$dst->athlete( $wk1->athlete );
-
-	} else {
-		$dst->athlete( Workout::Athlete->new );
-
-	}
-}
 
 my $iter = Workout::filter('Merge', $it2, {
 	master	=> $it1, 

@@ -56,8 +56,12 @@ sub filetypes {
 
 our %defaults = (
 	recint	=> 1,
-	tz	=> 'local',
 	default_start	=> undef,
+);
+
+our %meta = (
+	sport		=> 'Bike',
+	device		=> 'Powertap',
 );
 
 our %fields_supported = map { $_ => 1; } qw{
@@ -85,9 +89,14 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a||={};
+	$a->{meta}||={};
 	$class->SUPER::new({
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_supported	=> {
 			%fields_supported,
 		},
@@ -101,10 +110,6 @@ sub new {
 
 get/set the default start time (unix timestamp) in case it cannot be
 determined from the filename.
-
-=head2 tz
-
-set/get timezone for getting the start time from the filename. See DateTime.
 
 =cut
 
@@ -270,8 +275,10 @@ sub do_read {
 		if( $chunk->[7] && $lapid != $chunk->[7] ){
 
 			push @laps, {
-				note	=> $lapid++,
 				end	=> $time,
+				meta	=> {
+					note	=> $lapid++,
+				},
 			};
 		}
 
@@ -282,8 +289,10 @@ sub do_read {
 
 	if( @laps ){
 		push @laps, {
-			note	=> $lapid,
 			end	=> $stime + $elapsed,
+			meta	=> {
+				note	=> $lapid,
+			}
 		};
 
 		$self->mark_new_laps( \@laps );

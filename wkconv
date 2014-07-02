@@ -10,7 +10,6 @@
 use strict;
 use warnings;
 use Workout;
-use Workout::Athlete;
 use Getopt::Long;
 use I18N::Langinfo qw(langinfo CODESET);
 
@@ -94,13 +93,8 @@ my $src = Workout::file_read( $ifname, {
 	debug	=> $debug,
 } );
 
-my $ath = $src->can( 'athlete' )
-	? $src->athlete
-	: Workout::Athlete->new;
-
 my $dst = Workout::file_new( { 
 	ftype	=> $otype,
-	athlete	=> $ath,
 	debug	=> $debug,
 } );
 if( my @unsup = $dst->fields_unsupported( @fields )){

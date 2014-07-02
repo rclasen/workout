@@ -18,7 +18,6 @@ use strict;
 use DateTime;
 use Getopt::Long;
 use Workout;
-use Workout::Athlete;
 use I18N::Langinfo qw(langinfo CODESET);
 
 my $charset = langinfo(CODESET);
@@ -89,10 +88,6 @@ my $src = Workout::file_read( $fname, {
 } );
 my $iter = $src->iterate;
 
-my $ath = $src->can( 'athlete' )
-	? $src->athlete
-	: Workout::Athlete->new;
-
 $iter = Workout::filter( 'Resample', $iter, {
 	debug	=> $debug,
 	recint	=> $recint,
@@ -100,7 +95,6 @@ $iter = Workout::filter( 'Resample', $iter, {
 
 $iter = my $pwr = Workout::filter( 'Pwr', $iter, { 
 	debug	=> $debug,
-	athlete => $ath,
 }) if $dopwr;
 
 $iter = my $info = Workout::filter( 'Info', $iter, {
@@ -123,6 +117,7 @@ $iter = my $m60 = Workout::filter( 'Max', $iter, {
 }) if defined $domax;
 
 $iter->finish;
+# TODO: meta use summary
 
 
 if( $info->cntin == 0 ){
@@ -144,11 +139,10 @@ my @fields = sort { $a cmp $b } grep { $fields->{$_} } keys %{$fields};
 
 # TODO: zones/inzone
 
-foreach my $attr (qw( athletename note sport circum slope zeropos )){
-	next unless $src->can( $attr );
-	my $v = $src->$attr or next;
-
-	printf "%-17s%s\n", $attr.':', $v;
+my $meta = $src->meta;
+foreach my $k ( sort { $a cmp $b } keys %$meta ){
+	defined $meta->{$k} or next;
+	printf "%-17s%s\n", $k.':', $meta->{$k};
 }
 
 print 
@@ -231,7 +225,7 @@ if( $domarks ){
 	my $marks = $src->marks;
 	my $idx = 0;
 	foreach my $mark ( @$marks ){
-		my $mi = $mark->info;
+		my $mi = $mark->info; # TODO: meta use summary
 
 		my $sdate = DateTime->from_epoch( 
 			epoch		=> $mi->time_start,

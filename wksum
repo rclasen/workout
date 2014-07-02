@@ -71,6 +71,7 @@ foreach my $fname ( @ARGV ){
 		ftype	=> $itype,
 		debug	=> $debug, 
 	} );
+	# TODO: meta use summary
 	my $if = Workout::filter( 'Info', $src, {
 		debug	=> $debug,
 	});

@@ -14,10 +14,9 @@ Workout::Filter::Pwr - Calculatate work/pwr from other data
 
 =head1 SYNOPSIS
 
-  $ath = Workout::Athlete->new;
   $src = Workout::Store::Gpx->read( "foo.gpx" );
 
-  $pwr = Workout::Filter->new( $src, { athlete => $ath } );
+  $pwr = Workout::Filter->new( $src, { weight => 90 } );
   ...
 
 =head1 DESCRIPTION
@@ -42,14 +41,13 @@ my $g = 9.81; 		# (m/s²)	Erdbeschleunigung
 my $kelvin = 273.15;
 
 my %defaults = (
-	athlete	=> undef,
 	#A 	 		# (m²)		Gesamt-Stirnfläche (Rad + Fahrer)
 	#Cw 	 		# ()		Luftwiderstandsbeiwert
 	#CwA	=> 0.3207;	# (m²)		$Cw * $A für unterlenker
 	CwA	=> 0.4764,	# (m²)		$Cw * $A für oberlenker
 	Cr	=> 0.006,	# ()		.005 - .009 Rollwiderstandsbeiwert
 	Cm	=> 1.06, 	# ()		1.03 - 1.09 Mechanische Verluste
-	weight	=> 11, 		# (kg)		Equipment weight 
+	weight	=> 80,		# (kg)		total weight
 	atemp	=> 19,		# (°C)		Temperatur
 	wind	=> 0,		# (m/s)		Windgeschwindigkeit
 );
@@ -76,10 +74,6 @@ sub new {
 
 =head1 METHODS
 
-=head2 athlete
-
-get/set Workout::Athlete handle with athlete data.
-
 =head2 CwA
 
 get/set air drag Cw * front_surface (m²).
@@ -94,7 +88,7 @@ get/set mechanical loss.
 
 =head2 weight
 
-get/set equipment weight (kg). Used in addition to Athelte's weight.
+get/set total weight (kg).
 
 =head2 atemp
 
@@ -158,7 +152,7 @@ sub process {
 	# intermediate results for power
 	my $rho = ($kelvin / ($kelvin + $temp)) * $rho_0 * 
 		$e^(($ele * $rho_0 * $g) / $P_0);
-	my $Fstg = ($self->weight + $self->athlete->weight) * $g * ( 
+	my $Fstg = $self->weight * $g * (
 		$self->Cr * cos($angle) + sin($angle));
 	my $op1 = $self->CwA * $rho * ($spd + $self->wind)^2 / 2;
 

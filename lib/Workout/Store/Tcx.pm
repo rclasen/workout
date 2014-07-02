@@ -227,19 +227,23 @@ sub end_node {
 		++$self->{trackcnt};
 
 	} elsif( $name eq 'lap' ){
+		# TODO: meta summary ...
 		if( my $endtime = $self->{Store}->time_end ){
 			push @{ $self->{laps} }, {
-				note	=> $self->{lapnote},
 				end	=> $endtime,
+				meta	=> {
+					note	=> $self->{lapnote},
+				},
 			};
 		}
 		$self->{lapnote} = undef;
 		$self->{trackcnt} = 0;
 
 	} elsif( $name eq 'activity' ){
+		# TODO: meta summary, device
 		my $sport = $node->{attr}{'{}Sport'}{Value};
 
-		$self->{Store}->note( $self->{actnote} );
+		$self->{Store}->meta_field('note', $self->{actnote} );
 		$self->{Store}->wk_sport( $sport );
 		$self->{Store}->mark_new_laps( $self->{laps} );
 		$self->{laps} = [];
@@ -371,19 +375,26 @@ our %fields_supported = map { $_ => 1; } qw{
 	work
 };
 
+our %defaults = (
+);
+
+our %meta = (
+	device		=> 'TCX',
+	sport		=> undef,
+);
+
 our %wk_sport = (
-	Biking		=> 'Bike',
-	Running		=> 'Run',
-	Other		=> undef,
+	biking		=> 'Bike',
+	running		=> 'Run',
 	# everything else is taken as-is
 );
 
 our %tcx_sport = (
-	Biking		=> 'Biking',
-	Bike		=> 'Biking',
-	Running		=> 'Running',
-	Run		=> 'Running',
-	Other		=> 'Other',
+	biking		=> 'Biking',
+	bike		=> 'Biking',
+	running		=> 'Running',
+	run		=> 'Running',
+	other		=> 'Other',
 	# everything else is mapped to 'Other', aswell
 );
 
@@ -399,8 +410,14 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a ||= {};
+	$a->{meta}||={};
 	my $self = $class->SUPER::new( {
+		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_supported	=> {
 			%fields_supported,
 		},
@@ -412,10 +429,11 @@ sub new {
 sub wk_sport {
 	my( $self, $sport ) = @_;
 
-	if( $sport && exists $wk_sport{$sport} ){
-		$sport = $wk_sport{$sport};
+	my $l = lc $sport;
+	if( $sport && exists $wk_sport{$l} ){
+		$sport = $wk_sport{$l};
 	}
-	$self->sport( $sport );
+	$self->meta_field('sport', $sport );
 }
 
 sub do_read {
@@ -478,7 +496,7 @@ sub do_write {
 	my $laps = $self->laps;
 	my $odo = 0;
 
-	my $sport = $self->sport;
+	my $sport = lc $self->meta_field('sport');
 	if( $sport && exists $tcx_sport{$sport} ){
 		$sport = $tcx_sport{$sport};
 	} else {
@@ -495,7 +513,7 @@ EOHEAD
 
 	foreach my $lap (@$laps){
 
-		my $info = $lap->info;
+		my $info = $lap->info; # TODO: meta use summary
 		if( ! $info->time_start ){
 			$self->debug( "skipping empty lap" );
 			next;
@@ -581,7 +599,7 @@ EOHEAD
 		}
 
 		print $fh "</Track>\n",
-			"<Notes>", &protect($lap->note), "</Notes>\n";
+			"<Notes>", &protect($lap->meta_field('note')), "</Notes>\n";
 
 		print $fh "<Extensions>\n",
 			"<LX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">\n",
@@ -593,7 +611,7 @@ EOHEAD
 		print $fh "</Lap>\n";
 	}
 
-	print $fh "<Notes>", &protect($self->note), "</Notes>\n";
+	print $fh "<Notes>", &protect($self->meta_field('note')), "</Notes>\n";
 
 	# TODO: write marker as extension?
 

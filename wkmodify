@@ -99,18 +99,13 @@ my $src = Workout::file_read( $fname, {
 } );
 
 if( $recalc_power && ($zeropos || $slope) ){
-	my $old_slope = $src->slope;
-	my $old_zeropos = $src->zeropos;
+	my $old_slope = $src->meta_field('slope');
+	my $old_zeropos = $src->meta_field('zeropos');
 
 	$slope ||= $old_slope;
 	$zeropos ||= $old_zeropos;
 
-	my $ath = $src->can( 'athlete' )
-		? $src->athlete
-		: Workout::Athlete->new;
-
 	my $dst = $src->new( {
-		athlete	=> $ath,
 		debug	=> $debug,
 		recint	=> $src->recint,
 	} );
@@ -159,8 +154,7 @@ $delta && $src->time_add_delta( $delta );
 foreach my $attr ( qw( note sport slope circum zeropos athletename )){
 	my $v = eval "\$$attr";
 	next unless defined $v;
-	next unless $src->can( $attr );
-	$src->$attr( $v );
+	$src->meta_field( $attr, $v );
 }
 
 $src->write( "$fname.wkmodify" );

@@ -150,7 +150,7 @@ sub end_node {
 		$self->{lpt} = undef;
 
 	} elsif( $name eq 'gpx' ){
-		$self->{Store}->note( $self->{cmt} );
+		$self->{Store}->meta_field( 'note', $self->{cmt} );
 
 	}
 }
@@ -217,6 +217,14 @@ sub filetypes {
 	return "gpx";
 }
 
+our %defaults = (
+);
+
+our %meta = (
+	sport	=> undef,
+	device	=> 'Gpx',
+);
+
 our %fields_essential = map { $_ => 1; } qw{
 	lon
 	lat
@@ -226,7 +234,6 @@ our %fields_supported = map { $_ => 1; } qw{
 	dist
 	ele
 };
-
 
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
 # TODO: verify read values are numbers
@@ -243,9 +250,14 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a ||= {};
+	$a->{meta}||={};
 	my $self = $class->SUPER::new( {
-		sport	=> undef,
+		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_essential	=> {
 			%fields_essential,
 		},
@@ -342,8 +354,8 @@ sub do_write {
 <bounds maxlat="$maxlat" maxlon="$maxlon" minlat="$minlat" minlon="$minlon" />
 <trk>
 EOHEAD
-	print $fh " <cmt>", &protect( $self->note ), "</cmt>\n",
-		" <trkseg>\n";
+	print $fh "<cmt>", &protect( $self->meta_field('note') ), "</cmt>\n",
+		"<trkseg>\n";
 
 	$it = $self->iterate;
 	while( my $c = $it->next ){

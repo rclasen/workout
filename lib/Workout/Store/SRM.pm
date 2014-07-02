@@ -84,14 +84,18 @@ our %fields_supported = map { $_ => 1; } qw{
 
 our %defaults = (
 	recint		=> 1,
-	tz		=> 'local',
+	version		=> 7,
+);
+__PACKAGE__->mk_accessors( keys %defaults );
+
+our %meta = (
+	device		=> 'SRM',
+	sport		=> 'Bike',
 	circum		=> 2000,
 	zeropos		=> 100,
 	slope		=> 1,
 	athletename	=> 'srm',
-	version		=> 7,
 );
-__PACKAGE__->mk_accessors( keys %defaults );
 
 =head1 CONSTRUCTOR
 
@@ -105,9 +109,14 @@ sub new {
 	my( $class,$a ) = @_;
 
 	$a||={};
+	$a->{meta}||={};
 	my $self = $class->SUPER::new( {
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_supported	=> {
 			%fields_supported,
 		},
@@ -119,47 +128,11 @@ sub new {
 
 =head1 METHODS
 
-=head2 tz
-
-set/get timezone for reading/writing timestamps as the SRM files store only a
-local timestamp without timezone. See DateTime.
-
-=head2 circum
-
-set/get wheel circumference in millimeters (mm)
-
-=head2 zeropos
-
-set/get zero offset in Hertz (HZ)
-
-=head2 slope
-
-set/get slope as known from srmwin and PowerControl
-
-=cut
-
-# TODO: unit for slope
-
-=head2 athletename
-
-set/get name of athlete (as stored in the PowerControl)
-
 =head2 version
 
 set/get file version: 5 (read only), 6 or 7
 
 =cut
-
-sub from_store {
-	my( $self, $store ) = @_;
-
-	$self->SUPER::from_store( $store );
-
-	foreach my $f (qw( tz circum zeropos slope athletename )){
-		$self->$f( $store->$f ) if $store->can( $f )
-			&& defined $store->$f;
-	}
-}
 
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
@@ -181,7 +154,7 @@ sub do_write {
 	# file header
 
 	my $stime = $self->time_start;
-	my $info = $self->info;
+	my $info = $self->info; # TODO: meta use summary
 
 	my $dateref = DateTime->new( 
 		year		=> 1880, 
@@ -219,7 +192,7 @@ sub do_write {
 			or croak "cannot find apropriate recint";
 
 	}
-	my $note = $self->note || '';
+	my $note = $self->meta_field('note') || '';
 	my $blocks = $self->blocks;
 
 	$self->debug( "writing ". @$blocks ." blocks, ".
@@ -227,7 +200,7 @@ sub do_write {
 	print $fh pack( 'A3AvvCCvvx(C/A*@71)', 
 		'SRM', $self->version,
 		$days,
-		$self->circum,
+		$self->meta_field('circum')||$defaults{circum},
 		$r1,
 		$r2,
 		scalar @$blocks,
@@ -243,7 +216,7 @@ sub do_write {
 
 	} $self->mark_workout, @{$self->marks} ){
 
-		my $info = $m->info;
+		my $info = $m->info; # TODO: meta use summary
 
 		my $first = $self->chunk_time2idx( $m->start );
 		my $last = $self->chunk_time2idx( $m->end );
@@ -258,7 +231,7 @@ sub do_write {
 			." ". $fchunk->stime );
 
 		print $fh pack( 'Z255Cvvvvvvv', 
-			encode('cp850',($m->note||'')),
+			encode('cp850',($m->meta_field('note')||'')),
 			1,			# active
 			$first + 1,
 			$last + 1,
@@ -286,8 +259,8 @@ sub do_write {
 	# calibration data, ff
 
 	print $fh pack( 'vvvx', 
-		$self->zeropos,
-		$self->slope * 42781 / 140,
+		$self->meta_field('zeropos'),
+		$self->meta_field('slope') * 42781 / 140,
 		$self->chunk_count,
 	) or croak "failed to write calibration data";
 
@@ -388,12 +361,12 @@ sub do_read {
 	)->add( days => $_[1] );
 	my $wtime = $date->hires_epoch;
 
-	$self->circum( $_[2] );
+	$self->meta_field('circum', $_[2] );
 	$self->recint( $_[3] / $_[4] );
 	my $blockcnt = $_[5];
 	my $markcnt = $_[6];
 
-	$self->note( decode('cp850',$_[7]) );
+	$self->meta_field('note', decode('cp850',$_[7]) );
 	my $temperature;
 
 	if( $_[7] =~ s/^(\d+(?:[.,]\d+)?)[°ø]C// ){
@@ -448,7 +421,7 @@ sub do_read {
 	}
 
 	# throw away whole-file marker:
-	$self->athletename( (shift @marker)->{note} );
+	$self->meta_field('athletename', (shift @marker)->{note} );
 
 	############################################################
 	# read recording block info @86 + $marker*(15+$clen=255)
@@ -515,13 +488,13 @@ sub do_read {
 	CORE::read( $fh, $buf, 7 ) == 7
 		or croak "failed to read calibration data";
 	@_ = unpack( 'vvvx', $buf );
-	$self->zeropos( $_[0] );
-	$self->slope( $_[1] * 140 / 42781 );
+	$self->meta_field('zeropos', $_[0] );
+	$self->meta_field('slope', $_[1] * 140 / 42781 );
 	my $ckcnt = $_[2];
 
-	$self->debug( "slope=". $self->slope
-		." zero=". $self->zeropos
-		." circum=". $self->circum
+	$self->debug( "slope=". $self->meta_field('slope')
+		." zero=". $self->meta_field('zeropos')
+		." circum=". $self->meta_field('circum')
 		);
 	$self->debug( "chunks: $ckcnt, blockchunks: $block_cknext" );
 
@@ -644,7 +617,9 @@ sub do_read {
 		$self->mark_new({
 			start	=> $first->stime,
 			end	=> $last->time,
-			note	=> $mark->{note},
+			meta	=> {
+				note	=> $mark->{note},
+			},
 		});
 	}
 }
@@ -795,7 +770,9 @@ sub mark_workout {
 		store	=> $self, 
 		start	=> $self->time_start, 
 		end	=> $self->time_end,
-		note	=> substr( $self->athletename. '    ', 0, 4 ),
+		meta	=> {
+			note	=> substr( $self->meta_field('athletename'). '    ', 0, 4 ),
+		},
 	});
 }
 

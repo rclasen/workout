@@ -57,13 +57,16 @@ our $re_value = qr/^\s*(\S+)\s*=\s*(.*)\s*$/;
 our $re_colsep = qr/\s*,\s*/;
 
 our %defaults = (
+);
+__PACKAGE__->mk_accessors( keys %defaults );
+
+our %meta = (
+	sport		=> undef,
 	circum		=> 2000,
 	zeropos		=> 100,
 	slope		=> 1,
 	athletename	=> 'wkt',
 );
-__PACKAGE__->mk_accessors( keys %defaults );
-
 
 =head1 CONSTRUCTOR
 
@@ -77,9 +80,14 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a||={};
+	$a->{meta}||={};
 	$class->SUPER::new({
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		columns		=> [],
 		cap_block	=> 1,
 	});
@@ -140,7 +148,7 @@ sub parse_params {
 	
 	} elsif( $k eq 'note' ){
 		$v =~ s/\\n/\n/g;
-		$self->note( $v );
+		$self->meta_field('note', $v );
 
 	} elsif( $k eq 'columns' ){
 		my @cols = split( /$re_colsep/, lc $v);
@@ -152,19 +160,19 @@ sub parse_params {
 		$self->{columns} = \@cols;
 
 	} elsif( $k eq 'athlete' ){
-		$self->{athletename} = $v;
+		$self->meta_field('athletename', $v );
 
 	} elsif( $k eq 'sport' ){
-		$self->{sport} = $v;
+		$self->meta_field('sport', $v );
 
 	} elsif( $k eq 'circum' ){
-		$self->{circum} = $v;
+		$self->meta_field('circum', $v );
 
 	} elsif( $k eq 'slope' ){
-		$self->{slope} = $v;
+		$self->meta_field('slope', $v );
 
 	} elsif( $k eq 'zeropos' ){
-		$self->{zeropos} = $v;
+		$self->meta_field('zeropos', $v );
 
 	} elsif( $self->{debug} ){
 		$self->debug( "found unsupported field: $k" );
@@ -195,21 +203,11 @@ sub parse_markers {
 	$self->mark_new( {
 		start	=> $1,
 		end	=> $2,
-		note	=> $3,
+		meta	=> {
+			note	=> $3,
+		},
 	});
 }
-
-sub from_store {
-	my( $self, $store ) = @_;
-
-	$self->SUPER::from_store( $store );
-
-	foreach my $f (qw( circum zeropos slope athletename )){
-		$self->$f( $store->$f ) if $store->can( $f )
-			&& defined $store->$f;
-	}
-}
-
 
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
@@ -223,23 +221,23 @@ sub do_write {
 	print $fh "[Params]\n";
 	print $fh "Version=1\n";
 	print $fh "Columns=", join(",", @fields), "\n";
-	if( my $note = $self->note ){
+	if( my $note = $self->meta_field('note') ){
 		$note =~ s/\n/\\n/g;
 		print $fh "Note=", $note, "\n"
 	}
-	if( my $a = $self->athletename ){
+	if( my $a = $self->meta_field('athletename') ){
 		print $fh "Athlete=$a\n";
 	}
-	if( my $a = $self->sport ){
+	if( my $a = $self->meta_field('sport') ){
 		print $fh "Sport=$a\n";
 	}
-	if( my $a = $self->circum ){
+	if( my $a = $self->meta_field('circum') ){
 		print $fh "Circum=$a\n";
 	}
-	if( my $a = $self->slope ){
+	if( my $a = $self->meta_field('slope') ){
 		print $fh "Slope=$a\n";
 	}
-	if( my $a = $self->zeropos ){
+	if( my $a = $self->meta_field('zeropos') ){
 		print $fh "Zeropos=$a\n";
 	}
 
@@ -253,7 +251,7 @@ sub do_write {
 
 	print $fh "[Markers]\n";
 	foreach my $mk ( @{$self->marks} ){
-		my $note = $mk->note || '';
+		my $note = $mk->meta_field('note') || '';
 		$note =~ s/\n/\\n/g;
 
 		print $fh join( "\t", 

@@ -17,7 +17,7 @@ Workout::Lap - Adapter interface for reading/writing lap based files
   foreach my $lap ( $src->lap ){
   	print "lap from ", $lap->start, 
 		" to ", $lap->end,
-		": ", $lap->note, "\n";
+		": ", $lap->meta_field('note'), "\n";
 	
 	my $it = $lap->iterate;
 	while( my $c = $it->next ){
@@ -52,7 +52,12 @@ __PACKAGE__->mk_ro_accessors(qw/
 
 __PACKAGE__->mk_accessors(qw/
 	start
+	meta
 /);
+
+our %meta = (
+	note	=> '',
+);
 
 =head1 CONSTRUCTOR
 
@@ -71,6 +76,8 @@ sub new {
 	exists $a->{store}
 		or croak "missing store";
 
+	$a->{meta}||={};
+
 	my $self = $proto->SUPER::new({
 		store		=> undef,
 		start		=> undef,
@@ -78,6 +85,7 @@ sub new {
 		mark_start	=> [],
 		mark_end	=> [],
 		%$a,
+		%{$a->{meta}},
 	});
 	weaken( $self->{store} );
 	$self;
@@ -113,6 +121,30 @@ sub end {
 	return;
 }
 
+=head2 meta
+
+returns hashref with metadata. See Workout::Store for details.
+
+=head2 meta_field( $key [,$val] )
+
+set/get a field of the meta hash
+
+=cut
+
+sub meta_field {
+	my( $self, $k, @v ) = @_;
+
+	return unless defined $k;
+
+	my $m = $self->{meta};
+	if( ! @v ){
+		return unless exists $m->{$k};
+		return $m->{$k};
+	}
+	$m->{$k} = $v[0]
+}
+
+
 =head2 mark_start
 
 get list of marker starting at this lap.
@@ -139,30 +171,6 @@ sub mark_end {
 	wantarray
 		? @{$self->{mark_end}}
 		: $self->{mark_end};
-}
-
-=head2 note
-
-get the descriptional text for all Marker that caused this lap. Each
-marker's note is prefixed with "start: " or "end: " - depending on which
-timestamp of both timestamps relate to this Lap. All prefixed notes are
-joined with ";".
-
-=cut
-
-sub note {
-	my( $self ) = @_;
-
-	my @note;
-	foreach my $mark ( $self->mark_end ){
-		push @note, 'end: '.$mark->note if $mark->note;
-	}
-
-	foreach my $mark ( $self->mark_start ){
-		push @note, 'start: '.$mark->note if $mark->note;
-	}
-
-	return join('; ', @note );
 }
 
 =head2 iterate
@@ -193,6 +201,21 @@ sub info {
 	$i->finish;
 	$i;
 }
+
+=head2 info_meta( [info_args] )
+
+returns a copy of the meta hash where missing bits are automatically
+populated by calculated values of Workout::Filter::Info.
+
+=cut
+
+sub info_meta {
+	my $self = shift;
+	my $i = Workout::Filter::Info->new( $self->iterate, @_ );
+	$i->finish;
+	return $i->meta( $self->meta );
+}
+
 
 1;
 __END__

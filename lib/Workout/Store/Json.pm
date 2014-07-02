@@ -47,16 +47,19 @@ sub filetypes {
 	return "json";
 }
 
-# TODO: other tags: slope, ...
 our %defaults = (
 	recint		=> 1,
+);
+__PACKAGE__->mk_accessors( keys %defaults );
+
+# TODO: other tags: slope, ...
+our %meta = (
+	sport		=> undef,
 	athletename	=> '',
 	circum          => undef,
 	zeropos         => undef,
 	slope           => undef,
 );
-__PACKAGE__->mk_accessors( keys %defaults );
-
 
 =head1 CONSTRUCTOR
 
@@ -70,9 +73,14 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a||={};
+	$a->{meta}||={};
 	$class->SUPER::new({
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		cap_block	=> 1,
 	});
 }
@@ -111,19 +119,28 @@ sub do_read {
 	$self->recint( $recint );
 
 	if( my $t = $r->{TAGS} ){
-		$self->note( $t->{Notes} ) if exists $t->{Notes};
-		$self->sport( $t->{Sport} ) if exists $t->{Sport};
+		$self->meta_field('note', $t->{Notes} )
+			if exists $t->{Notes};
+		$self->meta_field('sport', $t->{Sport} )
+			if exists $t->{Sport};
 
 		if( exists $t->{"Athlete Name"} && $t->{"Athlete Name"} ){
-			$self->athletename( $t->{"Athlete Name"} );
+			$self->meta_field('athletename', $t->{"Athlete Name"} );
 		} elsif( exists $t->{Athlete} && $t->{Athlete} ){
-			$self->athletename( $t->{Athlete} );
+			$self->meta_field('athletename', $t->{Athlete} );
 		}
 
-		$self->circum( $t->{"Wheel Circumference"} ) if exists $t->{"Wheel Circumference"};
-		$self->slope( $t->{Slope} ) if exists $t->{Slope};
-		$self->zeropos( $t->{"Zero Offset"} ) if exists $t->{"Zero Offset"};
+		$self->meta_field('device', $t->{"Device Info"} )
+			if exists $t->{"Device Info"};
+		$self->meta_field('circum', $t->{"Wheel Circumference"} )
+			if exists $t->{"Wheel Circumference"};
+		$self->meta_field('slope', $t->{Slope} )
+			if exists $t->{Slope};
+		$self->meta_field('zeropos', $t->{"Zero Offset"} )
+			if exists $t->{"Zero Offset"};
 	}
+
+	# TODO: read meta OVERRIDES
 
 	my $dist = 0;
 
@@ -186,25 +203,15 @@ sub do_read {
 
 	foreach my $m ( @{$r->{INTERVALS}} ){
 		$self->mark_new({
-			note	=> $m->{NAME},
 			start	=> $m->{START},
 			end	=> $m->{STOP},
+			meta	=> {
+				note	=> $m->{NAME},
+			},
 		});
 	}
 }
 
-
-
-sub from_store {
-	my( $self, $store ) = @_;
-
-	$self->SUPER::from_store( $store );
-
-	foreach my $f (qw( athletename circum zeropos slope )){
-		$self->$f( $store->$f ) if $store->can( $f )
-			&& defined $store->$f;
-	}
-}
 
 my $re_protect = qr/(\\|\/|")/;
 
@@ -246,22 +253,28 @@ sub do_write {
 		"\t\t\"DEVICETYPE\":\"Workout file\",\n",
 		"\t\t\"IDENTIFIER\":\"\",\n";
 
+	# TODO: write meta OVERRIDES
+
 	print $fh "\t\t\"TAGS\":{\n",
-		"\t\t\t\"Athlete Name\":", &protect( $self->athletename ),",\n";
+		"\t\t\t\"Athlete Name\":",
+		&protect( $self->meta_field('athletename')),",\n";
 
-	print $fh "\t\t\t\"Sport\":", &protect( $self->sport ),",\n"
-		if $self->sport;
+	print $fh "\t\t\t\"Sport\":", &protect( $self->meta_field('sport')),",\n"
+		if $self->meta_field('sport');
 
-	#print $fh "\t\t\t\"Device Info\":", &protect( $self->TODO ),",\n";
+	print $fh "\t\t\t\"Device Info\":", &protect( $self->meta_field('device') ),",\n";
 
-	print $fh "\t\t\t\"Wheel Circumference\":", &protect( $self->circum ),",\n"
-		if $self->circum;
-	print $fh "\t\t\t\"Slope\":", &protect( $self->slope ),",\n"
-		if $self->slope;
-	print $fh "\t\t\t\"Zero Offset\":", &protect( $self->zeropos ),",\n"
-		if $self->zeropos;
+	print $fh "\t\t\t\"Wheel Circumference\":",
+		&protect( $self->meta_field('circum')),",\n"
+		if $self->meta_field('circum');
+	print $fh "\t\t\t\"Slope\":",
+		&protect( $self->meta_field('slope')),",\n"
+		if $self->meta_field('slope');
+	print $fh "\t\t\t\"Zero Offset\":",
+		&protect( $self->meta_field('zeropos')),",\n"
+		if $self->meta_field('zeropos');
 
-	print $fh "\t\t\t\"Notes\":", &protect( $self->note ), "\n",
+	print $fh "\t\t\t\"Notes\":", &protect( $self->meta_field('note')), "\n",
 		"\t\t},\n";
 
 
@@ -273,7 +286,7 @@ sub do_write {
 			print $fh ",\n" if $num++;
 
 			print $fh "\t\t\t{ ",
-				"\"NAME\":", &protect( $mk->note || $num ), ",",
+				"\"NAME\":", &protect( $mk->meta_field('note') || $num ), ",",
 				"\"START\":", ($mk->start - $start), ",",
 				"\"STOP\":", ($mk->end - $start ), "",
 				" }";

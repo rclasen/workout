@@ -42,7 +42,6 @@ use strict;
 use warnings;
 use base 'Workout::Store';
 use Workout::Chunk;
-use Workout::Athlete;
 use Carp;
 use DateTime;
 
@@ -55,10 +54,16 @@ sub filetypes {
 }
 
 our %defaults = (
-	sport	=> undef,
-	athlete	=> undef,
-	tz	=> 'local',
 	recint	=> 5,
+);
+
+our %meta = (
+	sport		=> undef,
+	device		=> 'Polar HRM',
+	hr_rest		=> 50,
+	hr_capacity	=> 180,
+	vo2max		=> 50,
+	weight		=> 75,
 );
 
 our %fields_supported = map { $_ => 1; } qw{
@@ -91,18 +96,24 @@ creates an empty Store.
 
 =cut
 
-# TODO: sport
+# TODO: meta sport, device, summary
 
 sub new {
 	my( $class, $a ) = @_;
 
 	$a||={};
+	$a->{meta}||={};
 	$class->SUPER::new({
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_supported	=> {
 			%fields_supported,
 		},
+		note	=> '', # tmp read
 		date	=> undef,	# tmp read
 		time	=> 0,		# tmp read
 		colfunc	=> [],		# tmp read
@@ -112,29 +123,8 @@ sub new {
 	});
 }
 
-sub from_store {
-	my( $self, $store ) = @_;
-
-	$self->SUPER::from_store( $store );
-
-	foreach my $f (qw( athlete tz )){
-		$self->$f( $store->$f ) if $store->can( $f )
-			&& defined $store->$f;
-	}
-}
-
 
 =head1 METHODS
-
-=head2 athlete
-
-set/get Workout::Athlete object for this Store. Most of it's data is part
-of the HRM file header.
-
-=head2 tz
-
-set/get timezone for reading/writing timestamps as HRM files stores them
-in local time without timezone. See DateTime.
 
 =cut
 
@@ -144,7 +134,7 @@ sub do_read {
 	my $parser;
 	my $gotparams;
 
-	$self->athlete( Workout::Athlete->new );
+	$self->{note} = "";
 
 	binmode( $fh, ':crlf:encoding(windows-1252)' );
 	while( defined(my $l = <$fh>) ){
@@ -188,6 +178,7 @@ sub do_read {
 	}
 
 	$self->mark_new_laps( $self->{laps} ) if @{$self->{laps}};
+	$self->meta_field('note', $self->{note} );
 }
 
 sub parse_params {
@@ -231,16 +222,16 @@ sub parse_params {
 		);
 
 	} elsif( $k eq 'resthr' ){
-		$self->athlete->hrrest( $v );
+		$self->meta_field( 'hr_rest', $v );
 
 	} elsif( $k eq 'maxhr' ){
-		$self->athlete->hrmax( $v );
+		$self->meta_field( 'hr_capacity', $v );
 
 	} elsif( $k eq 'weight' ){
-		$self->athlete->weight( $v );
+		$self->meta_field( 'weight', $v );
 
 	} elsif( $k eq 'vo2max' ){
-		$self->athlete->vo2max( $v );
+		$self->meta_field( 'vo2max', $v );
 
 	} elsif( $k eq 'smode' ){
 		@_ = $v =~ /$re_smode/
@@ -316,7 +307,9 @@ sub parse_inttime {
 		my $delta = $3 + 60 * ( $2 + 60 * $1 );
 		push @{ $self->{laps} }, {
 			end	=> $self->{time} + $delta,
-			note	=> undef,
+			meta	=> {
+				note	=> undef,
+			},
 		};
 	}
 }
@@ -338,7 +331,7 @@ sub parse_intnotes {
 	}
 
 	$note =~ s/\\n/\n/g;
-	$self->{laps}[$lap]{note} = $note;
+	$self->{laps}[$lap]{meta}{note} = $note;
 }
 
 sub parse_note {
@@ -378,9 +371,6 @@ sub do_write {
 	$self->chunk_count
 		or croak "no data";
 
-	my $athlete = $self->athlete
-		or croak "missing athlete info";
-
 	my $laps = $self->laps;
 
 	my %fields = map {
@@ -406,6 +396,15 @@ sub do_write {
 		time_zone	=> $self->tz,
 	); 
 
+	my $hr_cap = int( $self->meta_field( 'hr_capacity' )
+		|| $meta{hr_capacity} );
+	my $hr_rest = int( $self->meta_field( 'hr_rest' )
+		|| $meta{hr_rest} );
+	my $vo2max = int( $self->meta_field( 'vo2max' )
+		|| $meta{hr_vo2max} );
+	my $weight = int( $self->meta_field( 'weight' )
+		|| $meta{hr_weight} );
+
 	binmode( $fh, ':crlf:encoding(windows-1252)' );
 	print $fh 
 "[Params]
@@ -426,20 +425,20 @@ Timer1=0:00:00.0
 Timer2=0:00:00.0
 Timer3=0:00:00.0
 ActiveLimit=0
-MaxHR=", int($athlete->hrmax), "
-RestHR=", int($athlete->hrrest), "
+MaxHR=$hr_cap
+RestHR=$hr_rest
 StartDelay=0
-VO2max=", int($athlete->vo2max), "
-Weight=", int($athlete->weight), "
+VO2max=$vo2max
+Weight=$weight
 
 [Note]
-", $self->note||'' ,"\n\n";
+", ($self->meta_field('note')||'') ,"\n\n";
 
 
 	# write laps / Marker
 	print $fh "[IntTimes]\n";
 	foreach my $lap ( @$laps ){
-		my $info = $lap->info;
+		my $info = $lap->info; # TODO: meta use summary
 
 		my $last_chunk = $info->chunk_last
 			or next;
@@ -493,7 +492,7 @@ Weight=", int($athlete->weight), "
 
 	print $fh "[IntNotes]\n";
 	foreach my $l ( 0 .. $#$laps ){
-		my $note = $laps->[$l]->note or next;
+		my $note = $laps->[$l]->meta_field('note') or next;
 		$note =~ s/\n/\\n/g;
 		print $fh $l+1, "\t", $note, "\n";
 	}
@@ -514,7 +513,7 @@ __END__
 
 =head1 SEE ALSO
 
-Workout::Store, Workout::Athlete
+Workout::Store
 
 =head1 AUTHOR
 

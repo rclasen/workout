@@ -93,30 +93,26 @@ if( $opt_start ){
 }
 
 if( $opt_note ){
-	print $src->note, "\n";
+	print $src->meta_field('note'), "\n";
 }
 
 if( $opt_sport ){
-	print $src->sport, "\n";
+	print $src->meta_field('sport'), "\n";
 }
 
 if( $opt_slope ){
-	$src->can('slope') || die "slope is unsupported";
-	printf "\%.1f\n", $src->slope;
+	printf "\%.1f\n", $src->meta_field('slope');
 }
 
 if( $opt_circum ){
-	$src->can('circum') || die "circum is unsupported";
-	print $src->circum, "\n";
+	print $src->meta_field('circum'), "\n";
 }
 
 if( $opt_zeropos ){
-	$src->can('zeropos') || die "zeropos is unsupported";
-	print $src->zeropos, "\n";
+	print $src->meta_field('zeropos'), "\n";
 }
 
 if( $opt_athletename ){
-	$src->can('athletename') || die "athletename is unsupported";
-	print $src->athletename, "\n";
+	print $src->meta_field('athletename'), "\n";
 }
 

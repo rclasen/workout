@@ -234,7 +234,7 @@ sub end_leaf {
 
 	# segment / marker
 	} elsif( $name eq 'segname' ){
-		$self->{seg}{name} = $node->{cdata};
+		$self->{seg}{meta}{name} = $node->{cdata};
 
 	} elsif( $name eq 'segstart' ){
 		$self->{seg}{start} = $node->{cdata};
@@ -253,19 +253,19 @@ sub end_leaf {
 		$self->{Store}->debug( "start: ". $self->{start} );
 
 	} elsif( $name eq 'wksport' ){
-		$self->{Store}->sport( $node->{cdata} );
+		$self->{Store}->meta_field('sport', $node->{cdata} );
 
 	} elsif( $name eq 'wkcmt' ){
-		$self->{Store}->note( $node->{cdata} );
+		$self->{Store}->meta_field('note', $node->{cdata} );
 
 	} elsif( $name eq 'athlete' ){
-		$self->{Store}->athletename( $node->{cdata} );
+		$self->{Store}->meta_field('athletename', $node->{cdata} );
 
 	} elsif( $name eq 'sumdur' ){
-		$self->{Store}->sumdur( $node->{cdata} );
+		$self->{Store}->meta_field('dur', $node->{cdata} );
 
 	} elsif( $name eq 'sumdurstopped' ){
-		$self->{Store}->sumdurstopped( $node->{cdata} );
+		$self->{Store}->meta_field('dur_gap', $node->{cdata} );
 	}
 }
 
@@ -363,7 +363,7 @@ sub end_node {
 		$self->{seg} = {};
 
 	} elsif( $name eq 'wkdevice' ){
-		$self->{Store}->device( $node->{attr}{'{}id'}{Value} );
+		$self->{Store}->meta_field('device', $node->{attr}{'{}id'}{Value} );
 
 	}
 }
@@ -377,7 +377,7 @@ sub end_document {
 			start	=> $self->{start} + $seg->{start},
 			end	=> $self->{start} + $seg->{start}
 				+ $seg->{dur},
-			note	=> $seg->{name},
+			meta	=> $seg->{meta},
 		});
 	}
 
@@ -412,14 +412,16 @@ our %fields_supported = map { $_ => 1; } qw{
 	temp
 };
 
-# TODO: other tags: slope, ...
 our %defaults = (
-	athletename	=> 'wkt',
-	device		=> 'workout',
-	sumdur		=> '0',
-	sumdurstopped	=> '0',
 );
 __PACKAGE__->mk_accessors( keys %defaults );
+
+# TODO: other tags: slope, ...
+our %meta = (
+	sport		=> undef,
+	athletename	=> 'wkt',
+	device		=> 'Pwx',
+);
 
 
 
@@ -435,9 +437,14 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a ||= {};
+	$a->{meta}||={};
 	my $self = $class->SUPER::new( {
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_supported	=> {
 			%fields_supported,
 		},
@@ -445,18 +452,6 @@ sub new {
 	});
 	$self;
 }
-
-sub from_store {
-	my( $self, $store ) = @_;
-
-	$self->SUPER::from_store( $store );
-
-	foreach my $f (qw( athletename device sumdur sumdurstopped )){
-		$self->$f( $store->$f ) if $store->can( $f )
-			&& defined $store->$f;
-	}
-}
-
 
 sub do_read {
 	my( $self, $fh, $fname ) = @_;
@@ -512,9 +507,9 @@ sub do_write {
 
 	my $start = $self->time_start;
 	my $start_time = _time2str( $start );
-	my $note = $self->note || '';
+	my $note = $self->meta_field('note') || '';
 
-	my $info = $self->info;
+	my $info = $self->info; # TODO: meta use summary
 
 	my %io = map {
 		$_ => 1;
@@ -535,12 +530,12 @@ sub do_write {
 EOHEAD
 	print $fh
 		" <athlete>\n",
-		"  <name>", &protect($self->athletename) ,"</name>\n",
+		"  <name>", &protect($self->meta_field('athletename')) ,"</name>\n",
 		" </athlete>\n",
-		" <sportType>", &protect($self->sport) ,"</sportType>\n",
+		" <sportType>", &protect($self->meta_field('sport')) ,"</sportType>\n",
 		" <cmt>", &protect($note), "</cmt>\n",
-		" <device id=\"", &protect($self->device), "\">\n",
-		"  <make>", &protect($self->device) ,"</make>\n",
+		" <device id=\"", &protect($self->meta_field('device')), "\">\n",
+		"  <make>", &protect($self->meta_field('device')) ,"</make>\n",
 		#TODO:"  <stopdetectionsetting>", $stopdetect ,"</stopdetectionsetting>\n",
 		# TODO: write device extensions
 		" </device>\n",
@@ -565,14 +560,16 @@ EOHEAD
 		"  <alt min=\"", &n($info->ele_min),
 			"\" max=\"", &n($info->ele_max),
 			"\" avg=\"", &n($info->ele_avg), "\"/>\n",
+		# TODO: meta summary
 		" </summarydata>\n";
 
 	foreach my $m ( $self->marks ){
 		print $fh " <segment>\n",
-			"  <name>", &protect($m->note), "</name>\n",
+			"  <name>", &protect($m->meta_field('note')), "</name>\n",
 			"  <summarydata>\n",
 			"   <beginning>", $m->start - $start, "</beginning>\n",
 			"   <duration>", $m->end - $m->start, "</duration>\n",
+			# TODO: meta summary
 			"  </summarydata>\n",
 			" </segment>\n",
 	}

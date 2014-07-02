@@ -80,14 +80,19 @@ sub filetypes {
 	return;
 }
 
-__PACKAGE__->mk_accessors(qw(
-	cap_block
-	recint
-
-	note
-	sport
+our %default = (
+	tz		=> 'local',
+	cap_block	=> 0,
+	recint		=> undef,
+);
+__PACKAGE__->mk_accessors( keys %default, qw(
+	meta
 ));
 
+our %meta = (
+	sport		=> '',
+	note		=> '',
+);
 
 =head1 CONSTRUCTOR
 
@@ -100,17 +105,19 @@ Please see the matching method's description:
 
 =over 4
 
+=item tz
+
 =item recint
 
 =item cap_block
-
-=item note
 
 =item fields_essential
 
 =item fields_supported
 
 =item fields_io
+
+=item meta
 
 =back
 
@@ -120,15 +127,19 @@ sub new {
 	my( $class, $a ) = @_;
 
 	$a ||= {};
+	$a->{meta}||={};
 	my $self = $class->SUPER::new({
-		sport		=> 'Bike',
-		cap_block	=> 1,
+		%default,
 		fields_essential	=> {},
 		fields_supported	=> {
 			%fields_supported,
 		},
 		fields_io	=> {},
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		chunk		=> [],
 		mark		=> [],
 	});
@@ -203,7 +214,7 @@ sub read {
 			$self->debug( "mark ". $num++
 				.": ".  $sdate->hms . " (".  $mark->start .")"
 				." to ". $edate->hms . " (".  $mark->end .")"
-				." ". ($mark->note||'')
+				." ". ($mark->meta_field('note')||'')
 			);
 		}
 
@@ -263,8 +274,11 @@ sub from_store {
 		}
 	}
 
-	$self->note( $store->note );
-	$self->sport( $store->sport );
+	my $meta = $store->meta;
+	foreach my $k ( keys %$meta ){
+		defined $meta->{$k} or next;
+		$self->meta_field( $k, $meta->{$k} );
+	}
 }
 
 
@@ -324,12 +338,16 @@ sub write {
 }
 
 
+=head2 tz
+
+set/get timezone for reading/writing local timestamps in file types that
+don't use UTC and don't specify their timezone. See DateTime.
 
 =head2 recint
 
 recording intervall (fixed). undef when variable intervalls are allowed.
 
-=head2 recint_used
+=head2 recint_chunks
 
 fixed recording intervall as used by chunks. undef, if chunk duration
 varies.
@@ -356,13 +374,7 @@ sub recint_chunks {
 
 block capability. true when gaps between chunks are allowed.
 
-=head2 cap_note
-
-note capability. true when store supports a per-workout note/comment.
-
-=head2 note
-
-note. A per-workout comment.
+=cut
 
 =head2 fields_essential
 
@@ -803,7 +815,6 @@ sub mark_workout {
 		store	=> $self, 
 		start	=> $self->time_start, 
 		end	=> $self->time_end,
-		note	=> undef,
 	});
 }
 
@@ -818,8 +829,12 @@ Creates a new marker with specified data and adds it to this Store.
 sub mark_new {
 	my( $self, $a ) = @_;
 
+	$a->{meta}||={};
 	my %opt = (
 		%$a,
+		meta	=> {
+			%{$a->{meta}},
+		},
 		store	=> $self,
 	);
 
@@ -915,7 +930,7 @@ sub laps {
 				.' ('. $lap->start
 				.') to '. $e->hms
 				.' ('.  $end
-				.'): '. ($lap->note||'') );
+				.'): '. ($lap->meta_field('note')||'') );
 		}
 	}
 
@@ -924,16 +939,19 @@ sub laps {
 
 =head2 mark_new_laps( \@laps )
 
-converts a list with lap end timestamps and note to marker and adds them
-to this store. When possible overlapping marker are guessed from the lap
-note. See Workout::Lap on how this such a lap note should look like.
+converts a list with lap end timestamps and meta info to marker and adds
+them to this store.
 
  $store->mark_new_laps([{
  	end	=> $lap_end_time1,
-	note	=> '1',
+	meta	=> {
+		note	=> '1',
+	}
  }, {
  	end	=> $lap_end_time2,
-	note	=> '2',
+	meta	=> {
+		note	=> '2',
+	}
  });
 
 
@@ -942,17 +960,10 @@ note. See Workout::Lap on how this such a lap note should look like.
 sub mark_new_laps {
 	my( $self, $laps ) = @_;
 
-	# step1: guess overlapping marker from lap name
-	my %mark;
-	my $id = 0;
-	my $mname;
 	my $ltime = $self->time_start;
-	foreach my $lap ( @$laps ){
-		$mark{$mname}{end} ||= $lap->{end} if $mname;
-		$mname = undef;
+	foreach my $lap ( sort { $a->{end} <=> $b->{end} } @$laps ){
 
-		my $lnote = $lap->{note} || '';
-
+		$lap->{meta} ||= {};
 		if( $self->{debug} ){
 			my $sdate = DateTime->from_epoch(
 				epoch	=> $ltime,
@@ -967,36 +978,17 @@ sub mark_new_laps {
 				. " (".  $ltime
 				.") to ". $edate->hms
 				. " (".  $lap->{end}
-				."): ". ($lnote||'') );
+				."): ". ($lap->{meta}{note}||'') );
 
 		}
 
-		foreach my $part ( split(/\s*;\s*/, $lnote ) ){
-			if( my( $se, $note ) = $part =~ /^(start|end):\s*(.+)\s*$/ ){
-				$mname = lc $note;
-				$mname =~ s/\s+/./g;
-				#$self->debug( "lap-part: $mname $se:$note" );
-
-				$mark{$mname}{note} ||= $note;
-				$mark{$mname}{start} ||= $ltime;
-				$mark{$mname}{$se} = $lap->{end};
-			}
-		}
-
-		if( ! $mname ){
-			$mark{$id++} = {
-				note	=> $lnote,
-				start	=> $ltime,
-				end	=> $lap->{end},
-			};
-		}
+		$self->mark_new( {
+			start	=> $ltime,
+			end	=> $lap->{end},
+			meta	=> $lap->{meta},
+		} );
 
 		$ltime = $lap->{end};
-	}
-
-	# step2: add marker
-	foreach my $mid ( sort { $mark{$a}{start} <=> $mark{$b}{start} } keys %mark){
-		$self->mark_new( $mark{$mid} );
 	}
 }
 
@@ -1097,7 +1089,7 @@ sub dur {
 
 
 
-=head2 info
+=head2 info( [info_args] )
 
 Collects overall Data from this store and returns it as a
 finish()ed Workout::Filter::Info.
@@ -1112,11 +1104,107 @@ sub info {
 }
 
 
+=head2 info_meta( [info_args] )
 
+returns a copy of the meta hash where missing bits are automatically
+populated by calculated values of Workout::Filter::Info.
 
+=cut
+
+sub info_meta {
+	my $self = shift;
+	my $i = Workout::Filter::Info->new( $self, @_ );
+	$i->finish;
+	$i->meta( $self->meta );
+}
+
+=head2 meta
+
+returns hashref with metadata. See META INFO for details.
+
+=head2 meta_field( $key [,$val] )
+
+set/get a field of the meta hash
+
+=cut
+
+sub meta_field {
+	my( $self, $k, @v ) = @_;
+
+	return unless defined $k;
+
+	my $m = $self->{meta};
+	if( ! @v ){
+		return unless exists $m->{$k};
+		return $m->{$k};
+	}
+	$m->{$k} = $v[0]
+}
 
 1;
 __END__
+
+=head1 META INFO
+
+Some files support precalculated summary information and metadata like
+Athlete names and device information. This information is stored in the
+"meta hash".
+
+For pre-calculated summary information, please check the method names of
+Workout::Filter::Info regarding their meaning.
+
+Check the individual Stores' Documentation on additional fields they
+support.
+
+Well known meta fields are:
+
+=head2 sport
+
+Sport type. String, common values are 'Bike', 'Run', 'Swim', 'Other'
+
+=head2 note
+
+name/descrition of the workout. Supported length varies by Store.
+
+=head2 device
+
+recording device type (string)
+
+=head2 circum
+
+wheel circumference in millimeters (mm)
+
+=head2 zeropos
+
+power meter zero offset in Hertz (HZ)
+
+=head2 slope
+
+power meter slope as known from srmwin and PowerControl
+
+=cut
+
+# TODO: unit for slope
+
+=head2 athletename
+
+name of athlete. Supported length varies by Store.
+
+=head2 hr_rest
+
+Resting heartrate of athlete (1/min)
+
+=head2 hr_capacity
+
+maximum heartrate of athlete (1/min)
+
+=head2 vo2max
+
+maximum oxygen intake of athlete ( mL/(kg*min) )
+
+=head2 weight
+
+athlete weight (kg)
 
 =head1 SEE ALSO
 

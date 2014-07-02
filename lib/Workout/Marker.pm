@@ -19,7 +19,7 @@ Workout::Marker - keeps track of workout parts to highlight.
   foreach my $mark ( @$marks )){
   	print "marker from ", $mark->start, 
 		" to ", $mark->end,
-		": ", $mark->note, "\n";
+		": ", $mark->meta_field('note'), "\n";
 	
 	my $it = $mark->iterate;
 	while( my $c = $it->next ){
@@ -49,10 +49,14 @@ __PACKAGE__->mk_ro_accessors(qw/
 /);
 
 __PACKAGE__->mk_accessors(qw/
-	note
 	start
 	end
+	meta
 /);
+
+our %meta = (
+	note	=> '',
+);
 
 =head1 CONSTRUCTOR
 
@@ -72,7 +76,12 @@ sub new {
 	exists $a->{store}
 		or croak "missing store";
 
-	my $self = $proto->SUPER::new( $a );
+	$a->{meta}||={};
+
+	my $self = $proto->SUPER::new( {
+		%$a,
+		%{$a->{meta}},
+	});
 	weaken( $self->{store} );
 	$self;
 }
@@ -91,9 +100,28 @@ get/set start time of this marker (unix timestamp)
 
 get/set end time of this marker (unix timestamp)
 
-=head2 note
+=head2 meta
 
-get/set the descriptional text of this marker.
+returns hashref with metadata. See Workout::Store for details.
+
+=head2 meta_field( $key [,$val] )
+
+set/get a field of the meta hash
+
+=cut
+
+sub meta_field {
+	my( $self, $k, @v ) = @_;
+
+	return unless defined $k;
+
+	my $m = $self->{meta};
+	if( ! @v ){
+		return unless exists $m->{$k};
+		return $m->{$k};
+	}
+	$m->{$k} = $v[0]
+}
 
 =head2 dur
 
@@ -121,7 +149,7 @@ sub iterate {
 	});
 }
 
-=head2 info
+=head2 info( [info_args] )
 
 Collects overall data of chunks within this marker and returns it as a
 finish()ed Workout::Filter::Info.
@@ -133,6 +161,20 @@ sub info {
 	my $i = Workout::Filter::Info->new( $self->iterate, @_ );
 	$i->finish;
 	$i;
+}
+
+=head2 info_meta( [info_args] )
+
+returns a copy of the meta hash where missing bits are automatically
+populated by calculated values of Workout::Filter::Info.
+
+=cut
+
+sub info_meta {
+	my $self = shift;
+	my $i = Workout::Filter::Info->new( $self->iterate, @_ );
+	$i->finish;
+	return $i->meta( $self->meta );
 }
 
 =head2 time_add_delta( $delta )

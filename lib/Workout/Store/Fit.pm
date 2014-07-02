@@ -60,15 +60,22 @@ our %fields_supported = map { $_ => 1; } qw{
 
 our %defaults = (
 	recint		=> undef,
-	manufacturer	=> 1, # Garmin
-	product		=> 1169, # Edge800
-	serial		=> undef,
-	hard_version	=> undef,
-	soft_version	=> undef,
-	expenditure	=> undef, # energy guessed by heartrate
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
+our %meta = (
+	sport		=> undef,
+	manufacturer	=> 1, # Garmin
+	device		=> 1169, # Edge800
+	serial		=> undef,
+	hard_version	=> undef,
+	soft_version	=> undef,
+	work_expended	=> undef, # energy guessed by heartrate
+);
+
+use constant {
+	joule	=> 4186.8,
+};
 
 =head1 CONSTRUCTOR
 
@@ -78,15 +85,20 @@ creates an empty Store.
 
 =cut
 
-# TODO: sport
+# TODO: meta sport
 
 sub new {
 	my( $class,$a ) = @_;
 
 	$a||={};
+	$a->{meta}||={};
 	my $self = $class->SUPER::new( {
 		%defaults,
 		%$a,
+		meta	=> {
+			%meta,
+			%{$a->{meta}},
+		},
 		fields_supported	=> {
 			%fields_supported,
 		},
@@ -102,16 +114,6 @@ sub new {
 
 =cut
 
-#sub from_store {
-#	my( $self, $store ) = @_;
-#
-#	$self->SUPER::from_store( $store );
-#
-#	foreach my $f (qw( circum )){
-#		$self->$f( $store->$f ) if $store->can( $f );
-#	}
-#}
-
 sub do_write {
 	my( $self, $fh, $fname ) = @_;
 
@@ -122,7 +124,7 @@ sub do_write {
 
 	# TODO: notes??
 
-	my $info = $self->info;
+	my $info = $self->info; # TODO: meta use summary
 
 	# header
 
@@ -143,9 +145,18 @@ sub do_write {
 			base	=> FIT_UINT32Z,
 		}],
 	) or return;
-	$fit->data( 0, FIT_FILE_ACTIVITY,
-		$self->{manufacturer}, $self->{product}, $self->{serial} )
+
+	# TODO: meta lookup non-numeric manufacturer/device
+	my $manu = $self->meta_field('manufacturer');
+	$manu = $defaults{manufacturer} if $manu !~ /^\d+$/;
+
+	my $dev = $self->meta_field('device');
+	$dev = $defaults{device} if $dev !~ /^\d+$/;
+
+	$fit->data( 0, FIT_FILE_ACTIVITY, $manu, $dev,
+		$self->meta_field('serial') )
 		or return;
+
 	# TODO: support writing FIT courses, aswell
 
 	defined $fit->define_raw(
@@ -159,7 +170,8 @@ sub do_write {
 			base	=> FIT_UINT8,
 		}],
 	) or return;
-	$fit->data( 1, $self->{soft_version}, $self->{hard_version} )
+	$fit->data( 1, $self->meta_field('soft_version'),
+		$self->meta_field('hard_version') )
 		or return;
 
 
@@ -292,7 +304,7 @@ sub do_write {
 
 	# laps
 
-	# TODO summary data for laps
+	# TODO meta summary data for laps
 	defined $fit->define_raw(
 		id	=> 4,
 		message	=> FIT_MSG_LAP,
@@ -721,6 +733,7 @@ sub do_read {
 		} elsif( $msg->{message} == FIT_MSG_LAP ){ # lap
 			my( $event, $start, $elapsed, $timer, $trigger );
 			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
+			my %meta;
 
 			foreach my $f ( @{$msg->{fields}} ){
 				if( $f->{field} == 0 ){ # event
@@ -738,7 +751,8 @@ sub do_read {
 				} elsif( $f->{field} == 24 ){ # total_timer_time
 					$trigger = $f->{val};
 
-				# TODO: trigger, sport, ...
+				# TODO: trigger, ...
+				# TODO: meta sport, summary ...
 				} # else ignore
 			}
 
@@ -754,6 +768,7 @@ sub do_read {
 			push @laps, {
 				start	=> $start,
 				end	=> $xend,
+				meta	=> \%meta,
 			};
 
 		############################################################
@@ -769,8 +784,10 @@ sub do_read {
 					# do nothing
 
 				} elsif( $f->{field} == 11 ){
-					$self->{expenditure} = $f->{val};
+					$self->meta_field('work_expended',
+						joule * $f->{val} );
 				}
+				# TODO: meta sport, summary ...
 			}
 
 		############################################################
@@ -779,6 +796,8 @@ sub do_read {
 		} elsif( $msg->{message} == FIT_MSG_ACTIVITY ){ # TODO: activity
 			$self->debug( "found activity @"
 				.($msg->{timestamp} + FIT_TIME_OFFSET) );
+
+				# TODO: meta sport
 
 		############################################################
 		# file_id message
@@ -795,22 +814,24 @@ sub do_read {
 					# TODO: support courses, aswell
 
 				} elsif( $f->{field} == 1 ){ # manufacturer
-					$self->{manufacturer} = $f->{val};
+					$self->meta_field('manufacturer', $f->{val} );
 
 				} elsif( $f->{field} == 2 ){ # product
-					$self->{product} = $f->{val};
+					$self->meta_field('device', $f->{val} );
 
 				} elsif( $f->{field} == 3 ){ # serial
-					$self->{serial} = $f->{val};
+					$self->meta_field('serial', $f->{val} );
 
 				}
 			}
 
+			# TODO: meta lookup manufacturer/device string
+
 			$self->debug( "found file_id "
 				."type=". ($ftype||'-'). ", "
-				."manu=". ($self->{manufacturer}||'-'). ", "
-				."prod=". ($self->{product}||'-'). ", "
-				."seral=". ($self->{serial}||'-') );
+				."manu=". ($self->meta_field('manufacturer')||'-'). ", "
+				."prod=". ($self->meta_field('device')||'-'). ", "
+				."seral=". ($self->meta_field('serial')||'-') );
 
 		############################################################
 		# file_creator message
@@ -819,18 +840,18 @@ sub do_read {
 
 			foreach my $f ( @{$msg->{fields}} ){
 				if( $f->{field} == 0 ){ # soft version
-					$self->{soft_version} = $f->{val};
+					$self->meta_field('soft_version', $f->{val} );
 
 				} elsif( $f->{field} == 1 ){ # hard version
-					$self->{hard_version} = $f->{val};
+					$self->meta_field('hard_version', $f->{val} );
 
 				}
 
 			}
 
 			$self->debug( "found file_creator "
-				."sw=".  ($self->{soft_version}||'-') .", "
-				."hw=".  ($self->{hard_version}||'-') );
+				."sw=". ($self->meta_field('soft_version')||'-') .", "
+				."hw=".  ($self->meta_field('hard_version')||'-') );
 
 		} elsif( $msg->{message} == FIT_MSG_DEVICE_INFO  ){ # device_info
 			my %dev;
@@ -862,7 +883,7 @@ sub do_read {
 					$dev{serial}= $f->{val};
 
 				} elsif( $f->{field} == 4 ){
-					$dev{product}= $f->{val};
+					$dev{device}= $f->{val};
 
 				} elsif( $f->{field} == 5 ){
 					$dev{soft_version}= $f->{val};
@@ -876,7 +897,7 @@ sub do_read {
 				.", type=".  ($dev{type}||'')
 				.", manu=". ($dev{manu}||'')
 				.", serial=".  ($dev{serial}||'')
-				.", product=". ($dev{product}||''));
+				.", device=". ($dev{device}||''));
 
 		} elsif( $msg->{message} == 22
 			|| $msg->{message} == 72 ){ # TODO: unknown messages
@@ -918,6 +939,31 @@ sub do_read {
 1;
 __END__
 
+=head1 META INFO
+
+=head2 manufacturer
+
+manufacturer of recording device - for now as ID
+
+=head2 device
+
+recording device type - for now as ID
+
+=head2 serial
+
+serial number of recording device
+
+=head2 hard_version
+
+hardware version of recording device
+
+=head2 soft_version
+
+softwar version of recording device
+
+=head2 work_expended
+
+expended energy usually guessed by heartrate (Joule)
 
 =head1 SEE ALSO
 
