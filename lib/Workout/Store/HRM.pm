@@ -96,7 +96,7 @@ creates an empty Store.
 
 =cut
 
-# TODO: meta sport, device, summary
+# TODO: read/write meta sport, device, summary
 
 sub new {
 	my( $class, $a ) = @_;
@@ -438,19 +438,20 @@ Weight=$weight
 	# write laps / Marker
 	print $fh "[IntTimes]\n";
 	foreach my $lap ( @$laps ){
-		my $info = $lap->info; # TODO: meta use summary
+		my $info = $lap->info;
+		my $meta = $info->meta( $lap->meta );
 
-		my $last_chunk = $info->chunk_last
+		my $last_chunk = $meta->{chunk_last}
 			or next;
 
 		print $fh 
 			# row 1
 			join("\t", 
-				$self->fmtdur( $info->time_end - $self->time_start ),
+				$self->fmtdur( $meta->{time_end} - $self->time_start ),
 				int($last_chunk->hr||0),
-				int($info->hr_min||0),
-				int($info->hr_avg||0),
-				int($info->hr_max||0),
+				int($meta->{hr_min}||0),
+				int($meta->{hr_avg}||0),
+				int($meta->{hr_max}||0),
 				),"\n",
 			# row 2
 			join("\t",
@@ -466,13 +467,13 @@ Weight=$weight
 				0,	# extra1
 				0,	# extra2
 				0,	# extra3
-				int( ($info->ascent||0) /10),	# ascend
-				int( ($info->dist||0) /100),	# dist
+				int( ($meta->{ascent}||0) /10),	# ascend
+				int( ($meta->{dist}||0) /100),	# dist
 				),"\n",
 			# row 4
 			join("\t", 
 				0,	# lap type
-				int($info->dist||0),
+				int($meta->{dist}||0),
 				int($last_chunk->pwr||0),
 				int(10 * ($last_chunk->temp||0) ),
 				0,	# phase lap
