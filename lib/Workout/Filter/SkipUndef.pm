@@ -14,7 +14,6 @@ Workout::Filter::SkipUndef - Skip chunks when some fields are undef
 
 =head1 SYNOPSIS
 
-  $ath = Workout::Athlete->new;
   $src = Workout::Store::Wkt->read( "foo.gpx" );
 
   $dst = Workout::Store::Gpx->new;
