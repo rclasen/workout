@@ -823,12 +823,15 @@ sub mark_new {
 		store	=> $self,
 	);
 
+	my $start = $self->time_start // return;
+	my $end = $self->time_end // return;
+
 	# ensure that marker time span is within chunk timespan
-	if( $opt{end} > $self->time_end ){
-		$opt{end} = $self->time_end;
+	if( $opt{end} > $end ){
+		$opt{end} = $end;
 	}
-	if( $opt{start} < $self->time_start ){
-		$opt{start} = $self->time_start;
+	if( $opt{start} < $start ){
+		$opt{start} = $start;
 	}
 	if( $opt{end} <= $opt{start} ){
 		return;
