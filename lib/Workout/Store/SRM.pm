@@ -153,8 +153,8 @@ sub do_write {
 	############################################################
 	# file header
 
-	my $stime = $self->time_start;
-	my $info = $self->info; # TODO: meta use summary
+	my $info = $self->info_meta;
+	my $stime = $info->{time_start};
 
 	my $dateref = DateTime->new( 
 		year		=> 1880, 
@@ -192,7 +192,7 @@ sub do_write {
 			or croak "cannot find apropriate recint";
 
 	}
-	my $note = $self->meta_field('note') || '';
+	my $note = $info->{note} || '';
 	my $blocks = $self->blocks;
 
 	$self->debug( "writing ". @$blocks ." blocks, ".
@@ -200,7 +200,7 @@ sub do_write {
 	print $fh pack( 'A3AvvCCvvx(C/A*@71)', 
 		'SRM', $self->version,
 		$days,
-		$self->meta_field('circum')||$defaults{circum},
+		$info->{circum}||$defaults{circum},
 		$r1,
 		$r2,
 		scalar @$blocks,
@@ -216,7 +216,7 @@ sub do_write {
 
 	} $self->mark_workout, @{$self->marks} ){
 
-		my $info = $m->info; # TODO: meta use summary
+		my $info = $m->info_meta;
 
 		my $first = $self->chunk_time2idx( $m->start );
 		my $last = $self->chunk_time2idx( $m->end );
@@ -231,14 +231,14 @@ sub do_write {
 			." ". $fchunk->stime );
 
 		print $fh pack( 'Z255Cvvvvvvv', 
-			encode('cp850',($m->meta_field('note')||'')),
+			encode('cp850',($info->{note}||'')),
 			1,			# active
 			$first + 1,
 			$last + 1,
-			($info->pwr_avg||0) * 8,
-			($info->hr_avg||0) * 64,
-			($info->cad_avg||0) * 32,
-			($info->spd_avg||0) * 2500 / 9 * 3.6,
+			($info->{pwr_avg}||0) * 8,
+			($info->{hr_avg}||0) * 64,
+			($info->{cad_avg}||0) * 32,
+			($info->{spd_avg}||0) * 2500 / 9 * 3.6,
 			0,			# pwc150
 		) or croak "failed to write marker";
 	}
@@ -259,8 +259,8 @@ sub do_write {
 	# calibration data, ff
 
 	print $fh pack( 'vvvx', 
-		$self->meta_field('zeropos'),
-		$self->meta_field('slope') * 42781 / 140,
+		$info->{zeropos},
+		$info->{slope} * 42781 / 140,
 		$self->chunk_count,
 	) or croak "failed to write calibration data";
 
