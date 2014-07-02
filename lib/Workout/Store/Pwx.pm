@@ -267,6 +267,7 @@ sub end_leaf {
 	} elsif( $name eq 'sumdurstopped' ){
 		$self->{Store}->meta_field('dur_gap', $node->{cdata} );
 	}
+	# TODO: read meta summary
 }
 
 sub end_node {
@@ -505,11 +506,12 @@ sub do_write {
 
 	binmode( $fh, ':encoding(utf8)' );
 
-	my $start = $self->time_start;
-	my $start_time = _time2str( $start );
-	my $note = $self->meta_field('note') || '';
+	my $info = $self->info_meta;
 
-	my $info = $self->info; # TODO: meta use summary
+	my $start = $info->{time_start};
+	my $start_time = _time2str( $start );
+	my $note = $info->{note} || '';
+
 
 	my %io = map {
 		$_ => 1;
@@ -530,37 +532,38 @@ sub do_write {
 EOHEAD
 	print $fh
 		" <athlete>\n",
-		"  <name>", &protect($self->meta_field('athletename')) ,"</name>\n",
+		"  <name>", &protect($info->{athletename}) ,"</name>\n",
 		" </athlete>\n",
-		" <sportType>", &protect($self->meta_field('sport')) ,"</sportType>\n",
+		" <sportType>", &protect($info->{sport}) ,"</sportType>\n",
 		" <cmt>", &protect($note), "</cmt>\n",
-		" <device id=\"", &protect($self->meta_field('device')), "\">\n",
-		"  <make>", &protect($self->meta_field('device')) ,"</make>\n",
+		" <device id=\"", &protect($info->{device}), "\">\n",
+		"  <make>", &protect($info->{device}) ,"</make>\n",
 		#TODO:"  <stopdetectionsetting>", $stopdetect ,"</stopdetectionsetting>\n",
 		# TODO: write device extensions
 		" </device>\n",
 		" <time>$start_time</time>\n";
 
+$DB::single++;
 	print $fh " <summarydata>\n",
 		"  <beginning>1</beginning>\n",
-		"  <duration>", $self->dur, "</duration>\n",
-		"  <hr min=\"", $info->hr_min,
-			"\" max=\"", &n($info->hr_max),
-			"\" avg=\"", &n($info->hr_avg), "\"/>\n",
-		"  <spd min=\"", &n($info->spd_min),
-			"\" max=\"", &n($info->spd_max),
-			"\" avg=\"", &n($info->spd_avg), "\"/>\n",
-		"  <pwr min=\"", &n($info->pwr_min),
-			"\" max=\"", &n($info->pwr_max),
-			"\" avg=\"", &n($info->pwr_avg), "\"/>\n",
-		"  <cad min=\"", &n($info->cad_min),
-			"\" max=\"", &n($info->cad_max),
-			"\" avg=\"", &n($info->cad_avg), "\"/>\n",
-		"  <dist>", &round($info->dist), "</dist>\n",
-		"  <alt min=\"", &n($info->ele_min),
-			"\" max=\"", &n($info->ele_max),
-			"\" avg=\"", &n($info->ele_avg), "\"/>\n",
-		# TODO: meta summary
+		"  <duration>", &n($info->{dur}), "</duration>\n",
+		"  <hr min=\"", &n($info->{hr_min}),
+			"\" max=\"", &n($info->{hr_max}),
+			"\" avg=\"", &n($info->{hr_avg}), "\"/>\n",
+		"  <spd min=\"", &n($info->{spd_min}),
+			"\" max=\"", &n($info->{spd_max}),
+			"\" avg=\"", &n($info->{spd_avg}), "\"/>\n",
+		"  <pwr min=\"", &n($info->{pwr_min}),
+			"\" max=\"", &n($info->{pwr_max}),
+			"\" avg=\"", &n($info->{pwr_avg}), "\"/>\n",
+		"  <cad min=\"", &n($info->{cad_min}),
+			"\" max=\"", &n($info->{cad_max}),
+			"\" avg=\"", &n($info->{cad_avg}), "\"/>\n",
+		"  <dist>", &round($info->{dist}), "</dist>\n",
+		"  <alt min=\"", &n($info->{ele_min}),
+			"\" max=\"", &n($info->{ele_max}),
+			"\" avg=\"", &n($info->{ele_avg}), "\"/>\n",
+		# TODO: write meta summary
 		" </summarydata>\n";
 
 	foreach my $m ( $self->marks ){
@@ -569,7 +572,7 @@ EOHEAD
 			"  <summarydata>\n",
 			"   <beginning>", $m->start - $start, "</beginning>\n",
 			"   <duration>", $m->end - $m->start, "</duration>\n",
-			# TODO: meta summary
+			# TODO: write meta summary marker
 			"  </summarydata>\n",
 			" </segment>\n",
 	}
