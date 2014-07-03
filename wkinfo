@@ -144,11 +144,6 @@ my @fields = sort { $a cmp $b } grep { $fields->{$_} } keys %{$fields};
 
 # TODO: zones/inzone
 
-foreach my $k ( sort { $a cmp $b } keys %$smeta ){
-	defined $smeta->{$k} or next;
-	printf "%-17s%s\n", $k.':', $smeta->{$k};
-}
-
 print 
 "chunks:          ", $src->chunk_count, " (", 
 	sprintf('%.2f',$meta->{dur_rec}/$src->chunk_count), "s/chunk recint=", 
@@ -223,7 +218,14 @@ $finfo && print
 print
 "avg Torque:      ", sprintf( '%.2f', ($meta->{torque_avg}||0) ), " Nm\n", # TODO
 "max Torque:      ", sprintf( '%.2f', ($meta->{torque_max}||0) ), " Nm at ", # TODO
-	fmttime($meta->{torque_max_time}), "\n";
+	fmttime($meta->{torque_max_time}), "\n",
+"metadata:\n";
+foreach my $k ( sort { $a cmp $b } keys %$smeta ){
+	defined $smeta->{$k} or next;
+	ref $smeta->{$k} and next;
+	printf " %-16s%s\n", $k.':', $smeta->{$k};
+}
+
 
 if( $domarks ){
 	my $marks = $src->marks;
@@ -244,7 +246,8 @@ if( $domarks ){
 			time_zone	=> 'local',
 		);
 
-print "\nMarker ", $idx++, ":\n",
+		print
+"\nMarker ", $idx++, ":\n",
 "marker:          ", $mark->start, " - ", $mark->end, ": ",
 	$mark->end - $mark->start, "s\n",
 "idx:             ", $mi->src->ifirst, " - ", $mi->src->ilast, "\n",
@@ -283,7 +286,13 @@ print "\nMarker ", $idx++, ":\n",
 "total work:      ", sprintf( '%.2f', ($mim->{work}||0) / 1000 ), " kJ\n",
 "avg Power:       ", sprintf( '%.2f', ($mim->{pwr_avg}||0) ), " W\n", # TODO
 "max Power:       ", sprintf( '%.2f', ($mim->{pwr_max}||0) ), " W at ", # TODO
-	fmttime($mim->{pwr_max_time}), "\n";
+	fmttime($mim->{pwr_max_time}), "\n",
+"metadata:\n";
+		foreach my $k ( sort { $a cmp $b } keys %$mm ){
+			defined $mm->{$k} or next;
+			ref $mm->{$k} and next;
+			printf " %-16s%s\n", $k.':', $mm->{$k};
+		}
 
 	}
 }
