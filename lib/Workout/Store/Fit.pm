@@ -20,7 +20,7 @@ Workout::Store::Fit - Perl extension to read/write Garmin Fit Activity files
   	...
   }
 
-  $src->write( "out.fit" ); # TODO: not supported, yet
+  $src->write( "out.fit" );
 
 =head1 DESCRIPTION
 
@@ -66,8 +66,8 @@ __PACKAGE__->mk_accessors( keys %defaults );
 
 our %meta = (
 	sport		=> undef,
-	manufacturer	=> 1, # Garmin
-	device		=> 1169, # Edge800
+	manufacturer	=> 'garmin',
+	device		=> 'edge800',
 	serial		=> undef,
 	hard_version	=> undef,
 	soft_version	=> undef,
@@ -606,7 +606,7 @@ sub do_read {
 					++$self->{field_use}{temp};
 
 				} elsif( $f->{field} == 30 ){
-					# TODO: l-r balance
+					# TODO: chunk LR-balance
 
 				} # else ignore
 			}
@@ -695,7 +695,10 @@ sub do_read {
 			my( $event, $etype );
 
 			foreach my $f ( @{$msg->{fields}} ){
-				if( $f->{field} == 0 ){
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 0 ){
 					$event = $f->{val};
 
 				} elsif( $f->{field} == 1 ){
@@ -753,23 +756,147 @@ sub do_read {
 			my %meta;
 
 			foreach my $f ( @{$msg->{fields}} ){
-				if( $f->{field} == 0 ){ # event
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 0 ){ # event
 					$event = $f->{val};
 
 				} elsif( $f->{field} == 2 ){ # start_time
 					$start = $f->{val} + FIT_TIME_OFFSET;
 
-				} elsif( $f->{field} == 7 ){ # total_elapsed_time
-					$elapsed = $f->{val};
+				} elsif( $f->{field} == 3 ){
+					$meta{'lat_start'} =
+						$f->{val} / FIT_SEMI_DEG;
 
-				} elsif( $f->{field} == 8 ){ # total_timer_time
-					$timer = $f->{val};
+				} elsif( $f->{field} == 4 ){
+					$meta{'lon_start'} =
+						$f->{val} / FIT_SEMI_DEG;
 
-				} elsif( $f->{field} == 24 ){ # total_timer_time
-					$trigger = $f->{val};
+				} elsif( $f->{field} == 5 ){
+					$meta{'lat_end'} =
+						$f->{val} / FIT_SEMI_DEG;
 
-				# TODO: trigger, ...
-				# TODO: read meta sport, summary ... for lap
+				} elsif( $f->{field} == 6 ){
+					$meta{'lon_end'} =
+						$f->{val} / FIT_SEMI_DEG;
+
+				} elsif( $f->{field} == 7 ){
+					$meta{'dur'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 8 ){
+					$meta{'dur_rec'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 9 ){
+					$meta{'dist'} = $f->{val} / 100;
+
+				} elsif( $f->{field} == 11 ){
+					$meta{'work_expended'} =
+						joule * $f->{val};
+
+				} elsif( $f->{field} == 13 ){
+					$meta{'spd_avg'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 14 ){
+					$meta{'spd_max'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 15 ){
+					$meta{'hr_avg'} = $f->{val};
+
+				} elsif( $f->{field} == 16 ){
+					$meta{'hr_max'} = $f->{val};
+
+				} elsif( $f->{field} == 17 ){
+					$meta{'cad_avg'} = $f->{val};
+
+				} elsif( $f->{field} == 18 ){
+					$meta{'cad_max'} = $f->{val};
+
+				} elsif( $f->{field} == 19 ){
+					$meta{'pwr_avg'} = $f->{val};
+
+				} elsif( $f->{field} == 20 ){
+					$meta{'pwr_max'} = $f->{val};
+
+				} elsif( $f->{field} == 21 ){
+					$meta{'ascent'} = $f->{val};
+
+				} elsif( $f->{field} == 22 ){
+					$meta{'descent'} = $f->{val};
+
+				} elsif( $f->{field} == 23 ){
+					$meta{'if'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 24 ){
+					if( my $t = FIT_lap_trigger_id($f->{val}) ){
+						$meta{'trigger'} = $t;
+					}
+
+				} elsif( $f->{field} == 25 ){
+					if( my $s = FIT_sport_id($f->{val}) ) {
+						$meta{'sport'} = $s;
+					}
+
+				} elsif( $f->{field} == 33 ){
+					$meta{'npwr'} = $f->{val};
+
+				} elsif( $f->{field} == 34 ){
+					# TODO: lap LR-balance
+
+				} elsif( $f->{field} == 41 ){
+					$meta{'work'} = $f->{val};
+
+				} elsif( $f->{field} == 42 ){
+					$meta{'ele_avg'} = $f->{val} / 5 - 500;
+
+				} elsif( $f->{field} == 43 ){
+					$meta{'ele_max'} = $f->{val} / 5 - 500;
+
+				} elsif( $f->{field} == 45 ){
+					$meta{'grad_avg'} = $f->{val} / 100;
+
+				} elsif( $f->{field} == 48 ){
+					$meta{'grad_max'} = $f->{val} / 100;
+
+				} elsif( $f->{field} == 49 ){
+					$meta{'grad_min'} = $f->{val} / -100;
+
+				} elsif( $f->{field} == 50 ){
+					$meta{'temp_avg'} = $f->{val};
+
+				} elsif( $f->{field} == 51 ){
+					$meta{'temp_max'} = $f->{val};
+
+				} elsif( $f->{field} == 52 ){
+					$meta{'dur_mov'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 53 ){
+					$meta{'vspd_avg'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 55 ){
+					$meta{'vspd_max'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 56 ){
+					$meta{'vspd_min'} = $f->{val} / -1000;
+
+				} elsif( $f->{field} == 57 ){
+					$meta{'dur_zone_hr'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 58 ){
+					$meta{'dur_zone_spd'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 59 ){
+					$meta{'dur_zone_cad'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 60 ){
+					$meta{'dur_zone_pwr'} = $f->{val} / 1000;
+
+				} elsif( $f->{field} == 62 ){
+					$meta{'ele_min'} = $f->{val} / 5 - 500;
+
+				} elsif( $f->{field} == 63 ){
+					$meta{'hr_min'} = $f->{val};
+
 				} # else ignore
 			}
 
@@ -797,30 +924,187 @@ sub do_read {
 		############################################################
 		# session message
 
-		} elsif( $msg->{message} == FIT_MSG_SESSION ){ # TODO: session
-			$self->debug( "found session @"
-				.($msg->{timestamp} + FIT_TIME_OFFSET) );
+		} elsif( $msg->{message} == FIT_MSG_SESSION ){
+			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
+			$self->debug( "found session @" . $end );
+			$self->meta_field('time_end', $end );
 
 			foreach my $f ( @{$msg->{fields}} ){
 
 				if( ! defined $f->{val} ){
 					# do nothing
 
+				} elsif( $f->{field} == 2 ){
+					$self->meta_field('time_start',
+						$f->{val} + FIT_TIME_OFFSET );
+
+				} elsif( $f->{field} == 3 ){
+					$self->meta_field('lat_start',
+						$f->{val} / FIT_SEMI_DEG );
+
+				} elsif( $f->{field} == 4 ){
+					$self->meta_field('lon_start',
+						$f->{val} / FIT_SEMI_DEG );
+
+				} elsif( $f->{field} == 5 ){
+					if( my $s = FIT_sport_id($f->{val}) ) {
+						$self->meta_field('sport', $s );
+					}
+
+				} elsif( $f->{field} == 7 ){
+					$self->meta_field('dur',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 8 ){
+					$self->meta_field('dur_rec',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 9 ){
+					$self->meta_field('dist',
+						$f->{val} / 100 );
+
 				} elsif( $f->{field} == 11 ){
 					$self->meta_field('work_expended',
 						joule * $f->{val} );
+
+				} elsif( $f->{field} == 14 ){
+					$self->meta_field('spd_avg',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 15 ){
+					$self->meta_field('spd_max',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 16 ){
+					$self->meta_field('hr_avg',
+						$f->{val} );
+
+				} elsif( $f->{field} == 17 ){
+					$self->meta_field('hr_max',
+						$f->{val} );
+
+				} elsif( $f->{field} == 18 ){
+					$self->meta_field('cad_avg',
+						$f->{val} );
+
+				} elsif( $f->{field} == 19 ){
+					$self->meta_field('cad_max',
+						$f->{val} );
+
+				} elsif( $f->{field} == 20 ){
+					$self->meta_field('pwr_avg',
+						$f->{val} );
+
+				} elsif( $f->{field} == 21 ){
+					$self->meta_field('pwr_max',
+						$f->{val} );
+
+				} elsif( $f->{field} == 22 ){
+					$self->meta_field('ascent',
+						$f->{val} );
+
+				} elsif( $f->{field} == 23 ){
+					$self->meta_field('descent',
+						$f->{val} );
+
+				} elsif( $f->{field} == 34 ){
+					$self->meta_field('npwr',
+						$f->{val} );
+
+				} elsif( $f->{field} == 35 ){
+					$self->meta_field('tss',
+						$f->{val} / 10 );
+
+				} elsif( $f->{field} == 36 ){
+					$self->meta_field('if',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 37 ){
+					# TODO session LR-balance
+
+				} elsif( $f->{field} == 48 ){
+					$self->meta_field('work',
+						$f->{val} );
+
+				} elsif( $f->{field} == 49 ){
+					$self->meta_field('ele_avg',
+						$f->{val} / 5 - 500 );
+
+				} elsif( $f->{field} == 50 ){
+					$self->meta_field('ele_max',
+						$f->{val} / 5 - 500 );
+
+				} elsif( $f->{field} == 52 ){
+					$self->meta_field('grad_avg',
+						$f->{val} / 100 );
+
+				} elsif( $f->{field} == 55 ){
+					$self->meta_field('grad_max',
+						$f->{val} / 100 );
+
+				} elsif( $f->{field} == 56 ){
+					$self->meta_field('grad_min',
+						$f->{val} / -100 );
+
+				} elsif( $f->{field} == 57 ){
+					$self->meta_field('temp_avg',
+						$f->{val} );
+
+				} elsif( $f->{field} == 58 ){
+					$self->meta_field('temp_max',
+						$f->{val} );
+
+				} elsif( $f->{field} == 59 ){
+					$self->meta_field('dur_mov',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 60 ){
+					$self->meta_field('vspd_avg',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 62 ){
+					$self->meta_field('vspd_max',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 63 ){
+					$self->meta_field('vspd_min',
+						$f->{val} / -1000 );
+
+				} elsif( $f->{field} == 64 ){
+					$self->meta_field('hr_min',
+						$f->{val} );
+
+				} elsif( $f->{field} == 65 ){
+					$self->meta_field('dur_zone_hr',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 66 ){
+					$self->meta_field('dur_zone_spd',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 67 ){
+					$self->meta_field('dur_zone_cad',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 68 ){
+					$self->meta_field('dur_zone_pwr',
+						$f->{val} / 1000 );
+
+				} elsif( $f->{field} == 71 ){
+					$self->meta_field('ele_min',
+						$f->{val} / 5 - 500 );
+
 				}
-				# TODO: read meta summary ... session
 			}
 
 		############################################################
 		# activity message
 
-		} elsif( $msg->{message} == FIT_MSG_ACTIVITY ){ # TODO: activity
+		} elsif( $msg->{message} == FIT_MSG_ACTIVITY ){
 			$self->debug( "found activity @"
 				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 
-				# TODO: read meta sport activity
+			 # TODO: are there any meainingful activity fields?
 
 		############################################################
 		# file_id message
@@ -830,7 +1114,10 @@ sub do_read {
 			my( $manu, $prod );
 
 			foreach my $f ( @{$msg->{fields}} ){
-				if( $f->{field} == 0 ){ # type
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 0 ){ # type
 					$ftype = $f->{val};
 					$ftype == FIT_FILE_ACTIVITY
 						or warn "no activity file, unsupported";
@@ -878,7 +1165,10 @@ sub do_read {
 		} elsif( $msg->{message} == FIT_MSG_FILE_CREATOR ){ # file_creator
 
 			foreach my $f ( @{$msg->{fields}} ){
-				if( $f->{field} == 0 ){ # soft version
+				if( ! defined $f->{val} ){
+					# do nothing
+
+				} elsif( $f->{field} == 0 ){ # soft version
 					$self->meta_field('soft_version', $f->{val} );
 
 				} elsif( $f->{field} == 1 ){ # hard version
@@ -932,6 +1222,8 @@ sub do_read {
 
 				}
 			}
+
+			# TODO: use device message instead of session
 			$self->debug( "device idx=". ($dev{idx}||'')
 				.", type=".  ($dev{type}||'')
 				.", manu=". ($dev{manu}||'')
