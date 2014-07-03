@@ -48,6 +48,11 @@ timeoffset=0.
 
 =cut
 
+# verify with:
+# xmllint -noout --schema http://www.peaksware.com/PWX/1/0/pwx.xsd $fname
+
+# TODO: support multiple activities, don't merge them silently
+
 package Workout::Store::Pwx::Read;
 use base 'Workout::XmlDescent';
 use strict;

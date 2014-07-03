@@ -235,6 +235,8 @@ our %fields_supported = map { $_ => 1; } qw{
 	ele
 };
 
+# TODO: support reading routes
+# TODO: support multiple tracks, don't merge them silently
 # TODO: use $pt->{extensions} = {} to store hr, cad, work, temp
 # TODO: verify read values are numbers
 
@@ -272,8 +274,6 @@ sub new {
 sub do_read {
 	my( $self, $fh, $fname ) = @_;
 
-	# TODO: allow filtering tracks by name/id
-	# TODO: support reading routes
 	my $parser = XML::SAX::ParserFactory->parser(
 		Handler	=> Workout::Store::Gpx::Read->new({
 			Store	=> $self,

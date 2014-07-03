@@ -43,9 +43,14 @@ use warnings;
 use DateTime;
 use Geo::Distance;
 use Workout::Chunk;
+use Workout::Constant qw/KCAL/;
 use Carp;
 
 # TODO: verify read values are numbers
+# TODO: support multiple activities, don't merge them silently
+# TODO: support multisport activities
+# TODO: research extensions
+# TODO: meta read device
 
 our %nodes = (
 	top	=> {
@@ -70,11 +75,52 @@ our %nodes = (
 	actnote	=> undef,
 
 	lap	=> {
-		track	=> 'track',
-		notes	=> 'lapnote',
+		notes			=> 'lapnote',
+		totaltimeseconds	=> 'lapdur',
+		distancemeters		=> 'lapdist',
+		maximumspeed		=> 'lapspdmax',
+		calories		=> 'lapcalories',
+		averageheartratebpm	=> 'laphravg',
+		maximumheartratebpm	=> 'laphrmax',
+		cadence			=> 'lapcad',
+		# TODO: meta read lap trigger, intensity, extensions
+		track			=> 'track',
+		extensions		=> 'lapextensions',
 		'*'	=> 'ignore',
 	},
-	lapnote	=> undef,
+	lapnote		=> undef,
+	lapdur		=> undef,
+	lapdist		=> undef,
+	lapspdmax	=> undef,
+	lapcalories	=> undef,
+	lapcad		=> undef,
+
+	laphravg	=> {
+		laphravgval	=> undef,
+		'*'	=> 'ignore',
+	},
+
+	laphrmax	=> {
+		laphrmaxval	=> undef,
+		'*'	=> 'ignore',
+	},
+
+	lapextensions	=> {
+		lx	=> 'laplx',
+		'*'	=> 'ignore',
+	},
+
+	laplx	=> {
+		maxbikecadence	=> 'lapcadmax',
+		avgspeed	=> 'lapspdavg',
+		avgwatts	=> 'lappwravg',
+		maxwatts	=> 'lappwrmax',
+		'*'	=> 'ignore',
+	},
+	lapcadmax		=> undef,
+	lapspdavg		=> undef,
+	lappwravg		=> undef,
+	lappwrmax		=> undef,
 
 	track	=> {
 		trackpoint	=> 'trackpoint'
@@ -104,6 +150,7 @@ our %nodes = (
 	},
 	trktpx => {
 		watts	=> 'trkpwr',
+		speed	=> 'trkspd',
 		'*'	=> 'ignore',
 	},
 	trktime	=> undef,
@@ -114,6 +161,7 @@ our %nodes = (
 	trkcad	=> undef,
 	trkhr	=> undef,
 	trkpwr	=> undef,
+	trkspd	=> undef,
 
 	ignore	=> {
 		'*'	=> 'ignore',
@@ -161,8 +209,7 @@ sub new {
 		time	=> 0,
 		odo	=> 0,
 		trackcnt	=> 0,
-		actnote	=> undef,
-		lapnote	=> undef,
+		lap	=> {},
 		laps	=> [],
 		pt	=> {}, # current point
 		lpt	=> undef, # last point
@@ -201,16 +248,52 @@ sub end_leaf {
 		$self->{pt}{pwr} = $node->{cdata};
 		++$self->{field_use}{work};
 
+	} elsif( $name eq 'trkspd' ){
+		#$self->{pt}{spd} = $node->{cdata}; # TODO
+
 	} elsif( $name eq 'trkhr' ){
 		$self->{pt}{hr} = $node->{cdata};
 		++$self->{field_use}{hr};
 
 	} elsif( $name eq 'lapnote' ){
-		$self->{lapnote} = $node->{cdata};
+		$self->{lap}{note} = $node->{cdata};
+
+	} elsif( $name eq 'lapdur' ){
+		$self->{lap}{dur} = $node->{cdata};
+
+	} elsif( $name eq 'lapdist' ){
+		$self->{lap}{dist} = $node->{cdata};
+
+	} elsif( $name eq 'lapspdmax' ){
+		$self->{lap}{spd_max} = $node->{cdata};
+
+	} elsif( $name eq 'lapcalories' ){
+		$self->{lap}{work_expended} = $node->{cdata} * KCAL;
+
+	} elsif( $name eq 'laphravgval' ){
+		$self->{lap}{hr_avg} = $node->{cdata};
+
+	} elsif( $name eq 'laphrmaxval' ){
+		$self->{lap}{hr_max} = $node->{cdata};
+
+	} elsif( $name eq 'lapcad' ){
+		$self->{lap}{cad_avg} = $node->{cdata};
+
+	} elsif( $name eq 'lapcadmax' ){
+		$self->{lap}{cad_max} = $node->{cdata};
+
+	} elsif( $name eq 'lapspdavg' ){
+		$self->{lap}{spd_avg} = $node->{cdata};
+
+	} elsif( $name eq 'lappwravg' ){
+		$self->{lap}{pwr_avg} = $node->{cdata};
+
+	} elsif( $name eq 'lappwrmax' ){
+		$self->{lap}{pwr_max} = $node->{cdata};
 
 	} elsif( $name eq 'actnote' ){
-		# TODO: silently merges multiple activities
-		$self->{actnote} ||= $node->{cdata};
+		$self->{Store}->meta_field('note', $node->{cdata} )
+			if ! $self->{Store}->meta_field('note');
 	}
 }
 
@@ -227,23 +310,18 @@ sub end_node {
 		++$self->{trackcnt};
 
 	} elsif( $name eq 'lap' ){
-		# TODO: read meta summary ... lap
 		if( my $endtime = $self->{Store}->time_end ){
 			push @{ $self->{laps} }, {
 				end	=> $endtime,
-				meta	=> {
-					note	=> $self->{lapnote},
-				},
+				meta	=> $self->{lap},
 			};
 		}
-		$self->{lapnote} = undef;
+		$self->{lap} = {};
 		$self->{trackcnt} = 0;
 
 	} elsif( $name eq 'activity' ){
-		# TODO: read meta summary, device activity
 		my $sport = $node->{attr}{'{}Sport'}{Value};
 
-		$self->{Store}->meta_field('note', $self->{actnote} );
 		$self->{Store}->wk_sport( $sport );
 		$self->{Store}->mark_new_laps( $self->{laps} );
 		$self->{laps} = [];
@@ -345,7 +423,6 @@ sub end_document {
 	$self->{Store}->fields_io( @fields );
 
 	$self->{field_use} = {};
-	$self->{actnote} = undef;
 
 	1;
 }
@@ -390,11 +467,11 @@ our %wk_sport = (
 );
 
 our %tcx_sport = (
-	biking		=> 'Biking',
-	bike		=> 'Biking',
-	running		=> 'Running',
-	run		=> 'Running',
 	other		=> 'Other',
+	bike		=> 'Biking',
+	biking		=> 'Biking',
+	run		=> 'Running',
+	running		=> 'Running',
 	# everything else is mapped to 'Other', aswell
 );
 
@@ -539,7 +616,7 @@ EOHEAD
 			"</MaximumHeartRateBpm>\n"
 			if $write{hr} && $info->{hr_max} && $info->{hr_max} >= 1;
 
-		# TODO: Intensity = Active|Resting
+		# TODO: write Intensity = Active|Resting
 		print $fh "<Intensity>Active</Intensity>\n";
 
 		print $fh "<Cadence>", int($info->{cad_avg} || 0), "</Cadence>\n"
@@ -588,7 +665,7 @@ EOHEAD
 			print $fh "<Cadence>", $c->cad,"</Cadence>\n"
 				if $write{cad} && defined $c->cad;
 
-			# TODO: SensorState = Absent|Present
+			# TODO: write SensorState = Absent|Present
 			print $fh "<SensorState>Present</SensorState>\n";
 
 			print $fh "<Extensions>\n",
