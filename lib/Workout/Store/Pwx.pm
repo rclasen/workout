@@ -85,9 +85,11 @@ our %nodes = (
 
 	wkathlete	=> {
 		name	=> 'athlete',
+		weight	=> 'weight',
 		'*'	=> 'ignore',
 	},
 	athlete	=> undef,
+	weight	=> undef,
 
 	wkdevice	=> {
 		# TODO: look for device extensions
@@ -380,6 +382,9 @@ sub end_leaf {
 
 	} elsif( $name eq 'athlete' ){
 		$self->{Store}->meta_field('athletename', $node->{cdata} );
+
+	} elsif( $name eq 'weight' ){
+		$self->{Store}->meta_field('weight', $node->{cdata} );
 
 	} elsif( $name eq 'sumstart' ){
 		$self->{Store}->meta_field('dur_start', $node->{cdata} );
