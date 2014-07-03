@@ -85,18 +85,31 @@ sub FIT_activity_subtype_id {
 	return $activity_subtype_id{$_[0]}
 }
 
+# Note: adjusted to match workout sport types
 our %activity_type = (
-	"generic" => 0,
+	"other" => 0,
+	"run" => 1,
 	"running" => 1,
-	"cycling" => 2,
+	"bike" => 2,
+	"biking" => 2,
 	"transition" => 3,
-	"fitness_equipment" => 4,
+	"fitness" => 4,
+	"swim" => 5,
 	"swimming" => 5,
-	"walking" => 6,
+	"walk" => 6,
 	"all" => 254,
 );
 
-our %activity_type_id = reverse %activity_type;
+our %activity_type_id = (
+	0 => "Other",
+	1 => "Run",
+	2 => "Bike",
+	3 => "transition",
+	4 => "Fitness",
+	5 => "Swim",
+	6 => "Walk",
+	254 => "all",
+);
 
 sub FIT_activity_type {
 	exists $activity_type{$_[0]} or return;
@@ -615,18 +628,23 @@ sub FIT_session_trigger_id {
 	return $session_trigger_id{$_[0]}
 }
 
+# Note: adjusted to match workout sports
 our %sport = (
-	"generic" => 0,
+	"other" => 0,
+	"run" => 1,
 	"running" => 1,
-	"cycling" => 2,
+	"bike" => 2,
+	"biking" => 2,
 	"transition" => 3,
-	"fitness_equipment" => 4,
+	"fitness" => 4,
+	"swim" => 5,
 	"swimming" => 5,
 	"basketball" => 6,
 	"soccer" => 7,
 	"tennis" => 8,
 	"american_football" => 9,
 	"training" => 10,
+	"walk" => 11,
 	"walking" => 11,
 	"cross_country_skiing" => 12,
 	"alpine_skiing" => 13,
@@ -639,7 +657,29 @@ our %sport = (
 	"all" => 254,
 );
 
-our %sport_id = reverse %sport;
+our %sport_id = (
+	0 => "Other",
+	1 => "Run",
+	2 => "Bike",
+	3 => "transition",
+	4 => "fitness",
+	5 => "Swim",
+	6 => "basketball",
+	7 => "soccer",
+	8 => "tennis",
+	9 => "american_football",
+	10 => "training",
+	11 => "Walk",
+	12 => "cross_country_skiing",
+	13 => "alpine_skiing",
+	14 => "snowboarding",
+	15 => "rowing",
+	16 => "mountaineering",
+	17 => "hiking",
+	18 => "multisport",
+	19 => "paddling",
+	254 => "all",
+);
 
 sub FIT_sport {
 	exists $sport{$_[0]} or return;
