@@ -32,6 +32,7 @@ information inapropriate for this framework.
 
 =cut
 
+# TODO: support multiple activities, don't merge them silently
 
 package Workout::Store::Fit;
 use 5.008008;
@@ -692,7 +693,7 @@ sub do_read {
 
 		} elsif( $msg->{message} == FIT_MSG_EVENT ){ # event
 			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
-			my( $event, $etype );
+			my( $event, $etype, $data16, $data32 );
 
 			foreach my $f ( @{$msg->{fields}} ){
 				if( ! defined $f->{val} ){
@@ -703,6 +704,12 @@ sub do_read {
 
 				} elsif( $f->{field} == 1 ){
 					$etype = $f->{val};
+
+				} elsif( $f->{field} == 2 ){
+					$data16 = $f->{val};
+
+				} elsif( $f->{field} == 3 ){
+					$data32 = $f->{val};
 
 				}
 			}
@@ -721,13 +728,17 @@ sub do_read {
 					$self->debug( "found ".
 						( $etype == 0  ? 'start' : 'stop' )
 						." event @". $end
+						.", d16=". ($data16||'-')
+						.", d32=". ($data32||'-')
 						.", last: ".  ($self->time_end||0) );
 
 					$event_last_time = $end;
 
 				} else {
 					$self->debug( "found unhandled timer event $etype @"
-							.($msg->{timestamp} + FIT_TIME_OFFSET));
+						.($msg->{timestamp} + FIT_TIME_OFFSET)
+						.", d16=". ($data16||'-')
+						.", d32=". ($data32||'-') );
 				}
 
 			} elsif( $event >= 12 && $event <= 21 ){
@@ -743,7 +754,9 @@ sub do_read {
 
 			} else {
 				$self->debug( "found unhandled event $event/$etype @"
-					.($msg->{timestamp} + FIT_TIME_OFFSET));
+					.($msg->{timestamp} + FIT_TIME_OFFSET)
+					.", d16=". ($data16||'-')
+					.", d32=". ($data32||'-') );
 			}
 
 
@@ -751,7 +764,7 @@ sub do_read {
 		# lap message
 
 		} elsif( $msg->{message} == FIT_MSG_LAP ){ # lap
-			my( $event, $start, $elapsed, $timer, $trigger );
+			my( $event, $start );
 			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
 			my %meta;
 
@@ -905,15 +918,15 @@ sub do_read {
 				next;
 			}
 
-			my $xend = $elapsed
-				? $start + int( .5 + $elapsed/1000 )
+			my $xend = $meta{'dur'}
+				? $start + int( .5 + $meta{'dur'}/1000 )
 				: $end;
 
 			$self->debug( "found lap $start to $end/$xend: ". ($end-$start)
-				.", elapsed=".  ($elapsed||'')
-				.", timer=". ($timer||'')
+				.", elapsed=".  ($meta{'dur'}||'')
+				.", timer=". ($meta{'dur_rec'}||'')
 				.", event=". ($event||'')
-				.", trigger=". ($trigger||'') );
+				.", trigger=". ($meta{'trigger'}||'') );
 
 			push @laps, {
 				start	=> $start,
