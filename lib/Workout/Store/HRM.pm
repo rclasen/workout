@@ -42,6 +42,7 @@ use strict;
 use warnings;
 use base 'Workout::Store';
 use Workout::Chunk;
+use Workout::Constant qw/:all/;
 use Carp;
 use DateTime;
 
@@ -60,6 +61,7 @@ our %defaults = (
 our %meta = (
 	sport		=> undef,
 	device		=> 'Polar HRM',
+	manufacturer	=> 'Polar',
 	hr_rest		=> 50,
 	hr_capacity	=> 180,
 	vo2max		=> 50,
@@ -83,8 +85,35 @@ our $re_value = qr/^\s*(\S+)\s*=\s*(\S*)\s*$/;
 our $re_date = qr/^(\d\d\d\d)(\d\d)(\d\d)$/;
 our $re_time = qr/^(\d+):(\d+):((\d+)(\.\d+))?$/;
 our $re_smode = qr/^(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)(\d)?$/;
-our $re_lap0 = qr/^(\d+):(\d+):((\d+)(\.\d+))?\t/;
+our $re_lapsep = qr/\s+/;
+our $re_laptime = qr/^(\d+):(\d+):((\d+)(\.\d+))?$/;
 our $re_lapnote = qr/(\d+)\t(.*)/;
+
+our %devs = (
+	1	=> "Sport Tester",
+	2	=> "Vantage NV",
+	3	=> "Accurex Plus",
+	4	=> "XTrainer Plus",
+	6	=> "S520",
+	7	=> "Coach",
+	8	=> "S210",
+	9	=> "S410",
+	10	=> "S510",
+	11	=> "S610",
+	12	=> "S710",
+	13	=> "S810",
+	15	=> "E600",
+	20	=> "AXN500",
+	21	=> "AXN700",
+	22	=> "S725X",
+	23	=> "S725",
+	33	=> "CS400",
+	34	=> "CS600X",
+	35	=> "CS600",
+	36	=> "RS400",
+	37	=> "RS800",
+	38	=> "RS800X",
+);
 
 __PACKAGE__->mk_accessors( keys %defaults );
 
@@ -95,8 +124,6 @@ __PACKAGE__->mk_accessors( keys %defaults );
 creates an empty Store.
 
 =cut
-
-# TODO: read/write meta sport, device, summary
 
 sub new {
 	my( $class, $a ) = @_;
@@ -113,7 +140,8 @@ sub new {
 		fields_supported	=> {
 			%fields_supported,
 		},
-		note	=> '', # tmp read
+		note	=> '',		# tmp read
+		metric	=> 1,		# tmp read
 		date	=> undef,	# tmp read
 		time	=> 0,		# tmp read
 		colfunc	=> [],		# tmp read
@@ -163,12 +191,19 @@ sub do_read {
 			} elsif( $blockname eq 'intnotes' ){
 				$parser = \&parse_intnotes;
 
+			} elsif( $blockname eq 'extradata' ){
+				# TODO: read meta extradata definition
+
+			} elsif( $blockname eq 'trip' ){
+				$parser = \&parse_trip;
+
 			} elsif( $blockname eq 'note' ){
 				$parser = \&parse_note;
 
 			} else {
 				$parser = undef;
 			}
+			# TODO: read meta threshold/zone limits+times
 
 		} elsif( $parser ){
 			$parser->( $self, $l );
@@ -193,6 +228,11 @@ sub parse_params {
 		($v == 106 || $v == 107)
 			or croak "unsupported version: $v";
 	
+	} elsif( $k eq 'monitor' ){
+		if( exists $devs{$v} ){
+			$self->meta_field( 'device', "Polar $devs{$v}" );
+		}
+
 	} elsif( $k eq 'interval' ){
 		($v == 238 || $v == 204)
 			and croak "unsupported data interval: $v";
@@ -218,7 +258,7 @@ sub parse_params {
 			hours	=> $1,
 			minutes	=> $2,
 			seconds	=> $4,
-			nanoseconds	=> $5 * 1000000000,
+			nanoseconds	=> $5 * &NSEC,
 		);
 
 	} elsif( $k eq 'resthr' ){
@@ -238,17 +278,22 @@ sub parse_params {
 			or croak "invalid smode";
 
 		# set unit conversion multiplieres
-		my( $mdist, $mele );
+		my( $mspd, $mele );
 		if( $_[7] ){ # uk
+			$self->{metric} = 0;
+
 			# 0.1 mph -> m/s
 			# ($x/10 * 1.609344)/3.6
-			$mdist = 1.609344/10/3.6;
+			$mspd = &MPH / 10;
 			# ft -> m
-			$mele = 0.3048;
+			$mele = &FEET;
+
 		} else { # metric
+			$self->{metric} = 1;
+
 			# 0.1 km/h -> m/s
 			# ($x/10)/3.6
-			$mdist = 1 / 36;
+			$mspd = 1 / 10 / &KMH ;
 			# m
 			$mele = 1;
 		}
@@ -260,7 +305,7 @@ sub parse_params {
 		if( $_[0] ){
 			push @fields, 'dist';
 			push @colfunc, sub {
-				'dist' => $_[0] * $mdist * $self->recint;
+				'dist' => $_[0] * $mspd * $self->recint;
 			};
 		}
 
@@ -285,6 +330,7 @@ sub parse_params {
 			};
 		}
 
+		# TODO: support LR-balance
 		# not supported, ignore:
 		#push @colfunc, sub { 'pbal' => $_[0] } if ($5||$6) && $9;
 		#push @colfunc, sub { 'air' => $_[0] } if $9;
@@ -298,8 +344,12 @@ sub parse_params {
 sub parse_inttime {
 	my( $self, $l ) = @_;
 
-	if( 0 == ($self->{blockline} % 5) ){
-		if( $l !~ /$re_lap0/ ){
+	my $row = $self->{blockline} % 5;
+	my $id = int($self->{blockline} / 5 );
+	my @f = split /$re_lapsep/,$l;
+
+	if( $row == 0 ){
+		if( $f[0] !~ /$re_laptime/ ){
 			carp "invalid lap time in line $.";
 			return;
 		}
@@ -309,8 +359,34 @@ sub parse_inttime {
 			end	=> $self->{time} + $delta,
 			meta	=> {
 				note	=> undef,
+				hr_min	=> $f[2],
+				hr_avg	=> $f[3],
+				hr_max	=> $f[4],
 			},
 		};
+
+	} elsif( $row == 1 ){
+		my $ele = $f[3]*10 *( $self->{metric} ? 1 : &FEET );
+
+		$self->{laps}[$id]{ele} = $ele if $ele;
+
+	} elsif( $row == 2 ){
+		# TODO: read meta lap extra-data 1-3
+		my $asc = $f[3]*10 *( $self->{metric} ? 1 : &FEET );
+		my $dist = $f[4]/10 *( $self->{metric} ? 1000 : &MILE );
+
+		$self->{laps}[$id]{ascent} = $asc if $asc;
+		$self->{laps}[$id]{dist} = $dist if $dist;
+
+	} elsif( $row == 3 ){
+		# TODO: read meta lap type
+		my $dist = $f[1] *( $self->{metric} ? 1 : &YARD );
+		my $temp = $self->{metric}
+			? $f[3] # Celsius
+			: 5*($f[3] - 32 )/9; # farenheit
+
+		$self->{laps}[$id]{dist} = $dist if $dist;
+		$self->{laps}[$id]{temp} = $temp if $f[3];
 	}
 }
 
@@ -332,6 +408,51 @@ sub parse_intnotes {
 
 	$note =~ s/\\n/\n/g;
 	$self->{laps}[$lap]{meta}{note} = $note;
+}
+
+sub parse_trip {
+	my( $self, $l ) = @_;
+
+	my $row = $self->{blockline};
+	if( $row == 0 ){
+		my $v = $l / 10 * ($self->{metric}
+			? 1000 : &MILE );
+		$self->meta_field('dist', $v );
+
+	} elsif( $row == 1 ){
+		my $v = $l / ($self->{metric}
+			? 1 : &FEET );
+		$self->meta_field('ascent', $v );
+
+	} elsif( $row == 2 ){
+		$self->meta_field('dur', $l );
+
+	} elsif( $row == 3 ){
+		my $v = $l / ($self->{metric}
+			? 1 : &FEET );
+		$self->meta_field('ele_avg', $v );
+
+	} elsif( $row == 4 ){
+		my $v = $l / ($self->{metric}
+			? 1 : &FEET );
+		$self->meta_field('ele_max', $v );
+
+	} elsif( $row == 5 ){
+		my $v = $l / 128 * ($self->{metric}
+			? &KMH : &MPH );
+		$self->meta_field('spd_avg', $v );
+
+	} elsif( $row == 6 ){
+		my $v = $l / 128 * ($self->{metric}
+			? &KMH : &MPH );
+		$self->meta_field('spd_max', $v );
+
+	} elsif( $row == 7 ){
+		my $v = $l * ($self->{metric}
+			? 1000 : &MILE );
+		$self->meta_field('odo', $v );
+
+	}
 }
 
 sub parse_note {
@@ -405,6 +526,8 @@ sub do_write {
 	my $weight = int( $self->meta_field( 'weight' )
 		|| $meta{hr_weight} );
 
+	# TODO: write meta device, summary
+
 	binmode( $fh, ':crlf:encoding(windows-1252)' );
 	print $fh 
 "[Params]
@@ -458,7 +581,7 @@ Weight=$weight
 				0,	# flags
 				0,	# rectime
 				0,	# rechr
-				int( ($last_chunk->spd||0) * 3.6), # TODO check
+				int( ($last_chunk->spd||0) * &KMH), # TODO check
 				int($last_chunk->cad||0),
 				int($last_chunk->ele||0),
 				),"\n",
@@ -494,6 +617,7 @@ Weight=$weight
 	print $fh "[IntNotes]\n";
 	foreach my $l ( 0 .. $#$laps ){
 		my $note = $laps->[$l]->meta_field('note') or next;
+		# TODO: support LR-balance
 		$note =~ s/\n/\\n/g;
 		print $fh $l+1, "\t", $note, "\n";
 	}
