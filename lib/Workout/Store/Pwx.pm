@@ -91,18 +91,50 @@ our %nodes = (
 
 	wkdevice	=> {
 		# TODO: look for device extensions
+		make		=> 'devmake',
+		model		=> 'devmodel',
 		stopdetectionsetting	=> 'stopdetection',
 		'*'	=> 'ignore',
 	},
+	devmake		=> undef,
+	devmodel	=> undef,
 	stopdetection	=> undef,
 
 	wksummarydata	=> {
-		'duration'	=> 'sumdur',
-		'durationstopped'	=> 'sumdurstopped',
+		beginning	=> 'sumstart',
+		duration	=> 'sumdur',
+		durationstopped	=> 'sumdurstop',
+		work		=> 'sumwork',
+		tss		=> 'sumtss',
+		normalizedpower	=> 'sumnpwr',
+		hr		=> 'sumhr',
+		spd		=> 'sumspd',
+		pwr		=> 'sumpwr',
+		cad		=> 'sumcad',
+		dist		=> 'sumdist',
+		alt		=> 'sumalt',
+		temp		 => 'sumtemp',
+		variabilityindex	=> 'sumvi',
+		climbingelevation	=> 'sumascent',
+		descendingelevation	=> 'sumdescent',
 		'*'	=> 'ignore',
 	},
-	sumdur	=> undef,
-	sumdurstopped	=> undef,
+	sumstart	=> undef,
+	sumdur		=> undef,
+	sumdurstop	=> undef,
+	sumwork		=> undef,
+	sumtss		=> undef,
+	sumnpwr		=> undef,
+	sumhr		=> undef,
+	sumspd		=> undef,
+	sumpwr		=> undef,
+	sumcad		=> undef,
+	sumdist		=> undef,
+	sumalt		=> undef,
+	sumtemp		=> undef,
+	sumvi		=> undef,
+	sumascent	=> undef,
+	sumdescent	=> undef,
 
 	wksegment	=> {
 		'name'	=> 'segname',
@@ -113,10 +145,38 @@ our %nodes = (
 	segsummary	=> {
 		beginning	=> 'segstart',
 		duration	=> 'segdur',
-		'*'	=> 'ignore',
+		durationstopped	=> 'segdurstop',
+		work		=> 'segwork',
+		tss		=> 'segtss',
+		normalizedpower	=> 'segnpwr',
+		hr		=> 'seghr',
+		spd		=> 'segspd',
+		pwr		=> 'segpwr',
+		cad		=> 'segcad',
+		dist		=> 'segdist',
+		alt		=> 'segalt',
+		temp		 => 'segtemp',
+		variabilityindex	=> 'segvi',
+		climbingelevation	=> 'segascent',
+		descendingelevation	=> 'segdescent',
+		'*'		=> 'ignore',
 	},
-	segstart => undef,
-	segdur	=> undef,
+	segstart	=> undef,
+	segdur		=> undef,
+	segdurstop	=> undef,
+	segwork		=> undef,
+	segtss		=> undef,
+	segnpwr		=> undef,
+	seghr		=> undef,
+	segspd		=> undef,
+	segpwr		=> undef,
+	segcad		=> undef,
+	segdist		=> undef,
+	segalt		=> undef,
+	segtemp		=> undef,
+	segvi		=> undef,
+	segascent	=> undef,
+	segdescent	=> undef,
 
 	wksample	=> {
 		timeoffset	=> 'ctime',
@@ -234,19 +294,79 @@ sub end_leaf {
 
 	# segment / marker
 	} elsif( $name eq 'segname' ){
-		$self->{seg}{meta}{name} = $node->{cdata};
+		$self->{seg}{name} = $node->{cdata};
 
 	} elsif( $name eq 'segstart' ){
-		$self->{seg}{start} = $node->{cdata};
+		$self->{seg}{dur_start} = $node->{cdata};
 
 	} elsif( $name eq 'segdur' ){
 		$self->{seg}{dur} = $node->{cdata};
+
+	} elsif( $name eq 'segdurstop' ){
+		$self->{seg}{dur_gap} = $node->{cdata};
+
+	} elsif( $name eq 'segwork' ){
+		$self->{seg}{work} = $node->{cdata};
+
+	} elsif( $name eq 'segtss' ){
+		$self->{seg}{tss} = $node->{cdata};
+
+	} elsif( $name eq 'segnpwr' ){
+		$self->{seg}{npwr} = $node->{cdata};
+
+	} elsif( $name eq 'seghr' ){
+		$self->{seg}{hr_min} = $self->{stack}[1]{attr}{'{}min'}{Value};
+		$self->{seg}{hr_max} = $self->{stack}[1]{attr}{'{}max'}{Value};
+		$self->{seg}{hr_avg} = $self->{stack}[1]{attr}{'{}avg'}{Value};
+
+	} elsif( $name eq 'segspd' ){
+		$self->{seg}{spd_min} = $self->{stack}[1]{attr}{'{}min'}{Value};
+		$self->{seg}{spd_max} = $self->{stack}[1]{attr}{'{}max'}{Value};
+		$self->{seg}{spd_avg} = $self->{stack}[1]{attr}{'{}avg'}{Value};
+
+	} elsif( $name eq 'segpwr' ){
+		$self->{seg}{spd_min} = $self->{stack}[1]{attr}{'{}min'}{Value};
+		$self->{seg}{spd_max} = $self->{stack}[1]{attr}{'{}max'}{Value};
+		$self->{seg}{spd_avg} = $self->{stack}[1]{attr}{'{}avg'}{Value};
+
+	} elsif( $name eq 'segcad' ){
+		$self->{seg}{spd_min} = $self->{stack}[1]{attr}{'{}min'}{Value};
+		$self->{seg}{spd_max} = $self->{stack}[1]{attr}{'{}max'}{Value};
+		$self->{seg}{spd_avg} = $self->{stack}[1]{attr}{'{}avg'}{Value};
+
+	} elsif( $name eq 'segdist' ){
+		$self->{seg}{dist} = $node->{cdata};
+
+	} elsif( $name eq 'segalt' ){
+		$self->{seg}{spd_min} = $self->{stack}[1]{attr}{'{}min'}{Value};
+		$self->{seg}{spd_max} = $self->{stack}[1]{attr}{'{}max'}{Value};
+		$self->{seg}{spd_avg} = $self->{stack}[1]{attr}{'{}avg'}{Value};
+
+	} elsif( $name eq 'segtemp' ){
+		$self->{seg}{spd_min} = $self->{stack}[1]{attr}{'{}min'}{Value};
+		$self->{seg}{spd_max} = $self->{stack}[1]{attr}{'{}max'}{Value};
+		$self->{seg}{spd_avg} = $self->{stack}[1]{attr}{'{}avg'}{Value};
+
+	} elsif( $name eq 'segvi' ){
+		$self->{seg}{vi} = $node->{cdata};
+
+	} elsif( $name eq 'segascent' ){
+		$self->{seg}{ascent} = $node->{cdata};
+
+	} elsif( $name eq 'segdescent' ){
+		$self->{seg}{descent} = $node->{cdata};
 
 
 	# workout
 
 	} elsif( $name eq 'stopdetection' ){
 		$self->{stopdetect}	=> $node->{cdata};
+
+	} elsif( $name eq 'devmake' ){
+		$self->{Store}->meta_field('manufacturer', $node->{cdata} );
+
+	} elsif( $name eq 'devmodel' ){
+		$self->{Store}->meta_field('device', $node->{cdata} );
 
 	} elsif( $name eq 'wktime' ){
 		$self->{start} = _str2time( $node->{cdata} );
@@ -261,13 +381,85 @@ sub end_leaf {
 	} elsif( $name eq 'athlete' ){
 		$self->{Store}->meta_field('athletename', $node->{cdata} );
 
+	} elsif( $name eq 'sumstart' ){
+		$self->{Store}->meta_field('dur_start', $node->{cdata} );
+
 	} elsif( $name eq 'sumdur' ){
 		$self->{Store}->meta_field('dur', $node->{cdata} );
 
-	} elsif( $name eq 'sumdurstopped' ){
+	} elsif( $name eq 'sumdurstop' ){
 		$self->{Store}->meta_field('dur_gap', $node->{cdata} );
+
+	} elsif( $name eq 'sumwork' ){
+		$self->{Store}->meta_field('work', $node->{cdata} );
+
+	} elsif( $name eq 'segtss' ){
+		$self->{Store}->meta_field('tss', $node->{cdata} );
+
+	} elsif( $name eq 'segnpwr' ){
+		$self->{Store}->meta_field('npwr', $node->{cdata} );
+
+	} elsif( $name eq 'seghr' ){
+		$self->{Store}->meta_field('hr_min',
+			$self->{stack}[1]{attr}{'{}min'}{Value} );
+		$self->{Store}->meta_field('hr_max',
+			$self->{stack}[1]{attr}{'{}max'}{Value} );
+		$self->{Store}->meta_field('hr_avg',
+			$self->{stack}[1]{attr}{'{}avg'}{Value} );
+
+	} elsif( $name eq 'segspd' ){
+		$self->{Store}->meta_field('spd_min',
+			$self->{stack}[1]{attr}{'{}min'}{Value} );
+		$self->{Store}->meta_field('spd_max',
+			$self->{stack}[1]{attr}{'{}max'}{Value} );
+		$self->{Store}->meta_field('spd_avg',
+			$self->{stack}[1]{attr}{'{}avg'}{Value} );
+
+	} elsif( $name eq 'segpwr' ){
+		$self->{Store}->meta_field('spd_min',
+			$self->{stack}[1]{attr}{'{}min'}{Value} );
+		$self->{Store}->meta_field('spd_max',
+			$self->{stack}[1]{attr}{'{}max'}{Value} );
+		$self->{Store}->meta_field('spd_avg',
+			$self->{stack}[1]{attr}{'{}avg'}{Value} );
+
+	} elsif( $name eq 'segcad' ){
+		$self->{Store}->meta_field('spd_min',
+			$self->{stack}[1]{attr}{'{}min'}{Value} );
+		$self->{Store}->meta_field('spd_max',
+			$self->{stack}[1]{attr}{'{}max'}{Value} );
+		$self->{Store}->meta_field('spd_avg',
+			$self->{stack}[1]{attr}{'{}avg'}{Value} );
+
+	} elsif( $name eq 'segdist' ){
+		$self->{Store}->meta_field('dist', $node->{cdata} );
+
+	} elsif( $name eq 'segalt' ){
+		$self->{Store}->meta_field('spd_min',
+			$self->{stack}[1]{attr}{'{}min'}{Value} );
+		$self->{Store}->meta_field('spd_max',
+			$self->{stack}[1]{attr}{'{}max'}{Value} );
+		$self->{Store}->meta_field('spd_avg',
+			$self->{stack}[1]{attr}{'{}avg'}{Value} );
+
+	} elsif( $name eq 'segtemp' ){
+		$self->{Store}->meta_field('spd_min',
+			$self->{stack}[1]{attr}{'{}min'}{Value} );
+		$self->{Store}->meta_field('spd_max',
+			$self->{stack}[1]{attr}{'{}max'}{Value} );
+		$self->{Store}->meta_field('spd_avg',
+			$self->{stack}[1]{attr}{'{}avg'}{Value} );
+
+	} elsif( $name eq 'segvi' ){
+		$self->{Store}->meta_field('vi', $node->{cdata} );
+
+	} elsif( $name eq 'segascent' ){
+		$self->{Store}->meta_field('ascent', $node->{cdata} );
+
+	} elsif( $name eq 'segdescent' ){
+		$self->{Store}->meta_field('descent', $node->{cdata} );
+
 	}
-	# TODO: read meta summary
 }
 
 sub end_node {
@@ -364,7 +556,7 @@ sub end_node {
 		$self->{seg} = {};
 
 	} elsif( $name eq 'wkdevice' ){
-		$self->{Store}->meta_field('device', $node->{attr}{'{}id'}{Value} );
+		#$self->{Store}->meta_field('device', $node->{attr}{'{}id'}{Value} );
 
 	}
 }
@@ -375,10 +567,10 @@ sub end_document {
 	# segment -> marker
 	foreach my $seg ( @{ $self->{segs} } ){
 		$self->{Store}->mark_new({
-			start	=> $self->{start} + $seg->{start},
-			end	=> $self->{start} + $seg->{start}
+			start	=> $self->{start} + $seg->{dur_start},
+			end	=> $self->{start} + $seg->{dur_start}
 				+ $seg->{dur},
-			meta	=> $seg->{meta},
+			meta	=> $seg,
 		});
 	}
 
@@ -417,7 +609,6 @@ our %defaults = (
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
-# TODO: other tags: slope, ...
 our %meta = (
 	sport		=> undef,
 	athletename	=> 'wkt',
@@ -525,6 +716,15 @@ sub do_write {
 	}
 	$self->debug( "stopdetect: $stopdetect");
 
+	my $device = $info->{device};
+	my $manu = $info->{manufacturer};
+	if( $device && $manu ){
+		$device =~ s/^$manu\s+//i;
+	}
+
+	# TODO: write meta: map sport
+	my $sport = $info->{sport};
+
 	print $fh <<EOHEAD;
 <?xml version="1.0" encoding="utf-8"?>
 <pwx xmlns="http://www.peaksware.com/PWX/1/0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" xsi:schemaLocation="http://www.peaksware.com/PWX/1/0 http://www.peaksware.com/PWX/1/0/pwx.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" creator="Workout">
@@ -534,16 +734,16 @@ EOHEAD
 		" <athlete>\n",
 		"  <name>", &protect($info->{athletename}) ,"</name>\n",
 		" </athlete>\n",
-		" <sportType>", &protect($info->{sport}) ,"</sportType>\n",
+		" <sportType>", &protect($sport) ,"</sportType>\n",
 		" <cmt>", &protect($note), "</cmt>\n",
 		" <device id=\"", &protect($info->{device}), "\">\n",
-		"  <make>", &protect($info->{device}) ,"</make>\n",
+		"  <make>", &protect($manu) ,"</make>\n",
+		"  <model>", &protect($device) ,"</model>\n",
 		#TODO:"  <stopdetectionsetting>", $stopdetect ,"</stopdetectionsetting>\n",
 		# TODO: write device extensions
 		" </device>\n",
 		" <time>$start_time</time>\n";
 
-$DB::single++;
 	print $fh " <summarydata>\n",
 		"  <beginning>1</beginning>\n",
 		"  <duration>", &n($info->{dur}), "</duration>\n",
