@@ -12,7 +12,6 @@ debian/control
 debian/copyright
 debian/rules
 lib/Workout.pm
-lib/Workout/Athlete.pm
 lib/Workout/Base.pm
 lib/Workout/Chart/Delta.pm
 lib/Workout/Chart/Distrib.pm
@@ -35,6 +34,7 @@ lib/Workout/Filter/Timeshift.pm
 lib/Workout/Filter/Timespan.pm
 lib/Workout/Filter/Zone.pm
 lib/Workout/Fit.pm
+lib/Workout/Fit/Enum.pm
 lib/Workout/Iterator.pm
 lib/Workout/Lap.pm
 lib/Workout/Marker.pm
@@ -43,7 +43,6 @@ lib/Workout/Store/Fit.pm
 lib/Workout/Store/Gpx.pm
 lib/Workout/Store/HRM.pm
 lib/Workout/Store/Json.pm
-lib/Workout/Store/Memory.pm
 lib/Workout/Store/Powertap.pm
 lib/Workout/Store/Pwx.pm
 lib/Workout/Store/SRM.pm
