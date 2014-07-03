@@ -18,6 +18,7 @@ lib/Workout/Chart/Distrib.pm
 lib/Workout/Chart/Source.pm
 lib/Workout/Chart/Workout.pm
 lib/Workout/Chunk.pm
+lib/Workout/Constant.pm
 lib/Workout/Filter/Base.pm
 lib/Workout/Filter/BaseQueue.pm
 lib/Workout/Filter/Concat.pm

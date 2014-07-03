@@ -40,6 +40,7 @@ use strict;
 use warnings;
 use base 'Workout::Store';
 use Carp;
+use Workout::Constant qw/KCAL/;
 use Workout::Fit qw( :types );
 use Workout::Fit::Enum;
 
@@ -74,10 +75,6 @@ our %meta = (
 	soft_version	=> undef,
 	work_expended	=> undef, # energy guessed by heartrate
 );
-
-use constant {
-	joule	=> 4186.8,
-};
 
 =head1 CONSTRUCTOR
 
@@ -805,7 +802,7 @@ sub do_read {
 
 				} elsif( $f->{field} == 11 ){
 					$meta{'work_expended'} =
-						joule * $f->{val};
+						$f->{val} * KCAL;
 
 				} elsif( $f->{field} == 13 ){
 					$meta{'spd_avg'} = $f->{val} / 1000;
@@ -978,7 +975,7 @@ sub do_read {
 
 				} elsif( $f->{field} == 11 ){
 					$self->meta_field('work_expended',
-						joule * $f->{val} );
+						$f->{val} * KCAL );
 
 				} elsif( $f->{field} == 14 ){
 					$self->meta_field('spd_avg',

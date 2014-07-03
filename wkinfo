@@ -18,6 +18,7 @@ use strict;
 use DateTime;
 use Getopt::Long;
 use Workout;
+use Workout::Constant qw/:all/;
 use I18N::Langinfo qw(langinfo CODESET);
 
 my $charset = langinfo(CODESET);
@@ -187,9 +188,9 @@ print
 
 "total distance:  ", sprintf( '%.2f', ($meta->{dist}||0) / 1000), " km\n",
 
-"max speed:       ", sprintf( '%.2f', ($meta->{spd_max}||0) * 3.6 ), " km/h at ",
+"max speed:       ", sprintf( '%.2f', ($meta->{spd_max}||0) * KMH ), " km/h at ",
 	fmttime($meta->{spd_max_time}), "\n",
-"avg speed:       ", sprintf( '%.2f', ($meta->{spd_avg}||0) * 3.6 ), " km/h\n",
+"avg speed:       ", sprintf( '%.2f', ($meta->{spd_avg}||0) * KMH ), " km/h\n",
 "max accel:       ", sprintf( '%.2f', ($meta->{accel_max}||0) ), " m/s² at ",
 	fmttime($meta->{accel_max_time}), "\n",
 
@@ -277,9 +278,9 @@ if( $domarks ){
 
 "total distance:  ", sprintf( '%.2f', ($mim->{dist}||0) / 1000), " km\n",
 
-"max speed:       ", sprintf( '%.2f', ($mim->{spd_max}||0) * 3.6 ), " km/h at ",
+"max speed:       ", sprintf( '%.2f', ($mim->{spd_max}||0) * KMH ), " km/h at ",
 	fmttime($mim->{spd_max_time}), "\n",
-"avg speed:       ", sprintf( '%.2f', ($mim->{spd_avg}||0) * 3.6 ), " km/h\n",
+"avg speed:       ", sprintf( '%.2f', ($mim->{spd_avg}||0) * KMH ), " km/h\n",
 "max accel:       ", sprintf( '%.2f', ($mim->{accel_max}||0) ), " m/s² at ",
 	fmttime($mim->{accel_max_time}), "\n",
 
