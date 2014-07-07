@@ -548,27 +548,7 @@ sub do_read {
 		};
 
 	} elsif( $block_cknext > $ckcnt ){
-		carp "inconsistency: block chunks > total, truncating last blocks";
-
-		my $extra = $block_cknext - $ckcnt;
-		foreach my $blk ( reverse @blocks ){
-
-			if( $extra <= $blk->{ckcnt} ){
-				$self->debug( "truncating block "
-					. $blk->{stime}
-					." by $extra chunks" );
-
-				$blk->{ckcnt} -= $extra;
-				last;
-			} else {
-				$self->debug( "truncating block "
-					. $blk->{stime}
-					. "to 0 chunks" );
-
-				$extra -= $blk->{ckcnt};
-				$blk->{ckcnt} = 0;
-			}
-		}
+		carp "inconsistency: block chunks > total, might truncating last blocks";
 	}
 
 	my $prev_block;
