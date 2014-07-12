@@ -173,8 +173,8 @@ print
 "Heartrate max:   ", (int($meta->{hr_max}||0) || '?'), " 1/min at ",
 	fmttime($meta->{hr_max_time}), "\n",
 
-"Cadence avg:     ", (int($meta->{cad_avg}||0) || '?'), " 1/s\n",
-"Cadence max:     ", (int($meta->{cad_max}||0) || '?'), " 1/s at ",
+"Cadence avg:     ", (int($meta->{cad_navg}||0) || '?'), " 1/min\n",
+"Cadence max:     ", (int($meta->{cad_max}||0) || '?'), " 1/min at ",
 	fmttime($meta->{cad_max_time}), "\n",
 
 "start elevation: ", (int($meta->{ele_start}||0) ||'?'), " m\n",
@@ -265,7 +265,7 @@ if( $domarks ){
 "Heartrate max:   ", (int($mim->{hr_max}||0) || '?'), " 1/min at ",
 	fmttime($mim->{hr_max_time}), "\n",
 
-"Cadence avg:     ", (int($mim->{cad_avg}||0) || '?'), " 1/s\n",
+"Cadence avg:     ", (int($mim->{cad_navg}||0) || '?'), " 1/s\n",
 "Cadence max:     ", (int($mim->{cad_max}||0) || '?'), " 1/s at ",
 	fmttime($mim->{cad_max_time}), "\n",
 

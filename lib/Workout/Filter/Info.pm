@@ -115,6 +115,7 @@ my %calc = (
 	dur_creep	=> undef,
 	dur_gap	=> undef,
 	cad_avg	=> undef,
+	cad_navg	=> undef,
 	cad_percent	=> undef,
 	ele_avg	=> undef,
 	hr_avg	=> undef,
@@ -212,6 +213,10 @@ sub calculate {
 
 	if( my $d = $self->{dur_cad} || $self->{dur} ){
 		$self->{cad_avg} = $self->{cad_sum} / $d;
+	}
+
+	if( my $d = $self->{dur_ncad} || $self->{dur} ){
+		$self->{cad_navg} = $self->{cad_nsum} / $d;
 	}
 
 	if( my $m = $self->{dur_mov} ){
@@ -339,7 +344,11 @@ end time of chunk with maximum acceleration.
 
 =head2 cad_avg
 
-average cadence (1/min).
+average cadence for all samples with cadence value (1/min).
+
+=head2 cad_navg
+
+average cadence excluding time without pedaling (1/min).
 
 =head2 cad_min
 
@@ -678,7 +687,7 @@ sub set_nsum {
 
 	foreach my $field (@_){
 		my $val = $ck->$field;
-		defined $val && $val > 0 or next;
+		(defined $val && $val > 0) or next;
 
 		$self->{$field.'_nsum'} += $val * $ck->dur;
 		$self->{'dur_n'.$field} += $ck->dur;
