@@ -179,8 +179,8 @@ print
 "Heartrate max:   ", (int($info->hr_max||0) || '?'), " 1/min at ",
 	fmttime($info->hr_max_time), "\n",
 
-"Cadence avg:     ", (int($info->cad_avg||0) || '?'), " 1/s\n",
-"Cadence max:     ", (int($info->cad_max||0) || '?'), " 1/s at ",
+"Cadence avg:     ", (int($info->cad_navg||0) || '?'), " 1/min\n",
+"Cadence max:     ", (int($info->cad_max||0) || '?'), " 1/min at ",
 	fmttime($info->cad_max_time), "\n",
 
 "start elevation: ", (int($info->ele_start||0) ||'?'), " m\n",
@@ -259,8 +259,8 @@ print "\nMarker ", $idx++, ":\n",
 "Heartrate max:   ", (int($mi->hr_max||0) || '?'), " 1/min at ",
 	fmttime($mi->hr_max_time), "\n",
 
-"Cadence avg:     ", (int($mi->cad_avg||0) || '?'), " 1/s\n",
-"Cadence max:     ", (int($mi->cad_max||0) || '?'), " 1/s at ",
+"Cadence avg:     ", (int($mi->cad_navg||0) || '?'), " 1/min\n",
+"Cadence max:     ", (int($mi->cad_max||0) || '?'), " 1/min at ",
 	fmttime($mi->cad_max_time), "\n",
 
 "start elevation: ", (int($mi->ele_start||0) ||'?'), " m\n",
