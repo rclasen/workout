@@ -40,11 +40,12 @@ our %default = (
 	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
 	elemax	=> 10000,	# (m)		maximim elevation (Mt. Everest: 8848 m)
 	spdmin	=> 1,		# (m/s)		minimum speed
+	kphmin	=> 1,		# (kph)		minimum speed
 	pwrmin	=> 40,		# (W)
 	# currently unused:
 	vspdmax	=> 4,		# (m/s)		maximum vertical speed
 	gradmax => 40,		# (%)           maximum gradient/slope
-	accelmax => 6,		# (m/s²)	maximum acceleration
+	accelmax => 6,		# (m/sÂ²)	maximum acceleration
 );
 
 our %init = (
@@ -64,6 +65,10 @@ our %init = (
 	spd_min_time	=> undef,
 	spd_max	=> 0,
 	spd_max_time	=> undef,
+	kph_min	=> undef,
+	kph_min_time	=> undef,
+	kph_max	=> 0,
+	kph_max_time	=> undef,
 	accel_max	=> 0,
 	accel_max_time	=> undef,
 	temp_sum	=> 0,
@@ -121,6 +126,7 @@ my %calc = (
 	hr_avg	=> undef,
 	pwr_avg	=> undef,
 	spd_avg	=> undef,
+	kph_avg	=> undef,
 	temp_avg	=> undef,
 	torque_avg	=> undef,
 	vspd_avg	=> undef,
@@ -238,6 +244,7 @@ sub calculate {
 
 	if( my $d = $self->{dur_mov} ){
 		$self->{spd_avg} = $self->{dist} / $d;
+		$self->{kph_avg} = ($self->{dist} / $d)*3.6;
 	}
 
 	if( my $dur = $self->{dur_temp} || $self->{dur} ){
@@ -265,7 +272,7 @@ results. You can pass these values to the constructor, aswell.
 
 =head2 accelmax
 
-maximum acceleration that's realistic (m/s²). Larger values are ignored.
+maximum acceleration that's realistic (m/sÂ²). Larger values are ignored.
 
 =head2 elefuzz
 
@@ -326,7 +333,7 @@ sub meta {
 
 =head2 accel_max
 
-maximum acceleration seen in the workout (m/s²).
+maximum acceleration seen in the workout (m/sÂ²).
 
 =head2 accel_max_time
 
@@ -545,11 +552,11 @@ end time of chunk with maximum speed.
 
 =head2 temp_avg
 
-average temperature (°C)
+average temperature (Â°C)
 
 =head2 temp_max
 
-maximum temperature seen in the workout (°C).
+maximum temperature seen in the workout (Â°C).
 
 =head2 temp_max_time
 
@@ -557,7 +564,7 @@ end time of chunk with maximum temperature.
 
 =head2 temp_min
 
-minimum temperature seen in the workout (°C).
+minimum temperature seen in the workout (Â°C).
 
 =head2 temp_min_time
 
@@ -565,16 +572,16 @@ end time of chunk with minimum temperature.
 
 =head2 temp_sum
 
-Sum of temperature values (°C * sec). Used for calculating the average
+Sum of temperature values (Â°C * sec). Used for calculating the average
 temperature.
 
 =head2 temp_start
 
-temperature at start of workout (°C).
+temperature at start of workout (Â°C).
 
 =head2 temp_end
 
-temperature at end of workout (°C).
+temperature at end of workout (Â°C).
 
 =head2 time_end
 
@@ -754,9 +761,9 @@ sub process {
 
 	$self->set_nsum( $d, qw( cad ));
 	$self->set_asum( $d, qw( hr cad ele temp ));
-	$self->set_max( $d, qw( pwr torque hr cad spd vspd accel temp ele grad ));
+	$self->set_max( $d, qw( pwr torque hr cad spd kph vspd accel temp ele grad ));
 	$self->set_min( $d, qw( temp ele ));
-	$self->set_zmin( $d, qw( cad hr pwr spd ));
+	$self->set_zmin( $d, qw( cad hr pwr spd kph ));
 
 	$d;
 }

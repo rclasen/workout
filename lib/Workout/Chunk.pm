@@ -53,6 +53,7 @@ our @core_fields = qw(
 	hr
 	work
 	temp
+	kph
 );
 
 our @fields_avg = qw( cad hr );
@@ -116,7 +117,7 @@ Elevation at end of interval in meter (m)
 
 =head2 lon,lat	I<geo>
 
-GPS coordinates degrees of arc WGS84 (°).
+GPS coordinates degrees of arc WGS84 (Â°).
 
 =head2 dist	I<relative>
 
@@ -136,7 +137,7 @@ work done during this chunk (Joule)
 
 =head2 temp	I<abs>
 
-Temperature at end of chunk in degrees centigrade (°C)
+Temperature at end of chunk in degrees centigrade (Â°C)
 
 =head2 prev
 
@@ -282,7 +283,7 @@ sub spd {
 
 =head2 accel	I<relative>
 
-acceleration since last chunk in meters/second² (m/sec²)
+acceleration since last chunk in meters/secondÂ² (m/secÂ²)
 
 =cut
 

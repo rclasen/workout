@@ -56,6 +56,7 @@ our %fields_supported = map { $_ => 1; } qw{
 	cad
 	temp
 	ele
+	kph
 };
 
 our %defaults = (
@@ -556,7 +557,8 @@ sub do_read {
 
 				} elsif( $f->{field} == 6 ){
 					$ck->{spd} = $f->{val} / 1000; # tmp
-
+					$ck->{kph} = ($f->{val} / 1000)*3.6;
+					
 				} elsif( $f->{field} == 7 ){
 					$ck->{pwr} = $f->{val}; # tmp
 
