@@ -62,6 +62,7 @@ our %fields_supported = map { $_ => 1; } qw{
 };
 
 our %defaults = (
+	read_spd	=> 1,
 	recint		=> undef,
 );
 __PACKAGE__->mk_accessors( keys %defaults );
@@ -667,16 +668,11 @@ sub do_read {
 				++$self->{field_use}{work};
 			}
 
-			if( exists $ck->{dist} ){
-				# delete($ck->{spd}); # unneeded
-
-			} elsif( $ck->{spd} ){
+			if( exists $ck->{spd} && (
+				! exists $ck->{dist} || $self->{read_spd}
+			) ){
 				$ck->{dist} = $ck->{spd} * $ck->{dur};
 				++$self->{field_use}{dist};
-
-			# TODO: dist from geocalc
-			#} elsif( defined($ck->{lon}) && defined($ck->{lat} ) ){
-
 			}
 
 			delete $ck->{pwr};
