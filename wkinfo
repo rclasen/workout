@@ -230,9 +230,10 @@ foreach my $k ( sort { $a cmp $b } keys %$smeta ){
 
 if( $domarks ){
 	my $marks = $src->marks;
-	my $idx = 0;
-	foreach my $mark ( @$marks ){
+	foreach my $idx ( 0..$#$marks ){
+		my $mark = $marks->[$idx];
 		my $mi = $mark->info;
+		next unless $mi->cntin;
 
 		my $mm = $mark->meta;
 		my $mim = $mi->meta( $docalc ? undef : $mm );
@@ -248,7 +249,7 @@ if( $domarks ){
 		);
 
 		print
-"\nMarker ", $idx++, ":\n",
+"\nMarker ", $idx, ":\n",
 "marker:          ", $mark->start, " - ", $mark->end, ": ",
 	$mark->end - $mark->start, "s\n",
 "idx:             ", $mi->src->ifirst, " - ", $mi->src->ilast, "\n",
