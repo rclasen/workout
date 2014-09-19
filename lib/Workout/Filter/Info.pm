@@ -40,8 +40,9 @@ our %default = (
 	elefuzz	=> 7,		# (m)		minimum elevatin change threshold
 	elemax	=> 10000,	# (m)		maximim elevation (Mt. Everest: 8848 m)
 	spdmin	=> 1,		# (m/s)		minimum speed
-	kphmin	=> 1,		# (kph)		minimum speed
+	kphmin	=> .00001,	# (kph)		minimum speed
 	pwrmin	=> 40,		# (W)
+	cadmin	=> 0,		# (rpm)
 	# currently unused:
 	vspdmax	=> 4,		# (m/s)		maximum vertical speed
 	gradmax => 40,		# (%)           maximum gradient/slope
@@ -749,13 +750,18 @@ sub process {
 	if( (my $work = $d->work||0) > 0 ){
 		$self->{work} += $work;
 	}
-
-
+	
+	# Duration
 	$self->{dur_rec} += $d->dur;
-	if( ($d->pwr||0) > $self->pwrmin
-		|| ($d->cad||0) > 0
-		|| ($d->spd||0) > $self->spdmin ){
-
+	
+	# Time Riding
+	if( ($d->pwr||0) > $self->pwrmin ) {
+		$self->{dur_mov} += $d->dur;
+	} elsif ( ($d->cad||0) > $self->cadmin ) {
+		$self->{dur_mov} += $d->dur;
+	} elsif ( ($d->kph||0) > $self->kphmin ) {
+		$self->{dur_mov} += $d->dur;
+	} elsif ( ($d->spd||0) > $self->spdmin ){
 		$self->{dur_mov} += $d->dur;
 	}
 
