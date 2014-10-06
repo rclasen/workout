@@ -1242,9 +1242,12 @@ sub do_read {
 			# do nothing, calm down
 
 		} else {
+			my $t = $msg->{timestamp}
+				? $msg->{timestamp} + FIT_TIME_OFFSET
+				: '<no_time>';
 			$self->debug( "found unhandled message: "
 				.$msg->{message} ." @"
-				.($msg->{timestamp} + FIT_TIME_OFFSET) );
+				.$t );
 		}
 	}
 	$fit->close;
