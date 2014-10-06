@@ -653,6 +653,7 @@ sub do_read {
 			}
 
 
+			$event_last_time = undef;
 			$rec_last_time = $ck->{time};
 			$rec_last_dist = $dist if defined $dist;
 
