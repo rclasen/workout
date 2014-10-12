@@ -143,6 +143,13 @@ sub do_read {
 			if exists $t->{Slope};
 		$self->meta_field('zeropos', $t->{"Zero Offset"} )
 			if exists $t->{"Zero Offset"};
+
+		$self->meta_field('wkdb_id', $t->{"WkdbExercise"} )
+			if exists $t->{"WkdbExercise"};
+		$self->meta_field('ttb_id', $t->{"TtbExercise"} )
+			if exists $t->{"TtbExercise"};
+		$self->meta_field('endure_id', $t->{"EndureId"} )
+			if exists $t->{"EndureId"};
 	}
 
 	# TODO: read meta OVERRIDES
@@ -281,6 +288,16 @@ sub do_write {
 	print $fh "\t\t\t\"Zero Offset\":",
 		&protect( $self->meta_field('zeropos')),",\n"
 		if $self->meta_field('zeropos');
+
+	print $fh "\t\t\t\"WkdbExercise\":",
+		&protect( $self->meta_field('wkdb_id')),",\n"
+		if $self->meta_field('wkdb_id');
+	print $fh "\t\t\t\"TtbExercise\":",
+		&protect( $self->meta_field('ttb_id')),",\n"
+		if $self->meta_field('ttb_id');
+	print $fh "\t\t\t\"EndureId\":",
+		&protect( $self->meta_field('endure_id')),",\n"
+		if $self->meta_field('endure_id');
 
 	print $fh "\t\t\t\"Notes\":", &protect( $self->meta_field('note')), "\n",
 		"\t\t},\n";
