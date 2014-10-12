@@ -369,6 +369,10 @@ sub _intersect {
 
 		$new->lon( $self->lon + ($next->lon - $self->lon) * $ma );
 		$new->lat( $self->lat + ($next->lat - $self->lat) * $ma );
+
+	} else {
+		$new->lon( $next->lon );
+		$new->lat( $next->lat );
 	}
 
 	$new;
