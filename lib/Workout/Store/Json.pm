@@ -95,6 +95,8 @@ sub do_read {
 	local $/;
 
 	my $text = <$fh>;
+	$text =~ s/^\x{feff}//;
+
 	my $j = JSON->new->decode( $text )
 		or return;
 
