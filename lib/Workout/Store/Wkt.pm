@@ -62,6 +62,7 @@ __PACKAGE__->mk_accessors( keys %defaults );
 
 our %meta = (
 	sport		=> undef,
+	bike		=> undef,
 	circum		=> 2000,
 	zeropos		=> 100,
 	slope		=> 1,
@@ -165,6 +166,9 @@ sub parse_params {
 	} elsif( $k eq 'sport' ){
 		$self->meta_field('sport', $v );
 
+	} elsif( $k eq 'bike' ){
+		$self->meta_field('bike', $v );
+
 	} elsif( $k eq 'circum' ){
 		$self->meta_field('circum', $v );
 
@@ -230,6 +234,9 @@ sub do_write {
 	}
 	if( my $a = $self->meta_field('sport') ){
 		print $fh "Sport=$a\n";
+	}
+	if( my $a = $self->meta_field('bike') ){
+		print $fh "Bike=$a\n";
 	}
 	if( my $a = $self->meta_field('circum') ){
 		print $fh "Circum=$a\n";

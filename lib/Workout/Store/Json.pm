@@ -55,6 +55,7 @@ __PACKAGE__->mk_accessors( keys %defaults );
 # TODO: other tags: slope, ...
 our %meta = (
 	sport		=> undef,
+	bike		=> undef,
 	athletename	=> '',
 	circum          => undef,
 	zeropos         => undef,
@@ -132,6 +133,8 @@ sub do_read {
 
 		$self->meta_field('device', $t->{"Device Info"} )
 			if exists $t->{"Device Info"};
+		$self->meta_field('bike', $t->{"Bike"} )
+			if exists $t->{"Bike"};
 		$self->meta_field('circum', $t->{"Wheel Circumference"} )
 			if exists $t->{"Wheel Circumference"};
 		$self->meta_field('slope', $t->{Slope} )
@@ -264,6 +267,9 @@ sub do_write {
 
 	print $fh "\t\t\t\"Device Info\":", &protect( $self->meta_field('device') ),",\n";
 
+	print $fh "\t\t\t\"Bike\":",
+		&protect( $self->meta_field('bike')),",\n"
+		if $self->meta_field('bike');
 	print $fh "\t\t\t\"Wheel Circumference\":",
 		&protect( $self->meta_field('circum')),",\n"
 		if $self->meta_field('circum');

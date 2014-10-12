@@ -1204,13 +1204,36 @@ sub do_read {
 					$dev{type} = $f->{val};
 
 					my $i = $f->{val};
-					if($i == 1){ $dev{type} .= '/antfs' }
-					elsif($i == 11){ $dev{type} .= '/bike_power' }
-					elsif($i == 12){ $dev{type} .= '/environment' }
-					elsif($i == 120){ $dev{type} .= '/heart_rate' }
-					elsif($i == 121){ $dev{type} .= '/bike_speed_cadence' }
-					elsif($i == 122){ $dev{type} .= '/bike_cadence' }
-					elsif($i == 123){ $dev{type} .= '/bike_speed' }
+					if($i == 1){
+						$dev{type} .= '/antfs';
+
+					} elsif($i == 11){
+						++$dev{bike};
+						$dev{type} .= '/bike_power';
+						$dev{stype} = 'pwr';
+
+					} elsif($i == 12){
+						$dev{type} .= '/environment';
+
+					} elsif($i == 120){
+						$dev{type} .= '/heart_rate';
+						$dev{stype} = 'hr';
+
+					} elsif($i == 121){
+						++$dev{bike};
+						$dev{type} .= '/bike_speed_cadence';
+						$dev{stype} = 'spd';
+
+					} elsif($i == 122){
+						++$dev{bike};
+						$dev{type} .= '/bike_cadence';
+						$dev{stype} = 'cad';
+
+					} elsif($i == 123){
+						++$dev{bike};
+						$dev{type} .= '/bike_speed';
+						$dev{stype} = 'spd';
+					}
 
 				} elsif( $f->{field} == 2 ){
 					$dev{manu}= $f->{val};
@@ -1231,6 +1254,12 @@ sub do_read {
 			}
 
 			# TODO: use device message instead of session
+
+			$self->meta_field( 'sport', 'Bike' ) if $dev{bike};
+			if( $dev{serial} && $dev{stype} ){
+				$self->meta_field( "serial_".$dev{stype}, $dev{serial} );
+			}
+
 			$self->debug( "device idx=". ($dev{idx}||'')
 				.", type=".  ($dev{type}||'')
 				.", manu=". ($dev{manu}||'')
