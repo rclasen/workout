@@ -627,9 +627,14 @@ sub do_read {
 					$self->debug("using first event $stime start time \@$ck->{time}" );
 
 				} elsif( $ck->{spd} > 0 && $ck->{dist} > 0  ){
-					$stime = $ck->{time}
-						- $ck->{dist} / $ck->{spd};
-					$self->debug("using speed as start time $stime \@$ck->{time}" );
+					my $speedtime = $ck->{dist} / $ck->{spd};
+					if( $speedtime > 1 ){
+						$stime = $ck->{time} - $speedtime;
+						$self->debug("using speed as start time $stime \@$ck->{time}" );
+					} else {
+						$self->debug("skipping sample as speed gives too short start time \@$ck->{time}" );
+						next;
+					}
 				} else {
 					$self->debug( "unknown sample duration, "
 						."skipping record at ". $ck->{time} );
