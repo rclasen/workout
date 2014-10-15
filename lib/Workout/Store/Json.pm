@@ -148,8 +148,12 @@ sub do_read {
 			if exists $t->{"WkdbExercise"};
 		$self->meta_field('ttb_id', $t->{"TtbExercise"} )
 			if exists $t->{"TtbExercise"};
+		$self->meta_field('vhero_id', $t->{"VeloHeroExercise"} )
+			if exists $t->{"VeloHeroExercise"};
 		$self->meta_field('endure_id', $t->{"EndureId"} )
 			if exists $t->{"EndureId"};
+
+		# TODO: other tags as is
 	}
 
 	# TODO: read meta OVERRIDES
@@ -295,9 +299,14 @@ sub do_write {
 	print $fh "\t\t\t\"TtbExercise\":",
 		&protect( $self->meta_field('ttb_id')),",\n"
 		if $self->meta_field('ttb_id');
+	print $fh "\t\t\t\"VeloHeroExercise\":",
+		&protect( $self->meta_field('vhero_id')),",\n"
+		if $self->meta_field('vhero_id');
 	print $fh "\t\t\t\"EndureId\":",
 		&protect( $self->meta_field('endure_id')),",\n"
 		if $self->meta_field('endure_id');
+
+	# TODO: other tags as is
 
 	print $fh "\t\t\t\"Notes\":", &protect( $self->meta_field('note')), "\n",
 		"\t\t},\n";
