@@ -122,6 +122,9 @@ sub do_read {
 	$self->recint( $recint );
 
 	if( my $t = $r->{TAGS} ){
+		my %tags = (  %$t );
+		$self->meta_field('gc_tags', \%tags );
+
 		$self->meta_field('note', $t->{Notes} )
 			if exists $t->{Notes};
 		$self->meta_field('sport', $t->{Sport} )
@@ -152,8 +155,6 @@ sub do_read {
 			if exists $t->{"VeloHeroExercise"};
 		$self->meta_field('endure_id', $t->{"EndureId"} )
 			if exists $t->{"EndureId"};
-
-		# TODO: other tags as is
 	}
 
 	# TODO: read meta OVERRIDES
@@ -271,44 +272,40 @@ sub do_write {
 
 	# TODO: write meta OVERRIDES
 
-	print $fh "\t\t\"TAGS\":{\n",
-		"\t\t\t\"Athlete Name\":",
-		&protect( $self->meta_field('athletename')),",\n";
+	my %tags;
+	if( my $t = $self->meta_field('gc_tags') ){
+		%tags = ( %$t );
+	}
 
-	print $fh "\t\t\t\"Sport\":", &protect( $self->meta_field('sport')),",\n"
+	$tags{"Athlete Name"} = $self->meta_field('athletename')
+		if $self->meta_field('athletename');
+	$tags{"Sport"} = $self->meta_field('sport')
 		if $self->meta_field('sport');
-
-	print $fh "\t\t\t\"Device Info\":", &protect( $self->meta_field('device') ),",\n";
-
-	print $fh "\t\t\t\"Bike\":",
-		&protect( $self->meta_field('bike')),",\n"
+	$tags{"Device Info"} = $self->meta_field('device')
+		if $self->meta_field('device');
+	$tags{"Bike"} = $self->meta_field('bike')
 		if $self->meta_field('bike');
-	print $fh "\t\t\t\"Wheel Circumference\":",
-		&protect( $self->meta_field('circum')),",\n"
+	$tags{"Wheel Circumference"} = $self->meta_field('circum')
 		if $self->meta_field('circum');
-	print $fh "\t\t\t\"Slope\":",
-		&protect( $self->meta_field('slope')),",\n"
+	$tags{"Slope"} = $self->meta_field('slope')
 		if $self->meta_field('slope');
-	print $fh "\t\t\t\"Zero Offset\":",
-		&protect( $self->meta_field('zeropos')),",\n"
+	$tags{"Zero Offset"} = $self->meta_field('zeropos')
 		if $self->meta_field('zeropos');
-
-	print $fh "\t\t\t\"WkdbExercise\":",
-		&protect( $self->meta_field('wkdb_id')),",\n"
+	$tags{"WkdbExercise"} = $self->meta_field('wkdb_id')
 		if $self->meta_field('wkdb_id');
-	print $fh "\t\t\t\"TtbExercise\":",
-		&protect( $self->meta_field('ttb_id')),",\n"
+	$tags{"TtbExercise"} = $self->meta_field('ttb_id')
 		if $self->meta_field('ttb_id');
-	print $fh "\t\t\t\"VeloHeroExercise\":",
-		&protect( $self->meta_field('vhero_id')),",\n"
+	$tags{"VeloHeroExercise"} = $self->meta_field('vhero_id')
 		if $self->meta_field('vhero_id');
-	print $fh "\t\t\t\"EndureId\":",
-		&protect( $self->meta_field('endure_id')),",\n"
+	$tags{"EndureId"} = $self->meta_field('endure_id')
 		if $self->meta_field('endure_id');
+	$tags{"Notes"} = $self->meta_field('note')
+		if $self->meta_field('note');
 
-	# TODO: other tags as is
 
-	print $fh "\t\t\t\"Notes\":", &protect( $self->meta_field('note')), "\n",
+	print $fh "\t\t\"TAGS\":{\n", join( ",\n", map {
+		"\t\t\t\"$_\":". &protect( $tags{$_});
+	} keys %tags ),"\n",
 		"\t\t},\n";
 
 
