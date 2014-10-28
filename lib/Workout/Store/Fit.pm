@@ -918,7 +918,7 @@ sub do_read {
 			}
 
 			my $xend = $meta{'dur'}
-				? $start + int( .5 + $meta{'dur'}/1000 )
+				? $start + int( .5 + $meta{'dur'} )
 				: $end;
 
 			$self->debug( "found lap $start to $end/$xend: ". ($end-$start)
