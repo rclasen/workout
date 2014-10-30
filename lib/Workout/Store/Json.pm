@@ -129,6 +129,8 @@ sub do_read {
 			if exists $t->{Notes};
 		$self->meta_field('sport', $t->{Sport} )
 			if exists $t->{Sport};
+		$self->meta_field('weight', $t->{Weight} )
+			if exists $t->{Weight};
 
 		if( exists $t->{"Athlete Name"} && $t->{"Athlete Name"} ){
 			$self->meta_field('athletename', $t->{"Athlete Name"} );
@@ -220,8 +222,8 @@ sub do_read {
 
 	foreach my $m ( @{$r->{INTERVALS}} ){
 		$self->mark_new({
-			start	=> $m->{START},
-			end	=> $m->{STOP},
+			start	=> $start + $m->{START},
+			end	=> $start + $m->{STOP},
 			meta	=> {
 				note	=> $m->{NAME},
 			},
@@ -281,6 +283,8 @@ sub do_write {
 		if $self->meta_field('athletename');
 	$tags{"Sport"} = $self->meta_field('sport')
 		if $self->meta_field('sport');
+	$tags{"Weight"} = $self->meta_field('weight')
+		if $self->meta_field('weight');
 	$tags{"Device Info"} = $self->meta_field('device')
 		if $self->meta_field('device');
 	$tags{"Bike"} = $self->meta_field('bike')
