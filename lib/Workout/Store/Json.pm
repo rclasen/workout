@@ -159,7 +159,30 @@ sub do_read {
 			if exists $t->{"EndureId"};
 	}
 
-	# TODO: read meta OVERRIDES
+	if( $r->{REFERENCES} ){
+		my @refs;
+		foreach my $ref ( @{$r->{REFERENCES}} ){
+			foreach my $k ( keys %$ref ){
+				push @refs, {
+					field	=> $k,
+					value	=> $ref->{$k},
+				};
+			}
+		}
+		$self->meta_field('gc_refs', \@refs );
+	}
+
+
+	if( $r->{OVERRIDES} ){
+		my %over;
+		foreach my $o ( @{$r->{OVERRIDES}} ){
+			foreach my $k ( keys %$o ){
+				next unless exists $o->{$k}{value};
+				$over{$k} = $o->{$k}{value};
+			}
+		}
+		$self->meta_field('gc_override', \%over );
+	}
 
 	my $dist = 0;
 
@@ -272,7 +295,18 @@ sub do_write {
 		"\t\t\"DEVICETYPE\":\"Workout file\",\n",
 		"\t\t\"IDENTIFIER\":\"\",\n";
 
-	# TODO: write meta OVERRIDES
+	my %over;
+	if( my $o = $self->meta_field('gc_override') ){
+		%over = ( %$o );
+	}
+
+	if( %over ){
+		print $fh "\t\t\"OVERRIDES\":[\n", join( ",\n", map {
+			"\t\t\t{\"$_\":{ \"value\":". &protect( $over{$_}) ."}}";
+		} sort { $a cmp $b } keys %over ),"\n",
+			"\t\t],\n";
+	}
+
 
 	my %tags;
 	if( my $t = $self->meta_field('gc_tags') ){
@@ -309,12 +343,10 @@ sub do_write {
 
 	print $fh "\t\t\"TAGS\":{\n", join( ",\n", map {
 		"\t\t\t\"$_\":". &protect( $tags{$_});
-	} keys %tags ),"\n",
+	} sort { $a cmp $b } keys %tags ),"\n",
 		"\t\t},\n";
 
-
 	my $num = 0;
-
 	if( my @marks = $self->marks ){
 		print $fh "\t\t\"INTERVALS\":[\n";
 		foreach my $mk ( @marks ){
@@ -327,6 +359,14 @@ sub do_write {
 				" }";
 		}
 		print $fh "\n\t\t],\n";
+	}
+
+	if( my $r = $self->meta_field('gc_refs') ){
+		print $fh "\t\t\"REFERENCES\":[\n", join( ",\n", map {
+			"\t\t\t{\"". uc($_->{field}) ."\":"
+				. $_->{value} ."}";
+		} @$r ),"\n",
+			"\t\t],\n";;
 	}
 
 	my $it = $self->iterate;
