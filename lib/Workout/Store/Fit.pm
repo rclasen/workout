@@ -626,35 +626,33 @@ sub do_read {
 					$stime = $event_last_time;
 					$self->debug("using first event $stime start time \@$ck->{time}" );
 
-				} elsif( $ck->{spd} > 0 && $ck->{dist} > 0  ){
+				} elsif(  defined $ck->{spd} && defined $ck->{dist}
+					&& $ck->{spd} > 0 && $ck->{dist} > 0  ){
+
 					my $speedtime = $ck->{dist} / $ck->{spd};
 					if( $speedtime > 1 ){
 						$stime = $ck->{time} - $speedtime;
 						$self->debug("using speed as start time $stime \@$ck->{time}" );
 					} else {
-						$self->debug("skipping sample as speed gives too short start time \@$ck->{time}" );
-						next;
+						$self->debug("dist/speed don't provide usable duration");
 					}
-				} else {
-					$self->debug( "unknown sample duration, "
-						."skipping record at ". $ck->{time} );
-					next;
 				}
 
 			# first record after gap:
 			} elsif( $event_last_time && $event_last_time > $rec_last_time ){
 				$stime = $event_last_time;
 				$self->debug("using event $stime as start time \@$ck->{time}" );
+
 			# other records:
 			} else {
 				$stime = $rec_last_time;
 			}
 
-			if( defined $rec_last_time && $rec_last_time > $stime ){
+			if( $stime && defined $rec_last_time && $rec_last_time > $stime ){
 				$self->debug( "backward time step, "
 					."skipping record at ". $ck->{time} );
 
-				next;
+				$stime = undef;
 			}
 
 
@@ -662,7 +660,12 @@ sub do_read {
 			$rec_last_time = $ck->{time};
 			$rec_last_dist = $dist if defined $dist;
 
-			if( $stime >= $ck->{time} ){
+			if( ! $stime ){
+				$self->debug( "unknown sample duration, skipping record at ".
+					$ck->{time} );
+				next;
+
+			} elsif( $stime >= $ck->{time} ){
 				$self->debug( "short sample, skipping record at ". $ck->{time} );
 				next;
 			}
