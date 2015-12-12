@@ -659,7 +659,7 @@ our %fields_supported = map { $_ => 1; } qw{
 
 our %defaults = (
 	recint		=> 1,
-	version		=> 9,
+	version		=> 7,
 );
 __PACKAGE__->mk_accessors( keys %defaults );
 
