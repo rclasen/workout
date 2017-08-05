@@ -136,6 +136,16 @@ use constant {
 
 };
 
+# record header bit banging:
+sub RECORD_IS_COMPRESSED($)	{ $_[0] & 0x80 }
+sub RECORD_IS_DEFINE($)		{ $_[0] & 0x40 }
+sub RECORD_HAS_DEVDATA($)	{ $_[0] & 0x20 }
+
+sub RECORD_LAYOUT($)	{ $_[0] & 0x0F }
+sub CRECORD_DELTA($)	{ $_[0] & 0x1F }
+sub CRECORD_LAYOUT($)	{ ($_[0] >> 5 ) & 0x3 }
+
+
 # encode( $val, $bytes, $big )
 # decode( $buf, $bytes, $big )
 our @base_type = ( { # 0, enum
@@ -404,18 +414,19 @@ sub get_next {
 			or return;
 		#$self->debug( sprintf("next record 0x%x at %d", $rhead, $tell ));
 
-		if( $rhead & 0x80 ){ # compressed timestamp data
+		if( RECORD_IS_COMPRESSED($rhead) ){ # compressed timestamp data
 
-			my $layout_id = ($rhead >> 5 ) & 0x3;
-			my $delta = $rhead & 0x1f;
+			my $layout_id = CRECORD_LAYOUT($rhead);
+			my $delta = CRECORD_DELTA($rhead);
 			return $self->_decode_data( $layout_id, $delta );
 
 		} else { # normal header
 
-			my $layout_id = $rhead & 0x0f;
+			my $layout_id = RECORD_LAYOUT($rhead);
 
-			if( $rhead & 0x40 ){ # definitin
-				$self->_decode_define( $layout_id )
+			if( RECORD_IS_DEFINE($rhead) ){ # definition
+				my $devdata = RECORD_HAS_DEVDATA($rhead);
+				$self->_decode_define( $layout_id, $devdata )
 					or return;
 
 			} else { # data
@@ -429,7 +440,9 @@ sub get_next {
 }
 
 sub _decode_define {
-	my( $self, $layout_id ) = @_;
+	my( $self, $layout_id, $devdata ) = @_;
+
+	$self->debug( "define layout $layout_id, $devdata...");
 
 	my( $big ) = $self->_unpack( 2, 'xC' )
 		or return;
@@ -460,6 +473,30 @@ sub _decode_define {
 
 		$self->debug( " $layout_id=$message/$field -> base=$bnum" );
 		push @fields, \%dat;
+	}
+
+	if( $devdata ){
+		my $dfields = $self->_unpack( 1, 'C' )
+			or return;
+
+		$self->debug( "layout $layout_id=$message, dfields=$dfields" );
+
+		foreach my $f ( 1..$dfields ){
+
+			my( $field, $bytes, $didx ) = $self->_unpack( 3, 'CCC' )
+				or return;
+
+			# TODO decode developer fields
+			my %dat = (
+				field	=> $field,
+				bytes	=> $bytes,
+				decode	=> sub { undef; },
+			);
+
+			$self->debug( " $layout_id=$message/$field -> dev=$didx" );
+			push @fields, \%dat;
+
+		}
 	}
 
 	$self->{layout}{$layout_id} = {

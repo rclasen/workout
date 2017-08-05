@@ -538,7 +538,7 @@ sub do_read {
 
 	my $fit = Workout::Fit->new(
 		from => $fh,
-		#debug => $self->{debug},
+		debug => $self->{debug},
 	) or croak "initializing Fit failed";
 
 	while( my $msg = $fit->get_next ){
