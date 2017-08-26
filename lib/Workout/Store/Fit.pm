@@ -534,6 +534,7 @@ sub do_read {
 	my @laps;
 	my $rec_last_dist = 0;
 	my $rec_last_time;
+	my $store_last_time = 0;
 	my $event_last_time;
 
 	my $fit = Workout::Fit->new(
@@ -648,14 +649,6 @@ sub do_read {
 				$stime = $rec_last_time;
 			}
 
-			if( $stime && defined $rec_last_time && $rec_last_time > $stime ){
-				$self->debug( "backward time step, "
-					."skipping record at ". $ck->{time} );
-
-				$stime = undef;
-			}
-
-
 			$event_last_time = undef;
 			$rec_last_time = $ck->{time};
 			$rec_last_dist = $dist if defined $dist;
@@ -663,6 +656,12 @@ sub do_read {
 			if( ! $stime ){
 				$self->debug( "unknown sample duration, skipping record at ".
 					$ck->{time} );
+				next;
+
+			} elsif( $store_last_time > $stime ){
+				$self->debug( "backward time step, "
+					."skipping record at ". $ck->{time} );
+
 				next;
 
 			} elsif( $stime >= $ck->{time} ){
@@ -686,6 +685,7 @@ sub do_read {
 
 			delete $ck->{pwr};
 			delete $ck->{spd};
+			$store_last_time = $ck->{time};
 
 			my $chunk = Workout::Chunk->new( $ck );
 			$self->chunk_add( $chunk );
