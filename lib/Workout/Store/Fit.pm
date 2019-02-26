@@ -510,6 +510,9 @@ sub do_read {
 	my $store_last_time = 0;
 	my $event_last_time;
 
+	# Read distance from FIT file?
+	my $dist_read; 
+
 	my $fit = Workout::Fit->new(
 		from => $fh,
 		#debug => $self->{debug},
@@ -555,6 +558,7 @@ sub do_read {
 					$dist = $f->{val} / 100;
 					$ck->{dist} = $dist - $rec_last_dist;
 					++$self->{field_use}{dist};
+					$dist_read = 1;
 
 				} elsif( $f->{field} == 6 ){
 					$ck->{spd} = $f->{val} / 1000; # tmp
@@ -573,6 +577,7 @@ sub do_read {
 							| $b[2] <<4 ) / 16;
 						$ck->{dist} ||= $dst;
 						++$self->{field_use}{dist};
+						$dist_read = 1;
 					}
 
 				} elsif( $f->{field} == 13 ){
@@ -642,17 +647,13 @@ sub do_read {
 				$ck->{work} = $ck->{pwr} * $ck->{dur};
 				++$self->{field_use}{work};
 			}
-			
-			if( exists $ck->{dist} ){
-				# delete($ck->{spd}); # unneeded
-				
-			} elsif( $ck->{spd} ){
-				$ck->{dist} = $ck->{spd} * $ck->{dur};
-				++$self->{field_use}{dist};
-				
-			# TODO: dist from geocalc
-			#} elsif( defined($ck->{lon}) && defined($ck->{lat} ) ){
 
+			# Calc dist from speed
+			unless ( $dist_read ) {
+				if ( !$ck->{dist} && $ck->{spd} && $ck->{dur} ) {
+					$ck->{dist} = $ck->{spd} * $ck->{dur};
+					++$self->{field_use}{dist};
+				}
 			}
 
 			delete $ck->{pwr};
