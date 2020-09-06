@@ -542,7 +542,9 @@ sub do_read {
 					$ck->{lon} = $f->{val} / FIT_SEMI_DEG;
 					++$self->{field_use}{lon};
 
-				} elsif( $f->{field} == 2 ){
+				} elsif( $f->{field} == 2 # elevation
+					or $f->{field} == 78 ){ # enhanced alt
+
 					$ck->{ele} = $f->{val}/5 - 500;
 					++$self->{field_use}{ele};
 
@@ -560,7 +562,9 @@ sub do_read {
 					++$self->{field_use}{dist};
 					$dist_read = 1;
 
-				} elsif( $f->{field} == 6 ){
+				} elsif( $f->{field} == 6 # speed
+					or $f->{field} == 73 ){ # enhanced spd
+
 					$ck->{spd} = $f->{val} / 1000; # tmp
 					$ck->{kph} = ($f->{val} / 1000)*3.6;
 					
