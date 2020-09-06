@@ -542,7 +542,9 @@ sub do_read {
 		debug => $self->{debug},
 	) or croak "initializing Fit failed";
 
+	my $m = 0;
 	while( my $msg = $fit->get_next ){
+		++$m;
 
 		############################################################
 		# record message
@@ -625,7 +627,7 @@ sub do_read {
 			if( ! $rec_last_time ){
 				if( $event_last_time && $event_last_time < $ck->{time} ){
 					$stime = $event_last_time;
-					$self->debug("using first event $stime start time \@$ck->{time}" );
+					$self->debug("$m: using first event $stime start time \@$ck->{time}" );
 
 				} elsif(  defined $ck->{spd} && defined $ck->{dist}
 					&& $ck->{spd} > 0 && $ck->{dist} > 0  ){
@@ -633,16 +635,16 @@ sub do_read {
 					my $speedtime = $ck->{dist} / $ck->{spd};
 					if( $speedtime > 1 ){
 						$stime = $ck->{time} - $speedtime;
-						$self->debug("using speed as start time $stime \@$ck->{time}" );
+						$self->debug("$m: using speed as start time $stime \@$ck->{time}" );
 					} else {
-						$self->debug("dist/speed don't provide usable duration");
+						$self->debug("$m: dist/speed don't provide usable duration");
 					}
 				}
 
 			# first record after gap:
 			} elsif( $event_last_time && $event_last_time > $rec_last_time ){
 				$stime = $event_last_time;
-				$self->debug("using event $stime as start time \@$ck->{time}" );
+				$self->debug("$m: using event $stime as start time \@$ck->{time}" );
 
 			# other records:
 			} else {
@@ -654,18 +656,18 @@ sub do_read {
 			$rec_last_dist = $dist if defined $dist;
 
 			if( ! $stime ){
-				$self->debug( "unknown sample duration, skipping record at ".
+				$self->debug( "$m: unknown sample duration, skipping record at ".
 					$ck->{time} );
 				next;
 
 			} elsif( $store_last_time > $stime ){
-				$self->debug( "backward time step, "
+				$self->debug( "$m: backward time step, "
 					."skipping record at ". $ck->{time} );
 
 				next;
 
 			} elsif( $stime >= $ck->{time} ){
-				$self->debug( "short sample, skipping record at ". $ck->{time} );
+				$self->debug( "$m: short sample, skipping record at ". $ck->{time} );
 				next;
 			}
 
@@ -727,7 +729,7 @@ sub do_read {
 					|| $etype == 1 # stop
 					|| $etype == 4 ){ # stop_all
 
-					$self->debug( "found ".
+					$self->debug( "$m: found ".
 						( $etype == 0  ? 'start' : 'stop' )
 						." event @". $end
 						.", d16=". ($data16||'-')
@@ -737,7 +739,7 @@ sub do_read {
 					$event_last_time = $end;
 
 				} else {
-					$self->debug( "found unhandled timer event $etype @"
+					$self->debug( "$m: found unhandled timer event $etype @"
 						.($msg->{timestamp} + FIT_TIME_OFFSET)
 						.", d16=". ($data16||'-')
 						.", d32=". ($data32||'-') );
@@ -755,7 +757,7 @@ sub do_read {
 				# calm down
 
 			} else {
-				$self->debug( "found unhandled event $event/$etype @"
+				$self->debug( "$m: found unhandled event $event/$etype @"
 					.($msg->{timestamp} + FIT_TIME_OFFSET)
 					.", d16=". ($data16||'-')
 					.", d32=". ($data32||'-') );
@@ -924,7 +926,7 @@ sub do_read {
 				? $start + int( .5 + $meta{'dur'} )
 				: $end;
 
-			$self->debug( "found lap $start to $end/$xend: ". ($end-$start)
+			$self->debug( "$m: found lap $start to $end/$xend: ". ($end-$start)
 				.", elapsed=".  ($meta{'dur'}||'')
 				.", timer=". ($meta{'dur_rec'}||'')
 				.", event=". ($event||'')
@@ -941,7 +943,7 @@ sub do_read {
 
 		} elsif( $msg->{message} == FIT_MSG_SESSION ){
 			my $end = $msg->{timestamp} + FIT_TIME_OFFSET;
-			$self->debug( "found session @" . $end );
+			$self->debug( "$m: found session @" . $end );
 			$self->meta_field('time_end', $end );
 
 			foreach my $f ( @{$msg->{fields}} ){
@@ -1116,7 +1118,7 @@ sub do_read {
 		# activity message
 
 		} elsif( $msg->{message} == FIT_MSG_ACTIVITY ){
-			$self->debug( "found activity @"
+			$self->debug( "$m: found activity @"
 				.($msg->{timestamp} + FIT_TIME_OFFSET) );
 
 			 # TODO: are there any meainingful activity fields?
@@ -1167,7 +1169,7 @@ sub do_read {
 					? " $prod" : '' ) );
 			}
 
-			$self->debug( "found file_id "
+			$self->debug( "$m: found file_id "
 				."type=". ($ftype||'-'). ", "
 				."manu=". ($manu||'-'). ", "
 				."prod=". ($prod||'-'). ", "
@@ -1193,7 +1195,7 @@ sub do_read {
 
 			}
 
-			$self->debug( "found file_creator "
+			$self->debug( "$m: found file_creator "
 				."sw=". ($self->meta_field('soft_version')||'-') .", "
 				."hw=".  ($self->meta_field('hard_version')||'-') );
 
@@ -1268,7 +1270,7 @@ sub do_read {
 				$self->meta_field( "serial_".$dev{stype}, $dev{serial} );
 			}
 
-			$self->debug( "device idx=". ($dev{idx}||'')
+			$self->debug( "$m: device idx=". ($dev{idx}||'')
 				.", type=".  ($dev{type}||'')
 				.", manu=". ($dev{manu}||'')
 				.", serial=".  ($dev{serial}||'')
@@ -1283,12 +1285,20 @@ sub do_read {
 			my $t = $msg->{timestamp}
 				? $msg->{timestamp} + FIT_TIME_OFFSET
 				: '<no_time>';
-			$self->debug( "found unhandled message: "
+			$self->debug( "$m: found unhandled message: "
 				.$msg->{message} ." @"
 				.$t );
 		}
 	}
 	$fit->close;
+
+	if( $self->{debug} ){
+		my $layouts = $fit->{layout};
+		foreach my $id ( sort keys %$layouts ){
+			my $layout = $layouts->{$id};
+			$self->debug( "layout $id messages: $layout->{count}");
+		}
+	}
 
 	if( @laps == 1 ){
 		my $lap = $laps[0];

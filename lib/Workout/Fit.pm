@@ -503,6 +503,7 @@ sub _decode_define {
 		message	=> $message,
 		big	=> $big,
 		fields	=> \@fields,
+		count => 0,
 	};
 
 	return 1;
@@ -514,6 +515,7 @@ sub _decode_data {
 	exists $self->{layout}{$layout_id}
 		or croak "undefined data layout: $layout_id";
 	my $layout = $self->{layout}{$layout_id};
+	++$layout->{count};
 
 	my $tstamp;
 	if( defined $delta ){
@@ -702,6 +704,7 @@ sub define_raw {
 		message	=> $a{message},
 		fields	=> \@fields,
 		big	=> $big,
+		count	=> 0,
 	};
 
 	$self->debug( "defined $id, fields=". @{$a{fields}} );
@@ -718,6 +721,7 @@ sub data {
 		or croak "unknown layout id: $id";
 
 	my $layout = $self->{layout}{$id};
+	++$layout->{count};
 
 	my $packed;
 	my $tstamp;
